@@ -17,12 +17,16 @@
     ],
     "require": {
         "php": "^8.0",
-        "spatie/laravel-package-tools": "^1.4.3",
-        "illuminate/contracts": "^8.37"
+        "illuminate/contracts": "^8.37",
+        "illuminate/http": "^8.37",
+        "open-telemetry/opentelemetry": "^0.0.2",
+        "php-http/discovery": "^1.14",
+        "spatie/laravel-package-tools": "^1.4.3"
     },
     "require-dev": {
         "brianium/paratest": "^6.2",
         "friendsofphp/php-cs-fixer": "^3.0",
+        "guzzlehttp/guzzle": "^7.3",
         "nunomaduro/collision": "^5.3",
         "orchestra/testbench": "^6.15",
         "phpunit/phpunit": "^9.3",
@@ -51,10 +55,7 @@
         "laravel": {
             "providers": [
                 "LaravelOpenTelemetryServiceProvider"
-            ],
-            "aliases": {
-                "LaravelOpenTelemetry": "LaravelOpenTelemetryFacade"
-            }
+            ]
         }
     },
     "minimum-stability": "dev",
