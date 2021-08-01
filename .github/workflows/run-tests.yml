@@ -8,19 +8,17 @@ on:
 
 jobs:
   test:
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: true
       matrix:
-        os: [ubuntu-latest, windows-latest]
         php: [8.0]
         laravel: [8.*]
-        stability: [prefer-lowest, prefer-stable]
         include:
           - laravel: 8.*
             testbench: ^6.6
 
-    name: P${{ matrix.php }} - L${{ matrix.laravel }} - ${{ matrix.stability }} - ${{ matrix.os }}
+    name: P${{ matrix.php }} - L${{ matrix.laravel }}
 
     steps:
       - name: Checkout code
@@ -41,7 +39,16 @@ jobs:
       - name: Install dependencies
         run: |
           composer require "laravel/framework:${{ matrix.laravel }}" "orchestra/testbench:${{ matrix.testbench }}" --no-interaction --no-update
-          composer update --${{ matrix.stability }} --prefer-dist --no-interaction
+          composer update --prefer-dist --no-interaction
 
       - name: Execute tests
         run: vendor/bin/phpunit
+
+  deploy:
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy
+        env:
+          TOKEN: ${{ secrets.GITLAB_SATIS_TRIGGER_TOKEN }}
+        run: curl --request POST --form "token=$TOKEN" --form ref=master https://gitlab.com/api/v4/projects/16293012/trigger/pipeline
