@@ -54,7 +54,7 @@
     "extra": {
         "laravel": {
             "providers": [
-                "LaravelOpenTelemetryServiceProvider"
+                "Keepsuit\\LaravelOpenTelemetry\\LaravelOpenTelemetryServiceProvider"
             ]
         }
     },
