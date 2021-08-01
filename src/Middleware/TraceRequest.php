@@ -3,6 +3,7 @@
 namespace Keepsuit\LaravelOpenTelemetry\Middleware;
 
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use OpenTelemetry\Trace\Tracer;
 
 class TraceRequest
@@ -15,11 +16,16 @@ class TraceRequest
 
         $tracer = $this->getTracer();
 
-        $tracer->startAndActivateSpan($request->getUri());
+        $span = $tracer->startAndActivateSpan($request->getUri());
 
+        /** @var Response $response */
         $response = $next($request);
 
-        $tracer->endActiveSpan();
+        $span->setAttribute('http.status_code', $response->status());
+        $span->setAttribute('http.method', $request->method());
+        $span->setAttribute('http.url', $request->getUri());
+
+        $span->end();
 
         return $response;
     }
