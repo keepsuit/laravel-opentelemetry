@@ -1,10 +1,10 @@
 <?php
 
-namespace Keepsuit\LaravelOpentelemetry\Commands;
+namespace Keepsuit\LaravelOpenTelemetry\Commands;
 
 use Illuminate\Console\Command;
 
-class LaravelOpentelemetryCommand extends Command
+class LaravelOpenTelemetryCommand extends Command
 {
     public $signature = 'laravel-opentelemetry';
 

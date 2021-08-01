@@ -1,13 +1,13 @@
 <?php
 
-namespace Keepsuit\LaravelOpentelemetry;
+namespace Keepsuit\LaravelOpenTelemetry;
 
 use Illuminate\Support\Facades\Facade;
 
 /**
- * @see \Keepsuit\LaravelOpentelemetry\LaravelOpentelemetry
+ * @see \Keepsuit\LaravelOpenTelemetry\LaravelOpenTelemetry
  */
-class LaravelOpentelemetryFacade extends Facade
+class LaravelOpenTelemetryFacade extends Facade
 {
     protected static function getFacadeAccessor()
     {

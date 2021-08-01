@@ -1,6 +1,6 @@
 <?php
 
-namespace Keepsuit\LaravelOpentelemetry\Tests;
+namespace Keepsuit\LaravelOpenTelemetry\Tests;
 
 class ExampleTest extends TestCase
 {

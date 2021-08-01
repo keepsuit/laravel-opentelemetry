@@ -31,13 +31,12 @@
     },
     "autoload": {
         "psr-4": {
-            "Keepsuit\\LaravelOpentelemetry\\": "src",
-            "Keepsuit\\LaravelOpentelemetry\\Database\\Factories\\": "database/factories"
+            "Keepsuit\\LaravelOpenTelemetry\\": "src"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Keepsuit\\LaravelOpentelemetry\\Tests\\": "tests"
+            "Keepsuit\\LaravelOpenTelemetry\\Tests\\": "tests"
         }
     },
     "scripts": {
@@ -51,10 +50,10 @@
     "extra": {
         "laravel": {
             "providers": [
-                "Keepsuit\\LaravelOpentelemetry\\LaravelOpentelemetryServiceProvider"
+                "LaravelOpenTelemetryServiceProvider"
             ],
             "aliases": {
-                "LaravelOpentelemetry": "Keepsuit\\LaravelOpentelemetry\\LaravelOpentelemetryFacade"
+                "LaravelOpenTelemetry": "LaravelOpenTelemetryFacade"
             }
         }
     },

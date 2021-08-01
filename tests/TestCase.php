@@ -1,9 +1,9 @@
 <?php
 
-namespace Keepsuit\LaravelOpentelemetry\Tests;
+namespace Keepsuit\LaravelOpenTelemetry\Tests;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Keepsuit\LaravelOpentelemetry\LaravelOpentelemetryServiceProvider;
+use Keepsuit\LaravelOpenTelemetry\LaravelOpenTelemetryServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
 
 class TestCase extends Orchestra
@@ -20,7 +20,7 @@ class TestCase extends Orchestra
     protected function getPackageProviders($app)
     {
         return [
-            LaravelOpentelemetryServiceProvider::class,
+            LaravelOpenTelemetryServiceProvider::class,
         ];
     }
 

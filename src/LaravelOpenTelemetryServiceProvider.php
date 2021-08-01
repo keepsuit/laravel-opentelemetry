@@ -1,18 +1,18 @@
 <?php
 
-namespace Keepsuit\LaravelOpentelemetry;
+namespace Keepsuit\LaravelOpenTelemetry;
 
-use Keepsuit\LaravelOpentelemetry\Commands\LaravelOpentelemetryCommand;
+use Keepsuit\LaravelOpenTelemetry\Commands\LaravelOpenTelemetryCommand;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
-class LaravelOpentelemetryServiceProvider extends PackageServiceProvider
+class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 {
     public function configurePackage(Package $package): void
     {
         $package
             ->name('laravel-opentelemetry')
             ->hasConfigFile()
-            ->hasCommand(LaravelOpentelemetryCommand::class);
+            ->hasCommand(LaravelOpenTelemetryCommand::class);
     }
 }
