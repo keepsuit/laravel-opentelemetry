@@ -1,6 +1,6 @@
 <?php
 
-namespace VendorName\Skeleton\Tests;
+namespace Keepsuit\LaravelOpentelemetry\Tests;
 
 class ExampleTest extends TestCase
 {
