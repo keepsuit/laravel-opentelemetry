@@ -4,6 +4,7 @@ namespace Keepsuit\LaravelOpenTelemetry;
 
 use Closure;
 use Illuminate\Support\Arr;
+use OpenTelemetry\Sdk\Trace\SpanContext;
 use OpenTelemetry\Trace\Span;
 use OpenTelemetry\Trace\Tracer as OpenTelemetryTracer;
 
@@ -11,6 +12,8 @@ class Tracer
 {
     /** @var Span[] */
     protected array $startedSpans = [];
+
+    protected ?SpanContext $rootParentContext = null;
 
     public function __construct(protected OpenTelemetryTracer $tracer)
     {
@@ -50,10 +53,55 @@ class Tracer
     {
         $span = $this->start($name);
 
-        $result = $callback($span);
+        try {
+            $result = $callback($span);
+        } catch (\Exception $exception) {
+            $this->stop($name);
+
+            throw $exception;
+        }
 
         $this->stop($name);
 
         return $result;
+    }
+
+    public function activeSpan(): Span
+    {
+        return $this->tracer->getActiveSpan();
+    }
+
+    public function activeSpanB3Headers(): array
+    {
+        $headers = [];
+
+        $activeSpan = $this->activeSpan();
+
+        $headers['X-B3-TraceId'] = [$activeSpan->getContext()->getTraceId()];
+        $headers['X-B3-SpanId'] = [$activeSpan->getContext()->getSpanId()];
+        $headers['X-B3-Sampled'] = [$activeSpan->isSampled() ? '1' : '0'];
+
+        if ($activeSpan->getParent()) {
+            $headers['X-B3-ParentSpanId'] = [$activeSpan->getParent()->getSpanId()];
+        }
+
+        return $headers;
+    }
+
+    public function initFromB3Headers(array $headers): self
+    {
+        $headers = collect($headers)
+            ->mapWithKeys(fn ($value, $key) => [strtolower($key) => is_array($value) ? $value[0] : $value]);
+
+        $traceId = $headers->get('x-b3-traceid');
+        $spanId = $headers->get('x-b3-spanid');
+
+        $this->rootParentContext = new SpanContext(
+            traceId: $traceId,
+            spanId: $spanId,
+            traceFlags: $headers->get('x-b3-sampled', '1') === '1' ? 1 : 0
+        );
+
+        return $this;
     }
 }
