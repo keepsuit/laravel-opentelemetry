@@ -10,7 +10,12 @@ return [
      * Exporter to use
      * Supported: 'jaeger', 'zipkin', 'null'
      */
-    'exporter' => env('OT_EXPORTER','jaeger'),
+    'exporter' => env('OT_EXPORTER', 'jaeger'),
+
+    /**
+     * Path not to trace
+     */
+    'excluded_paths' => [],
 
     /**
      * Exporters config

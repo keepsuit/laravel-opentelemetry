@@ -13,7 +13,11 @@ class TraceRequest
 {
     public function handle(Request $request, Closure $next)
     {
-        if (config('opentelemetry.exporter') === null) {
+        if (config('opentelemetry.exporter', null) === null) {
+            return $next($request);
+        }
+
+        if ($request->is(config('opentelemetry.excluded_paths', []))) {
             return $next($request);
         }
 
