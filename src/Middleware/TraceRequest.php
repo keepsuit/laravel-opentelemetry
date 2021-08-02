@@ -3,12 +3,9 @@
 namespace Keepsuit\LaravelOpenTelemetry\Middleware;
 
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
-use OpenTelemetry\Context\Context;
-use OpenTelemetry\Sdk\Trace\Sampler\AlwaysOnSampler;
-use OpenTelemetry\Sdk\Trace\SamplingResult;
-use OpenTelemetry\Trace\SpanKind;
+use OpenTelemetry\Trace\SpanStatus;
 use OpenTelemetry\Trace\Tracer;
+use Symfony\Component\HttpFoundation\Response;
 
 class TraceRequest
 {
@@ -18,28 +15,29 @@ class TraceRequest
             return $next($request);
         }
 
-        $sampler = new AlwaysOnSampler();
-        $samplingResult = $sampler->shouldSample(
-            Context::getCurrent(),
-            md5((string)microtime(true)),
-            'io.opentelemetry.example',
-            SpanKind::KIND_INTERNAL
-        );
-
-        if ($samplingResult->getDecision() !== SamplingResult::RECORD_AND_SAMPLE) {
-            return $next($request);
-        }
-
         $tracer = $this->getTracer();
 
         $span = $tracer->startAndActivateSpan($request->path());
 
-        /** @var Response $response */
+        $span->setAttribute('http.method', $request->method());
+        $span->setAttribute('http.path', $request->path());
+        $span->setAttribute('http.url', $request->getUri());
+
+        /** @var \Symfony\Component\HttpFoundation\Response $response */
         $response = $next($request);
 
-        $span->setAttribute('http.status_code', $response->status());
-        $span->setAttribute('http.method', $request->method());
-        $span->setAttribute('http.url', $request->getUri());
+        if ($response instanceof Response) {
+            $span->setAttribute('http.status_code', $response->getStatusCode());
+
+            if ($span->getStatus()->getCanonicalStatusCode() === SpanStatus::UNSET) {
+                if ($response->isSuccessful()) {
+                    $span->setSpanStatus(SpanStatus::OK);
+                }
+                if ($response->isServerError() || $response->isClientError()) {
+                    $span->setSpanStatus(SpanStatus::ERROR);
+                }
+            }
+        }
 
         $span->end();
 
