@@ -4,6 +4,10 @@ namespace Keepsuit\LaravelOpenTelemetry\Middleware;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use OpenTelemetry\Context\Context;
+use OpenTelemetry\Sdk\Trace\Sampler\AlwaysOnSampler;
+use OpenTelemetry\Sdk\Trace\SamplingResult;
+use OpenTelemetry\Trace\SpanKind;
 use OpenTelemetry\Trace\Tracer;
 
 class TraceRequest
@@ -14,9 +18,21 @@ class TraceRequest
             return $next($request);
         }
 
+        $sampler = new AlwaysOnSampler();
+        $samplingResult = $sampler->shouldSample(
+            Context::getCurrent(),
+            md5((string)microtime(true)),
+            'io.opentelemetry.example',
+            SpanKind::KIND_INTERNAL
+        );
+
+        if ($samplingResult->getDecision() !== SamplingResult::RECORD_AND_SAMPLE) {
+            return $next($request);
+        }
+
         $tracer = $this->getTracer();
 
-        $span = $tracer->startAndActivateSpan($request->getUri());
+        $span = $tracer->startAndActivateSpan($request->path());
 
         /** @var Response $response */
         $response = $next($request);
