@@ -4,8 +4,10 @@ namespace Keepsuit\LaravelOpenTelemetry;
 
 use Closure;
 use Illuminate\Support\Arr;
+use OpenTelemetry\Sdk\Trace\NoopSpan;
 use OpenTelemetry\Sdk\Trace\SpanContext;
 use OpenTelemetry\Trace\Span;
+use OpenTelemetry\Trace\SpanKind;
 use OpenTelemetry\Trace\Tracer as OpenTelemetryTracer;
 
 class Tracer
@@ -21,7 +23,11 @@ class Tracer
 
     public function start(string $name, ?Closure $onStart = null): self
     {
-        $span = $this->tracer->startAndActivateSpan($name);
+        if ($this->rootParentContext !== null && $this->activeSpan() instanceof NoopSpan) {
+            $span = $this->tracer->startAndActivateSpanFromContext($name, $this->rootParentContext, isRemote: true, spanKind: SpanKind::KIND_SERVER);
+        } else {
+            $span = $this->tracer->startAndActivateSpan($name);
+        }
 
         $this->startedSpans[$name] = $span;
 
@@ -96,11 +102,15 @@ class Tracer
         $traceId = $headers->get('x-b3-traceid');
         $spanId = $headers->get('x-b3-spanid');
 
-        $this->rootParentContext = new SpanContext(
-            traceId: $traceId,
-            spanId: $spanId,
-            traceFlags: $headers->get('x-b3-sampled', '1') === '1' ? 1 : 0
-        );
+        try {
+            $this->rootParentContext = new SpanContext(
+                traceId: $traceId,
+                spanId: $spanId,
+                traceFlags: $headers->get('x-b3-sampled', '1') === '1' ? 1 : 0
+            );
+        } catch (\Exception $exception) {
+            $this->rootParentContext = null;
+        }
 
         return $this;
     }
