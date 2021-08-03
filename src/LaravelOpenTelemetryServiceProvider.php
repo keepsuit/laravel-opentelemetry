@@ -54,5 +54,11 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
                 ->addSpanProcessor(new BatchSpanProcessor($exporter, Clock::get()))
                 ->getTracer('io.opentelemetry.contrib.php');
         });
+
+        $this->app->terminating(function () {
+            if (app()->resolved(Tracer::class)) {
+                app(Tracer::class)->getTracerProvider()->shutdown();
+            }
+        });
     }
 }
