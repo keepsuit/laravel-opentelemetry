@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Facade;
  * @method static \OpenTelemetry\Trace\Span activeSpan()
  * @method static array activeSpanB3Headers()
  * @method static \Keepsuit\LaravelOpenTelemetry\Tracer initFromB3Headers(array $headers)
+ * @method static \Keepsuit\LaravelOpenTelemetry\Tracer initFromRequest(\Illuminate\Http\Request $request)
+ * @method static \Keepsuit\LaravelOpenTelemetry\Tracer initFromGrpcContext(\Spiral\GRPC\ContextInterface $context)
  */
 class Tracer extends Facade
 {

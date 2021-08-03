@@ -124,6 +124,12 @@ class Tracer
         $traceId = $headers->get('x-b3-traceid');
         $spanId = $headers->get('x-b3-spanid');
 
+        if ($traceId == null || $spanId == null) {
+            $this->rootParentContext = null;
+
+            return $this;
+        }
+
         try {
             $this->rootParentContext = new SpanContext(
                 traceId: $traceId,

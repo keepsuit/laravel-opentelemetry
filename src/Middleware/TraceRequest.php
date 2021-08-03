@@ -21,6 +21,8 @@ class TraceRequest
             return $next($request);
         }
 
+        Tracer::initFromRequest($request);
+
         Tracer::start($request->path(), function (Span $span) use ($request) {
             $span->setAttribute('http.method', $request->method());
             $span->setAttribute('http.path', $request->path());
