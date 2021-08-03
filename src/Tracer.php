@@ -3,12 +3,14 @@
 namespace Keepsuit\LaravelOpenTelemetry;
 
 use Closure;
+use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use OpenTelemetry\Sdk\Trace\NoopSpan;
 use OpenTelemetry\Sdk\Trace\SpanContext;
 use OpenTelemetry\Trace\Span;
 use OpenTelemetry\Trace\SpanKind;
 use OpenTelemetry\Trace\Tracer as OpenTelemetryTracer;
+use Spiral\GRPC\ContextInterface;
 
 class Tracer
 {
@@ -83,15 +85,35 @@ class Tracer
 
         $activeSpan = $this->activeSpan();
 
-        $headers['X-B3-TraceId'] = [$activeSpan->getContext()->getTraceId()];
-        $headers['X-B3-SpanId'] = [$activeSpan->getContext()->getSpanId()];
-        $headers['X-B3-Sampled'] = [$activeSpan->isSampled() ? '1' : '0'];
+        $headers['x-b3-traceid'] = [$activeSpan->getContext()->getTraceId()];
+        $headers['x-b3-spanid'] = [$activeSpan->getContext()->getSpanId()];
+        $headers['x-b3-sampled'] = [$activeSpan->isSampled() ? '1' : '0'];
 
         if ($activeSpan->getParent()) {
-            $headers['X-B3-ParentSpanId'] = [$activeSpan->getParent()->getSpanId()];
+            $headers['x-b3-parentspanid'] = [$activeSpan->getParent()->getSpanId()];
         }
 
         return $headers;
+    }
+
+    public function initFromRequest(Request $request): self
+    {
+        return $this->initFromB3Headers([
+            'x-b3-traceid' => $request->header('x-b3-traceid'),
+            'x-b3-spanid' => $request->header('x-b3-spanid'),
+            'x-b3-sampled' => $request->header('x-b3-sampled'),
+            'x-b3-parentspanid' => $request->header('x-b3-parentspanid'),
+        ]);
+    }
+
+    public function initFromGrpcContext(ContextInterface $ctx): self
+    {
+        return $this->initFromB3Headers([
+            'x-b3-traceid' => $ctx->getValue('x-b3-traceid'),
+            'x-b3-spanid' => $ctx->getValue('x-b3-spanid'),
+            'x-b3-sampled' => $ctx->getValue('x-b3-sampled'),
+            'x-b3-parentspanid' => $ctx->getValue('x-b3-parentspanid'),
+        ]);
     }
 
     public function initFromB3Headers(array $headers): self
