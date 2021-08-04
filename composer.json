@@ -18,7 +18,7 @@
     "require": {
         "php": "^8.0",
         "illuminate/contracts": "^8.37",
-        "illuminate/http": "^8.37",
+        "illuminate/support": "^8.37",
         "open-telemetry/opentelemetry": "dev-main#942b7f7117e0785b45d7e9971b19a2f452ac693e",
         "php-http/discovery": "^1.14",
         "spatie/laravel-package-tools": "^1.4.3"
