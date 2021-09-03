@@ -85,9 +85,12 @@ class Tracer
 
         $activeSpan = $this->activeSpan();
 
-        $headers['x-b3-traceid'] = [$activeSpan->getContext()->getTraceId()];
-        $headers['x-b3-spanid'] = [$activeSpan->getContext()->getSpanId()];
-        $headers['x-b3-sampled'] = [$activeSpan->isSampled() ? '1' : '0'];
+        /** @var SpanContext $spanContext */
+        $spanContext = $activeSpan->getContext();
+
+        $headers['x-b3-traceid'] = [$spanContext->getTraceId()];
+        $headers['x-b3-spanid'] = [$spanContext->getSpanId()];
+        $headers['x-b3-sampled'] = [$spanContext->isSampled() ? '1' : '0'];
 
         if ($activeSpan->getParent()) {
             $headers['x-b3-parentspanid'] = [$activeSpan->getParent()->getSpanId()];
