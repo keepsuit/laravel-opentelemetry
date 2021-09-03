@@ -19,18 +19,16 @@
         "php": "^8.0",
         "illuminate/contracts": "^8.37",
         "illuminate/support": "^8.37",
-        "open-telemetry/opentelemetry": "dev-main#942b7f7117e0785b45d7e9971b19a2f452ac693e",
+        "open-telemetry/opentelemetry": "^0.0.3",
         "php-http/discovery": "^1.14",
         "spatie/laravel-package-tools": "^1.4.3"
     },
     "require-dev": {
-        "brianium/paratest": "^6.2",
         "friendsofphp/php-cs-fixer": "^3.0",
         "guzzlehttp/guzzle": "^7.3",
         "nunomaduro/collision": "^5.3",
         "orchestra/testbench": "^6.15",
         "phpunit/phpunit": "^9.3",
-        "spatie/laravel-ray": "^1.23",
         "spiral/php-grpc": "^1.5",
         "vimeo/psalm": "^4.8"
     },
