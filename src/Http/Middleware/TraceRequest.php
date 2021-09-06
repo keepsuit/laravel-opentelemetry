@@ -1,6 +1,6 @@
 <?php
 
-namespace Keepsuit\LaravelOpenTelemetry\Middleware;
+namespace Keepsuit\LaravelOpenTelemetry\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
@@ -14,10 +14,6 @@ class TraceRequest
 {
     public function handle(Request $request, Closure $next)
     {
-        if (config('opentelemetry.exporter', null) === null) {
-            return $next($request);
-        }
-
         if ($request->is(config('opentelemetry.excluded_paths', []))) {
             return $next($request);
         }
@@ -30,7 +26,7 @@ class TraceRequest
         Tracer::start($route, function (Span $span) use ($route, $request) {
             $span->setAttribute('http.method', $request->method());
             $span->setAttribute('http.url', $request->getUri());
-            $span->setAttribute('http.target',$request->getRequestUri());
+            $span->setAttribute('http.target', $request->getRequestUri());
             $span->setAttribute('http.route', $route);
             $span->setAttribute('http.host', $request->getHttpHost());
             $span->setAttribute('http.scheme', $request->getScheme());
@@ -46,12 +42,13 @@ class TraceRequest
                 $span->setAttribute('http.status_code', $response->getStatusCode());
                 $span->setAttribute('http.response_content_length', strlen($response->getContent()));
 
-                if ($span->getStatus()->getCanonicalStatusCode() === SpanStatus::UNSET) {
+                if ($span instanceof \OpenTelemetry\Sdk\Trace\Span && $span->getStatus()->getCanonicalStatusCode() === SpanStatus::UNSET) {
                     if ($response->isSuccessful()) {
                         $span->setSpanStatus(SpanStatus::OK);
                     }
                     if ($response->isServerError() || $response->isClientError()) {
                         $span->setSpanStatus(SpanStatus::ERROR);
+                        $span->setAttribute('error', true);
                     }
                 }
             }

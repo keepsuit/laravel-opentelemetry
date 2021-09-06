@@ -25,12 +25,12 @@ class Tracer
 
     public function start(string $name, ?Closure $onStart = null): self
     {
-        if (! $this->shouldTrace()) {
+        if (! $this->isRecording()) {
             return $this;
         }
 
         if ($this->rootParentContext !== null && $this->activeSpan() instanceof NoopSpan) {
-            $span = $this->tracer->startAndActivateSpanFromContext($name, $this->rootParentContext, isRemote: true, spanKind: SpanKind::KIND_SERVER);
+            $span = $this->tracer->startActiveSpan($name, $this->rootParentContext, isRemote: true, spanKind: SpanKind::KIND_SERVER);
         } else {
             $span = $this->tracer->startAndActivateSpan($name);
         }
@@ -61,19 +61,19 @@ class Tracer
         return $this;
     }
 
-    public function measure(string $name, Closure $callback)
+    public function measure(string $name, Closure $callback, ?Closure $onStart = null, ?Closure $onStop = null)
     {
-        $this->start($name);
+        $this->start($name, $onStart);
 
         try {
-            $result = $callback(Arr::get($this->startedSpans, $name));
+            $result = $callback();
         } catch (\Exception $exception) {
-            $this->stop($name);
+            $this->stop($name, $onStop);
 
             throw $exception;
         }
 
-        $this->stop($name);
+        $this->stop($name, $onStop);
 
         return $result;
     }
@@ -89,7 +89,7 @@ class Tracer
 
         $activeSpan = $this->activeSpan();
 
-        if ($activeSpan instanceof NoopSpan) {
+        if (! $activeSpan instanceof \OpenTelemetry\Sdk\Trace\Span) {
             return [];
         }
 
@@ -154,8 +154,12 @@ class Tracer
         return $this;
     }
 
-    private function shouldTrace(): bool
+    public function isRecording(): bool
     {
+        if (config('opentelemetry.exporter') === null) {
+            return false;
+        }
+
         $enabled = config('opentelemetry.enabled', true);
 
         if (is_bool($enabled)) {

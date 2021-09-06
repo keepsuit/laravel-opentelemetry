@@ -19,9 +19,14 @@ return [
     'exporter' => env('OT_EXPORTER', 'jaeger'),
 
     /**
-     * Path not to trace
+     * Http paths not to trace
      */
     'excluded_paths' => [],
+
+    /**
+     * Grpc services not to trace
+     */
+    'excluded_services' => [],
 
     /**
      * Exporters config

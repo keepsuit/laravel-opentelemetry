@@ -57,7 +57,11 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 
         $this->app->terminating(function () {
             if (app()->resolved(Tracer::class)) {
-                app(Tracer::class)->getTracerProvider()->shutdown();
+                $tracer = app(Tracer::class);
+
+                if ($tracer instanceof \OpenTelemetry\Sdk\Trace\Tracer) {
+                    $tracer->getTracerProvider()->shutdown();
+                }
             }
         });
     }
