@@ -7,6 +7,12 @@ return [
     'service_name' => \Illuminate\Support\Str::slug(env('APP_NAME', 'laravel-app')),
 
     /**
+     * Enable tracing
+     * Valid values: 'true', 'false', 'parent'
+     */
+    'enabled' => env('OT_ENABLED', true),
+
+    /**
      * Exporter to use
      * Supported: 'jaeger', 'zipkin', 'null'
      */
