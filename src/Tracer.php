@@ -63,10 +63,10 @@ class Tracer
 
     public function measure(string $name, Closure $callback)
     {
-        $span = $this->start($name);
+        $this->start($name);
 
         try {
-            $result = $callback($span);
+            $result = $callback(Arr::get($this->startedSpans, $name));
         } catch (\Exception $exception) {
             $this->stop($name);
 
