@@ -1,5 +1,8 @@
 <?php
 
+
+use Keepsuit\LaravelOpenTelemetry\Watchers;
+
 return [
     /**
      * Service name
@@ -27,6 +30,13 @@ return [
      * Grpc services not to trace
      */
     'excluded_services' => [],
+
+    /**
+     * List of watcher used for application tracing
+     */
+    'watchers' => [
+        Watchers\QueryWatcher::class => env('OT_WATCHER_QUERY', true),
+    ],
 
     /**
      * Exporters config

@@ -4,6 +4,7 @@ namespace Keepsuit\LaravelOpenTelemetry;
 
 use Http\Discovery\Psr17FactoryDiscovery;
 use Http\Discovery\Psr18ClientDiscovery;
+use Keepsuit\LaravelOpenTelemetry\Watchers\Watcher;
 use OpenTelemetry\Contrib\Jaeger\Exporter as JaegerExporter;
 use OpenTelemetry\Contrib\Zipkin\Exporter as ZipkinExporter;
 use OpenTelemetry\Sdk\Trace\Clock;
@@ -20,6 +21,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         parent::register();
 
         $this->initTracer();
+        $this->registerWatchers();
     }
 
     public function configurePackage(Package $package): void
@@ -64,5 +66,35 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
                 }
             }
         });
+    }
+
+    protected function registerWatchers()
+    {
+        if (config('opentelemetry.enabled') === false) {
+            return;
+        }
+
+        if (config('opentelemetry.exporter') === null) {
+            return;
+        }
+
+        $app = app();
+
+        foreach (config('opentelemetry.watchers') as $key => $options) {
+            if ($options === false) {
+                continue;
+            }
+
+            if (is_array($options) && ! ($options['enabled'] ?? true)) {
+                continue;
+            }
+
+            /** @var Watcher $watcher */
+            $watcher = $app->make($key, [
+                'options' => is_array($options) ? $options : [],
+            ]);
+
+            $watcher->register($app);
+        }
     }
 }
