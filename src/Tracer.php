@@ -23,16 +23,24 @@ class Tracer
     {
     }
 
-    public function start(string $name, ?Closure $onStart = null): self
+    public function start(string $name, ?Closure $onStart = null, int $spanKind = SpanKind::KIND_INTERNAL): self
     {
         if (! $this->isRecording()) {
             return $this;
         }
 
         if ($this->rootParentContext !== null && $this->activeSpan() instanceof NoopSpan) {
-            $span = $this->tracer->startActiveSpan($name, $this->rootParentContext, isRemote: true, spanKind: SpanKind::KIND_SERVER);
+            $span = $this->tracer->startActiveSpan($name, $this->rootParentContext, isRemote: true, spanKind: $spanKind);
         } else {
-            $span = $this->tracer->startAndActivateSpan($name);
+            $span = $this->tracer->startAndActivateSpan($name, spanKind: $spanKind);
+        }
+
+        // Temporary fix until SpanKind is sent correctly by opentelemetry library
+        if ($spanKind === SpanKind::KIND_CLIENT) {
+            $span->setAttribute('span.kind', 'client');
+        }
+        if ($spanKind === SpanKind::KIND_SERVER) {
+            $span->setAttribute('span.kind', 'server');
         }
 
         $this->startedSpans[$name] = $span;
@@ -166,7 +174,7 @@ class Tracer
             return $enabled;
         }
 
-        if ($enabled === 'parent' && $this->rootParentContext !== null) {
+        if ($enabled === 'parent' && $this->rootParentContext !== null && $this->rootParentContext->isSampled()) {
             return true;
         }
 

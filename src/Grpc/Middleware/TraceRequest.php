@@ -8,6 +8,7 @@ use Keepsuit\LaravelGrpc\GrpcRequest;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use OpenTelemetry\Sdk\Trace\SpanStatus;
 use OpenTelemetry\Trace\Span;
+use OpenTelemetry\Trace\SpanKind;
 use Spiral\GRPC\Exception\GRPCException;
 use Spiral\GRPC\StatusCode;
 
@@ -23,14 +24,18 @@ class TraceRequest
 
         $traceName = sprintf('%s/%s', $request->getServiceName() ?? 'Unknown', $request->getMethodName());
 
-        Tracer::start($traceName, function (Span $span) use ($request): void {
-            $span->setAttribute('rpc.system', 'grpc');
-            $span->setAttribute('rpc.service', $request->getServiceName());
-            $span->setAttribute('rpc.method', $request->getMethodName());
-            $span->setAttribute('grpc.service', $request->getServiceName());
-            $span->setAttribute('grpc.method', $request->method->getName());
-            $span->setAttribute('net.peer.name', $request->context->getValue(':authority'));
-        });
+        Tracer::start(
+            name: $traceName,
+            spanKind: SpanKind::KIND_SERVER,
+            onStart: function (Span $span) use ($request): void {
+                $span->setAttribute('rpc.system', 'grpc');
+                $span->setAttribute('rpc.service', $request->getServiceName());
+                $span->setAttribute('rpc.method', $request->getMethodName());
+                $span->setAttribute('grpc.service', $request->getServiceName());
+                $span->setAttribute('grpc.method', $request->method->getName());
+                $span->setAttribute('net.peer.name', $request->context->getValue(':authority'));
+            }
+        );
 
         try {
             /** @var string $response */

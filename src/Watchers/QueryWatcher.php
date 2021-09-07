@@ -6,6 +6,7 @@ use Illuminate\Database\Events\QueryExecuted;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use OpenTelemetry\Sdk\Trace\Clock;
 use OpenTelemetry\Sdk\Trace\Span;
+use OpenTelemetry\Trace\SpanKind;
 
 class QueryWatcher extends Watcher
 {
@@ -20,7 +21,7 @@ class QueryWatcher extends Watcher
     {
         $traceName = sprintf('%s %s', $event->connection->getDriverName(), $event->connection->getDatabaseName());
 
-        Tracer::start($traceName);
+        Tracer::start($traceName, spanKind: SpanKind::KIND_CLIENT);
         Tracer::stop($traceName, function (Span $span) use ($event) {
             $span->setAttribute('db.system', $event->connection->getDriverName());
             $span->setAttribute('db.name', $event->connection->getDatabaseName());
@@ -98,6 +99,6 @@ class QueryWatcher extends Watcher
             '\\' => '\\\\',
         ]);
 
-        return "'".$binding."'";
+        return "'" . $binding . "'";
     }
 }
