@@ -9,6 +9,7 @@ use OpenTelemetry\Sdk\Trace\NoopSpan;
 use OpenTelemetry\Sdk\Trace\SpanContext;
 use OpenTelemetry\Trace\Span;
 use OpenTelemetry\Trace\SpanKind;
+use OpenTelemetry\Trace\SpanStatus;
 use OpenTelemetry\Trace\Tracer as OpenTelemetryTracer;
 use Spiral\GRPC\ContextInterface;
 
@@ -179,5 +180,47 @@ class Tracer
         }
 
         return false;
+    }
+
+    /**
+     * @param string $grpcFullName Format <package>.<serviceName>/<methodName>
+     */
+    public function startGrpcClientTracing(string $grpcFullName)
+    {
+        return $this->start(
+            name: $grpcFullName,
+            spanKind: SpanKind::KIND_CLIENT,
+            onStart: function (Span $span) use ($grpcFullName) {
+                [$serviceName, $methodName] = explode('/', $grpcFullName, 2);
+
+                $span->setAttribute('rpc.system', 'grpc');
+                $span->setAttribute('rpc.service', $serviceName);
+                $span->setAttribute('rpc.method', $methodName);
+                $span->setAttribute('grpc.service', $serviceName);
+                $span->setAttribute('grpc.method', $methodName);
+            }
+        );
+    }
+
+    /**
+     * @param string $grpcFullName Format <package>.<serviceName>/<methodName>
+     */
+    public function stopGrpcClientTracing(string $grpcFullName, ?int $status = null)
+    {
+        return $this->stop(
+            name: $grpcFullName,
+            onStop: function (Span $span) use ($status) {
+                if ($status === null) {
+                    return;
+                }
+
+                $span->setAttribute('rpc.grpc.status_code', $status);
+
+                if ($status !== 0) {
+                    $span->setSpanStatus(SpanStatus::ERROR);
+                    $span->setAttribute('error', true);
+                }
+            }
+        );
     }
 }
