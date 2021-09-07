@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Facade;
  * @method static bool isRecording()
  * @method static \Keepsuit\LaravelOpenTelemetry\Tracer start(string $name, ?\Closure $onStart = null, int $spanKind = \OpenTelemetry\Trace\SpanKind::KIND_INTERNAL)
  * @method static \Keepsuit\LaravelOpenTelemetry\Tracer stop(string $name, ?\Closure $onStop = null)
+ * @method static \Keepsuit\LaravelOpenTelemetry\Tracer updateSpan(string $name, ?\Closure $callback = null)
  * @method static mixed measure(string $name, \Closure $callback = null, ?\Closure $onStart = null, ?\Closure $onStop = null)
  * @method static \OpenTelemetry\Trace\Span activeSpan()
  * @method static array activeSpanB3Headers()

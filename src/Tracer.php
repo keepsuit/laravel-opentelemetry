@@ -182,6 +182,17 @@ class Tracer
         return false;
     }
 
+    public function updateSpan(string $name, Closure $callback): self
+    {
+        $span = Arr::get($this->startedSpans, $name);
+
+        if ($span !== null) {
+            $callback($span);
+        }
+
+        return $this;
+    }
+
     /**
      * @param string $grpcFullName Format <package>.<serviceName>/<methodName>
      */
