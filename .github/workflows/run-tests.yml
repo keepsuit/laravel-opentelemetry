@@ -37,7 +37,10 @@ jobs:
           echo "::add-matcher::${{ runner.tool_cache }}/phpunit.json"
 
       - name: Install dependencies
+        env:
+          COMPOSER_GITHUB: ${{ secrets.COMPOSER_GITHUB }}
         run: |
+          composer config --global github-oauth.github.com "$COMPOSER_GITHUB"
           composer require "laravel/framework:${{ matrix.laravel }}" "orchestra/testbench:${{ matrix.testbench }}" --no-interaction --no-update
           composer update --prefer-dist --no-interaction
 
