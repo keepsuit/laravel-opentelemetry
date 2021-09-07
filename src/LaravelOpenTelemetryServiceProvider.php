@@ -63,6 +63,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 
                 if ($tracer instanceof \OpenTelemetry\Sdk\Trace\Tracer) {
                     $tracer->getTracerProvider()->shutdown();
+                    $this->app->forgetInstance(Tracer::class);
                 }
             }
         });
@@ -78,8 +79,6 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
             return;
         }
 
-        $app = app();
-
         foreach (config('opentelemetry.watchers') as $key => $options) {
             if ($options === false) {
                 continue;
@@ -90,11 +89,11 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
             }
 
             /** @var Watcher $watcher */
-            $watcher = $app->make($key, [
+            $watcher = $this->app->make($key, [
                 'options' => is_array($options) ? $options : [],
             ]);
 
-            $watcher->register($app);
+            $watcher->register($this->app);
         }
     }
 }

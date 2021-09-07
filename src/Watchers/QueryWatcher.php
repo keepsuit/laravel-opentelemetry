@@ -99,6 +99,6 @@ class QueryWatcher extends Watcher
             '\\' => '\\\\',
         ]);
 
-        return "'" . $binding . "'";
+        return "'".$binding."'";
     }
 }
