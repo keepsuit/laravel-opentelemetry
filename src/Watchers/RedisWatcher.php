@@ -3,6 +3,7 @@
 namespace Keepsuit\LaravelOpenTelemetry\Watchers;
 
 use Illuminate\Redis\Events\CommandExecuted;
+use Illuminate\Redis\RedisManager;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use OpenTelemetry\Sdk\Trace\Span;
 use OpenTelemetry\Trace\SpanKind;
@@ -15,11 +16,15 @@ class RedisWatcher extends Watcher
     {
         $app['events']->listen(CommandExecuted::class, [$this, 'recordCommand']);
 
-        foreach ((array)$app['redis']->connections() as $connection) {
-            $connection->setEventDispatcher($app['events']);
-        }
+        $redis = $app['redis'];
 
-        $app['redis']->enableEvents();
+        if ($redis instanceof RedisManager) {
+            foreach ((array)$redis->connections() as $connection) {
+                $connection->setEventDispatcher($app['events']);
+            }
+
+            $redis->enableEvents();
+        }
     }
 
     public function recordCommand(CommandExecuted $event)
