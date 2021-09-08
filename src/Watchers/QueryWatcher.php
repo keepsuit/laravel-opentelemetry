@@ -4,13 +4,12 @@ namespace Keepsuit\LaravelOpenTelemetry\Watchers;
 
 use Illuminate\Database\Events\QueryExecuted;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
-use OpenTelemetry\Sdk\Trace\Clock;
 use OpenTelemetry\Sdk\Trace\Span;
 use OpenTelemetry\Trace\SpanKind;
 
 class QueryWatcher extends Watcher
 {
-    public const MSEC_TO_NSEC = 1000000;
+    use SpanTimeAdapter;
 
     public function register($app)
     {
@@ -29,11 +28,7 @@ class QueryWatcher extends Watcher
             $span->setAttribute('net.peer.name', $event->connection->getConfig('host'));
             $span->setAttribute('net.peer.port', $event->connection->getConfig('port'));
 
-            // Set the correct span start time
-            $moment = Clock::get()->moment();
-            $durationNs = (int)($event->time * self::MSEC_TO_NSEC);
-            $span->setStartEpochTimestamp($moment[0] - $durationNs);
-            $span->setStart($moment[1] - $durationNs);
+            $this->setSpanTimeMs($span, $event->time);
         });
     }
 
