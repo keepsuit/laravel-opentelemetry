@@ -2,6 +2,7 @@
 
 namespace Keepsuit\LaravelOpenTelemetry\Watchers;
 
+use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Redis\Events\CommandExecuted;
 use Illuminate\Redis\RedisManager;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
@@ -12,24 +13,20 @@ class RedisWatcher extends Watcher
 {
     use SpanTimeAdapter;
 
-    public function register($app)
+    public function register(Application $app): void
     {
         $app['events']->listen(CommandExecuted::class, [$this, 'recordCommand']);
 
-        $redis = $app['redis'];
-
-        if ($redis instanceof RedisManager) {
-            foreach ((array)$redis->connections() as $connection) {
-                $connection->setEventDispatcher($app['events']);
-            }
-
-            $redis->enableEvents();
+        if ($app->resolved('redis')) {
+            $this->registerRedisEvents($app->make('redis'), $app);
+        } else {
+            $app->afterResolving('redis', fn ($redis) => $this->registerRedisEvents($redis, $app));
         }
     }
 
     public function recordCommand(CommandExecuted $event)
     {
-        $traceName = sprintf('redis %s %s', $event->command, $event->connection->getName());
+        $traceName = sprintf('redis %s %s', $event->connection->getName(), $event->command);
 
         Tracer::start($traceName, spanKind: SpanKind::KIND_CLIENT);
         Tracer::stop($traceName, function (Span $span) use ($event) {
@@ -61,5 +58,16 @@ class RedisWatcher extends Watcher
         })->implode(' ');
 
         return sprintf("%s %s", $command, $parameters);
+    }
+
+    private function registerRedisEvents(mixed $redis, Application $app): void
+    {
+        if ($redis instanceof RedisManager) {
+            foreach ((array)$redis->connections() as $connection) {
+                $connection->setEventDispatcher($app['events']);
+            }
+
+            $redis->enableEvents();
+        }
     }
 }
