@@ -11,7 +11,7 @@ use OpenTelemetry\Trace\Span;
 use OpenTelemetry\Trace\SpanKind;
 use OpenTelemetry\Trace\SpanStatus;
 use OpenTelemetry\Trace\Tracer as OpenTelemetryTracer;
-use Spiral\GRPC\ContextInterface;
+use Spiral\RoadRunner\GRPC\ContextInterface;
 
 class Tracer
 {

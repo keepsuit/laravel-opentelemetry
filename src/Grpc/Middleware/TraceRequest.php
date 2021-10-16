@@ -9,8 +9,8 @@ use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use OpenTelemetry\Sdk\Trace\SpanStatus;
 use OpenTelemetry\Trace\Span;
 use OpenTelemetry\Trace\SpanKind;
-use Spiral\GRPC\Exception\GRPCException;
-use Spiral\GRPC\StatusCode;
+use Spiral\RoadRunner\GRPC\Exception\GRPCException;
+use Spiral\RoadRunner\GRPC\StatusCode;
 
 class TraceRequest
 {

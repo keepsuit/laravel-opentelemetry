@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Facade;
  * @method static array activeSpanB3Headers()
  * @method static \Keepsuit\LaravelOpenTelemetry\Tracer initFromB3Headers(array $headers)
  * @method static \Keepsuit\LaravelOpenTelemetry\Tracer initFromRequest(\Illuminate\Http\Request $request)
- * @method static \Keepsuit\LaravelOpenTelemetry\Tracer initFromGrpcContext(\Spiral\GRPC\ContextInterface $context)
+ * @method static \Keepsuit\LaravelOpenTelemetry\Tracer initFromGrpcContext(\Spiral\RoadRunner\GRPC\ContextInterface $context)
  * @method static \Keepsuit\LaravelOpenTelemetry\Tracer startGrpcClientTracing(string $grpcFullName)
  * @method static \Keepsuit\LaravelOpenTelemetry\Tracer stopGrpcClientTracing(string $grpcFullName, ?int $status = null)
  */
