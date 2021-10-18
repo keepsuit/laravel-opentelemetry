@@ -21,7 +21,7 @@ class TraceRequest
 
         Tracer::initFromRequest($request);
 
-        $route = Route::current() ? Route::current()->uri() : $request->path();
+        $route = rescue(fn() => Route::getRoutes()->match($request)->uri(), $request->path());
         $route = str_starts_with($route, '/') ? $route : '/' . $route;
 
         Tracer::start(
