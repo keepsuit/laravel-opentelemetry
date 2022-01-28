@@ -6,9 +6,7 @@ namespace Keepsuit\LaravelOpenTelemetry\Grpc\Middleware;
 
 use Keepsuit\LaravelGrpc\GrpcRequest;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
-use OpenTelemetry\Sdk\Trace\SpanStatus;
-use OpenTelemetry\Trace\Span;
-use OpenTelemetry\Trace\SpanKind;
+use OpenTelemetry\API\Trace\SpanKind;
 use Spiral\RoadRunner\GRPC\Exception\GRPCException;
 use Spiral\RoadRunner\GRPC\StatusCode;
 
@@ -24,34 +22,30 @@ class TraceRequest
 
         $traceName = sprintf('%s/%s', $request->getServiceName() ?? 'Unknown', $request->getMethodName());
 
-        Tracer::start(
-            name: $traceName,
-            spanKind: SpanKind::KIND_SERVER,
-            onStart: function (Span $span) use ($request): void {
-                $span->setAttribute('rpc.system', 'grpc');
-                $span->setAttribute('rpc.service', $request->getServiceName());
-                $span->setAttribute('rpc.method', $request->getMethodName());
-                $span->setAttribute('grpc.service', $request->getServiceName());
-                $span->setAttribute('grpc.method', $request->method->getName());
-                $span->setAttribute('net.peer.name', $request->context->getValue(':authority'));
-            }
-        );
+        $span = Tracer::start(name: $traceName, spanKind: SpanKind::KIND_SERVER);
+
+        $span->setAttribute('rpc.system', 'grpc')
+            ->setAttribute('rpc.service', $request->getServiceName())
+            ->setAttribute('rpc.method', $request->getMethodName())
+            ->setAttribute('grpc.service', $request->getServiceName())
+            ->setAttribute('grpc.method', $request->method->getName())
+            ->setAttribute('net.peer.name', $request->context->getValue(':authority'));
 
         try {
             /** @var string $response */
             $response = $next($request);
 
-            Tracer::stop($traceName, function (Span $span) {
-                $span->setAttribute('rpc.grpc.status_code', StatusCode::OK);
-            });
+            $span->setAttribute('rpc.grpc.status_code', StatusCode::OK)
+                ->setStatus(\OpenTelemetry\API\Trace\StatusCode::STATUS_OK)
+                ->end();
 
             return $response;
         } catch (GRPCException $e) {
-            Tracer::stop($traceName, function (Span $span) use ($e) {
-                $span->setAttribute('rpc.grpc.status_code', $e->getCode());
-                $span->setSpanStatus(SpanStatus::ERROR);
-                $span->setAttribute('error', true);
-            });
+            $span->recordException($e)
+                ->setAttribute('rpc.grpc.status_code', $e->getCode())
+                ->setStatus(\OpenTelemetry\API\Trace\StatusCode::STATUS_ERROR)
+                ->setAttribute('error', true)
+                ->end();
 
             throw $e;
         }

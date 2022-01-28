@@ -5,8 +5,7 @@ namespace Keepsuit\LaravelOpenTelemetry\Watchers;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Database\Events\QueryExecuted;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
-use OpenTelemetry\Sdk\Trace\Span;
-use OpenTelemetry\Trace\SpanKind;
+use OpenTelemetry\API\Trace\SpanKind;
 
 class QueryWatcher extends Watcher
 {
@@ -17,20 +16,23 @@ class QueryWatcher extends Watcher
         $app['events']->listen(QueryExecuted::class, [$this, 'recordQuery']);
     }
 
-    public function recordQuery(QueryExecuted $event)
+    public function recordQuery(QueryExecuted $event): void
     {
         $traceName = sprintf('%s %s', $event->connection->getDriverName(), $event->connection->getDatabaseName());
 
-        Tracer::start($traceName, spanKind: SpanKind::KIND_CLIENT);
-        Tracer::stop($traceName, function (Span $span) use ($event) {
-            $span->setAttribute('db.system', $event->connection->getDriverName());
-            $span->setAttribute('db.name', $event->connection->getDatabaseName());
-            $span->setAttribute('db.statement', $this->replaceBindings($event));
-            $span->setAttribute('net.peer.name', $event->connection->getConfig('host'));
-            $span->setAttribute('net.peer.port', $event->connection->getConfig('port'));
+        $span = Tracer::build($traceName, SpanKind::KIND_CLIENT)
+            ->setStartTimestamp($this->getEventStartTimestampNs($event->time))
+            ->startSpan();
 
-            $this->setSpanTimeMs($span, $event->time);
-        });
+        if ($span->isRecording()) {
+            $span->setAttribute('db.system', $event->connection->getDriverName())
+                ->setAttribute('db.name', $event->connection->getDatabaseName())
+                ->setAttribute('db.statement', $this->replaceBindings($event))
+                ->setAttribute('net.peer.name', $event->connection->getConfig('host'))
+                ->setAttribute('net.peer.port', $event->connection->getConfig('port'));
+        }
+
+        $span->end();
     }
 
     /**

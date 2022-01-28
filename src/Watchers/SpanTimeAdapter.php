@@ -2,19 +2,17 @@
 
 namespace Keepsuit\LaravelOpenTelemetry\Watchers;
 
-use OpenTelemetry\Sdk\Trace\Clock;
-use OpenTelemetry\Sdk\Trace\Span;
+use OpenTelemetry\SDK\AbstractClock;
 
 trait SpanTimeAdapter
 {
-    public function setSpanTimeMs(Span $span, float $timeMs): void
+    protected function getEventStartTimestampNs(float $timeMs): int
     {
         $MSEC_TO_NSEC = 1000000;
 
-        $moment = Clock::get()->moment();
+        $nowNs = AbstractClock::getDefault()->now();
         $durationNs = (int)($timeMs * $MSEC_TO_NSEC);
 
-        $span->setStartEpochTimestamp($moment[0] - $durationNs);
-        $span->setStart($moment[1] - $durationNs);
+        return $nowNs - $durationNs;
     }
 }

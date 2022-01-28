@@ -2,21 +2,23 @@
 
 namespace Keepsuit\LaravelOpenTelemetry\Facades;
 
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Facade;
+use OpenTelemetry\API\Trace\SpanBuilderInterface;
+use OpenTelemetry\API\Trace\SpanInterface;
+use OpenTelemetry\API\Trace\SpanKind;
+use Spiral\RoadRunner\GRPC\ContextInterface;
 
 /**
- * @method static bool isRecording()
- * @method static \Keepsuit\LaravelOpenTelemetry\Tracer start(string $name, ?\Closure $onStart = null, int $spanKind = \OpenTelemetry\Trace\SpanKind::KIND_INTERNAL)
- * @method static \Keepsuit\LaravelOpenTelemetry\Tracer stop(string $name, ?\Closure $onStop = null)
- * @method static \Keepsuit\LaravelOpenTelemetry\Tracer updateSpan(string $name, ?\Closure $callback = null)
- * @method static mixed measure(string $name, \Closure $callback = null, ?\Closure $onStart = null, ?\Closure $onStop = null)
- * @method static \OpenTelemetry\Trace\Span activeSpan()
+ * @method static SpanBuilderInterface build(string $name, int $spanKind = SpanKind::KIND_INTERNAL)
+ * @method static SpanInterface start(string $name, int $spanKind = SpanKind::KIND_INTERNAL)
+ * @method static mixed measure(string $name, \Closure $callback)
+ * @method static SpanInterface activeSpan()
  * @method static array activeSpanB3Headers()
  * @method static \Keepsuit\LaravelOpenTelemetry\Tracer initFromB3Headers(array $headers)
- * @method static \Keepsuit\LaravelOpenTelemetry\Tracer initFromRequest(\Illuminate\Http\Request $request)
- * @method static \Keepsuit\LaravelOpenTelemetry\Tracer initFromGrpcContext(\Spiral\RoadRunner\GRPC\ContextInterface $context)
- * @method static \Keepsuit\LaravelOpenTelemetry\Tracer startGrpcClientTracing(string $grpcFullName)
- * @method static \Keepsuit\LaravelOpenTelemetry\Tracer stopGrpcClientTracing(string $grpcFullName, ?int $status = null)
+ * @method static \Keepsuit\LaravelOpenTelemetry\Tracer initFromRequest(Request $request)
+ * @method static \Keepsuit\LaravelOpenTelemetry\Tracer initFromGrpcContext(ContextInterface $context)
+ * @method static SpanInterface startGrpcClientTracing(string $grpcFullName)
  */
 class Tracer extends Facade
 {

@@ -6,8 +6,7 @@ use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Redis\Events\CommandExecuted;
 use Illuminate\Redis\RedisManager;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
-use OpenTelemetry\Sdk\Trace\Span;
-use OpenTelemetry\Trace\SpanKind;
+use OpenTelemetry\API\Trace\SpanKind;
 
 class RedisWatcher extends Watcher
 {
@@ -24,18 +23,21 @@ class RedisWatcher extends Watcher
         }
     }
 
-    public function recordCommand(CommandExecuted $event)
+    public function recordCommand(CommandExecuted $event): void
     {
         $traceName = sprintf('redis %s %s', $event->connection->getName(), $event->command);
 
-        Tracer::start($traceName, spanKind: SpanKind::KIND_CLIENT);
-        Tracer::stop($traceName, function (Span $span) use ($event) {
-            $span->setAttribute('db.system', 'redis');
-            $span->setAttribute('db.statement', $this->formatCommand($event->command, $event->parameters));
-            $span->setAttribute('net.peer.name', $event->connection->client()->getHost());
+        $span = Tracer::build($traceName, SpanKind::KIND_CLIENT)
+            ->setStartTimestamp($this->getEventStartTimestampNs($event->time))
+            ->startSpan();
 
-            $this->setSpanTimeMs($span, $event->time);
-        });
+        if ($span->isRecording()) {
+            $span->setAttribute('db.system', 'redis')
+                ->setAttribute('db.statement', $this->formatCommand($event->command, $event->parameters))
+                ->setAttribute('net.peer.name', $event->connection->client()->getHost());
+        }
+
+        $span->end();
     }
 
     /**

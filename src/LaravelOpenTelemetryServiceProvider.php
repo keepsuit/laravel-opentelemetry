@@ -2,15 +2,14 @@
 
 namespace Keepsuit\LaravelOpenTelemetry;
 
-use Http\Discovery\Psr17FactoryDiscovery;
-use Http\Discovery\Psr18ClientDiscovery;
 use Keepsuit\LaravelOpenTelemetry\Watchers\Watcher;
 use OpenTelemetry\Contrib\Jaeger\Exporter as JaegerExporter;
 use OpenTelemetry\Contrib\Zipkin\Exporter as ZipkinExporter;
-use OpenTelemetry\Sdk\Trace\Clock;
-use OpenTelemetry\Sdk\Trace\SpanProcessor\BatchSpanProcessor;
-use OpenTelemetry\Sdk\Trace\TracerProvider;
-use OpenTelemetry\Trace\Tracer;
+use OpenTelemetry\SDK\Trace\Sampler\AlwaysOffSampler;
+use OpenTelemetry\SDK\Trace\Sampler\AlwaysOnSampler;
+use OpenTelemetry\SDK\Trace\Sampler\ParentBased;
+use OpenTelemetry\SDK\Trace\SpanProcessor\BatchSpanProcessor;
+use OpenTelemetry\SDK\Trace\TracerProvider;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
@@ -33,37 +32,46 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 
     protected function initTracer(): void
     {
-        $this->app->singleton(Tracer::class, function () {
+        $this->app->singleton(TracerProvider::class, function () {
             $exporter = match (config('opentelemetry.exporter')) {
-                'jaeger' => new JaegerExporter(
-                    config('opentelemetry.service_name'),
+                'jaeger' => JaegerExporter::fromConnectionString(
                     config('opentelemetry.exporters.jaeger.endpoint'),
-                    Psr18ClientDiscovery::find(),
-                    Psr17FactoryDiscovery::findRequestFactory(),
-                    Psr17FactoryDiscovery::findStreamFactory()
-                ),
-                'zipkin' => new ZipkinExporter(
                     config('opentelemetry.service_name'),
+                ),
+                'zipkin' => ZipkinExporter::fromConnectionString(
                     config('opentelemetry.exporters.zipkin.endpoint'),
-                    Psr18ClientDiscovery::find(),
-                    Psr17FactoryDiscovery::findRequestFactory(),
-                    Psr17FactoryDiscovery::findStreamFactory()
+                    config('opentelemetry.service_name'),
                 ),
                 default => null
             };
 
-            return (new TracerProvider())
-                ->addSpanProcessor(new BatchSpanProcessor($exporter, Clock::get()))
-                ->getTracer('io.opentelemetry.contrib.php');
+            $sampler = value(function () use ($exporter) {
+                if ($exporter === null) {
+                    return null;
+                }
+
+                $enabled = config('opentelemetry.enabled', true);
+
+                if ($enabled === 'parent') {
+                    return new ParentBased(new AlwaysOffSampler());
+                }
+
+                return $enabled ? new AlwaysOnSampler() : new AlwaysOffSampler();
+            });
+
+            return tap(new TracerProvider(
+                spanProcessors: [new BatchSpanProcessor($exporter)],
+                sampler: $sampler
+            ))->getTracer();
         });
 
         $this->app->terminating(function () {
-            if (app()->resolved(Tracer::class)) {
-                $tracer = app(Tracer::class);
+            if (app()->resolved(TracerProvider::class)) {
+                $tracer = app(TracerProvider::class);
 
-                if ($tracer instanceof \OpenTelemetry\Sdk\Trace\Tracer) {
-                    $tracer->getTracerProvider()->shutdown();
-                    $this->app->forgetInstance(Tracer::class);
+                if ($tracer instanceof TracerProvider) {
+                    $tracer->shutdown();
+                    $this->app->forgetInstance(TracerProvider::class);
                 }
             }
         });

@@ -4,92 +4,75 @@ namespace Keepsuit\LaravelOpenTelemetry;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Arr;
-use OpenTelemetry\Sdk\Trace\NoopSpan;
-use OpenTelemetry\Sdk\Trace\SpanContext;
-use OpenTelemetry\Trace\Span;
-use OpenTelemetry\Trace\SpanKind;
-use OpenTelemetry\Trace\SpanStatus;
-use OpenTelemetry\Trace\Tracer as OpenTelemetryTracer;
+use OpenTelemetry\API\Trace\AbstractSpan;
+use OpenTelemetry\API\Trace\SpanBuilderInterface;
+use OpenTelemetry\API\Trace\SpanContext;
+use OpenTelemetry\API\Trace\SpanContextInterface;
+use OpenTelemetry\API\Trace\SpanInterface;
+use OpenTelemetry\API\Trace\SpanKind;
+use OpenTelemetry\API\Trace\TracerInterface;
+use OpenTelemetry\Context\Context;
+use OpenTelemetry\SDK\Trace\Span;
+use OpenTelemetry\SDK\Trace\TracerProvider;
 use Spiral\RoadRunner\GRPC\ContextInterface;
 
 class Tracer
 {
-    /** @var Span[] */
-    protected array $startedSpans = [];
+    protected TracerInterface $tracer;
 
-    protected ?SpanContext $rootParentContext = null;
-
-    public function __construct(protected OpenTelemetryTracer $tracer)
+    public function __construct(protected TracerProvider $tracerProvider)
     {
+        $this->tracer = $this->tracerProvider->getTracer();
     }
 
-    public function start(string $name, ?Closure $onStart = null, int $spanKind = SpanKind::KIND_INTERNAL): self
+    /**
+     * @phpstan-param non-empty-string $name
+     * @phpstan-param SpanKind::KIND_* $spanKind
+     */
+    public function build(string $name, int $spanKind = SpanKind::KIND_INTERNAL): SpanBuilderInterface
     {
-        if (! $this->isRecording()) {
-            return $this;
-        }
+        return $this->tracer->spanBuilder($name)->setSpanKind($spanKind);
 
-        if ($this->rootParentContext !== null && $this->activeSpan() instanceof NoopSpan) {
-            $span = $this->tracer->startActiveSpan($name, $this->rootParentContext, isRemote: true, spanKind: $spanKind);
-        } else {
-            $span = $this->tracer->startAndActivateSpan($name, spanKind: $spanKind);
-        }
-
-        // Temporary fix until SpanKind is sent correctly by opentelemetry library
-        if ($spanKind === SpanKind::KIND_CLIENT) {
-            $span->setAttribute('span.kind', 'client');
-        }
-        if ($spanKind === SpanKind::KIND_SERVER) {
-            $span->setAttribute('span.kind', 'server');
-        }
-
-        $this->startedSpans[$name] = $span;
-
-        if ($onStart) {
-            $onStart($span);
-        }
-
-        return $this;
+        //        // Temporary fix until SpanKind is sent correctly by opentelemetry library
+        //        if ($spanKind === SpanKind::KIND_CLIENT) {
+        //            $span->setAttribute('span.kind', 'client');
+        //        }
+        //        if ($spanKind === SpanKind::KIND_SERVER) {
+        //            $span->setAttribute('span.kind', 'server');
+        //        }
     }
 
-    public function stop(string $name, ?Closure $onStop = null): self
+    /**
+     * @phpstan-param non-empty-string $name
+     * @phpstan-param SpanKind::KIND_* $spanKind
+     */
+    public function start(string $name, int $spanKind = SpanKind::KIND_INTERNAL): SpanInterface
     {
-        if (Arr::has($this->startedSpans, $name)) {
-            $span = $this->startedSpans[$name];
-
-            if ($onStop) {
-                $onStop($span);
-            }
-
-            $span->end();
-
-            unset($this->startedSpans[$name]);
-        }
-
-        return $this;
+        return $this->build($name, $spanKind)->startSpan();
     }
 
-    public function measure(string $name, Closure $callback, ?Closure $onStart = null, ?Closure $onStop = null)
+    /**
+     * @phpstan-param non-empty-string $name
+     */
+    public function measure(string $name, Closure $callback)
     {
-        $this->start($name, $onStart);
+        $span = $this->start($name);
+        $span->activate();
 
         try {
-            $result = $callback();
+            $result = $callback($span);
         } catch (\Exception $exception) {
-            $this->stop($name, $onStop);
-
             throw $exception;
+        } finally {
+            $span->end();
         }
-
-        $this->stop($name, $onStop);
 
         return $result;
     }
 
-    public function activeSpan(): Span
+    public function activeSpan(): SpanInterface
     {
-        return $this->tracer->getActiveSpan();
+        return Span::fromContext(Context::getCurrent());
     }
 
     public function activeSpanB3Headers(): array
@@ -98,19 +81,18 @@ class Tracer
 
         $activeSpan = $this->activeSpan();
 
-        if (! $activeSpan instanceof \OpenTelemetry\Sdk\Trace\Span) {
+        if (! $activeSpan->getContext()->isValid()) {
             return [];
         }
 
-        /** @var SpanContext $spanContext */
         $spanContext = $activeSpan->getContext();
 
         $headers['x-b3-traceid'] = [$spanContext->getTraceId()];
         $headers['x-b3-spanid'] = [$spanContext->getSpanId()];
         $headers['x-b3-sampled'] = [$spanContext->isSampled() ? '1' : '0'];
 
-        if ($activeSpan->getParent()) {
-            $headers['x-b3-parentspanid'] = [$activeSpan->getParent()->getSpanId()];
+        if ($activeSpan instanceof Span && $activeSpan->getParentContext()->isValid()) {
+            $headers['x-b3-parentspanid'] = [$activeSpan->getParentContext()->getSpanId()];
         }
 
         return $headers;
@@ -143,21 +125,20 @@ class Tracer
 
         $traceId = $headers->get('x-b3-traceid');
         $spanId = $headers->get('x-b3-spanid');
+        $sampled = $headers->get('x-b3-sampled', '1') === '1';
 
         if ($traceId == null || $spanId == null) {
-            $this->rootParentContext = null;
-
             return $this;
         }
 
-        try {
-            $this->rootParentContext = new SpanContext(
-                traceId: $traceId,
-                spanId: $spanId,
-                traceFlags: $headers->get('x-b3-sampled', '1') === '1' ? 1 : 0
-            );
-        } catch (\Exception $exception) {
-            $this->rootParentContext = null;
+        $spanContext = SpanContext::createFromRemoteParent(
+            traceId: $traceId,
+            spanId: $spanId,
+            traceFlags: $sampled ? SpanContextInterface::TRACE_FLAG_SAMPLED : SpanContextInterface::TRACE_FLAG_DEFAULT
+        );
+
+        if ($spanContext->isValid()) {
+            Context::getCurrent()->withContextValue(AbstractSpan::wrap($spanContext));
         }
 
         return $this;
@@ -175,63 +156,26 @@ class Tracer
             return $enabled;
         }
 
-        if ($enabled === 'parent' && $this->rootParentContext !== null && $this->rootParentContext->isSampled()) {
-            return true;
+        if ($enabled === 'parent') {
+            return AbstractSpan::fromContext(Context::getCurrent())->getContext()->isSampled();
         }
 
         return false;
     }
 
-    public function updateSpan(string $name, Closure $callback): self
-    {
-        $span = Arr::get($this->startedSpans, $name);
-
-        if ($span !== null) {
-            $callback($span);
-        }
-
-        return $this;
-    }
-
     /**
-     * @param string $grpcFullName Format <package>.<serviceName>/<methodName>
+     * @phpstan-param  non-empty-string $grpcFullName Format <package>.<serviceName>/<methodName>
      */
-    public function startGrpcClientTracing(string $grpcFullName)
+    public function startGrpcClientTracing(string $grpcFullName): SpanInterface
     {
-        return $this->start(
-            name: $grpcFullName,
-            spanKind: SpanKind::KIND_CLIENT,
-            onStart: function (Span $span) use ($grpcFullName) {
-                [$serviceName, $methodName] = explode('/', $grpcFullName, 2);
+        [$serviceName, $methodName] = explode('/', $grpcFullName, 2);
 
-                $span->setAttribute('rpc.system', 'grpc');
-                $span->setAttribute('rpc.service', $serviceName);
-                $span->setAttribute('rpc.method', $methodName);
-                $span->setAttribute('grpc.service', $serviceName);
-                $span->setAttribute('grpc.method', $methodName);
-            }
-        );
-    }
-
-    /**
-     * @param string $grpcFullName Format <package>.<serviceName>/<methodName>
-     */
-    public function stopGrpcClientTracing(string $grpcFullName, ?int $status = null)
-    {
-        return $this->stop(
-            name: $grpcFullName,
-            onStop: function (Span $span) use ($status) {
-                if ($status === null) {
-                    return;
-                }
-
-                $span->setAttribute('rpc.grpc.status_code', $status);
-
-                if ($status !== 0) {
-                    $span->setSpanStatus(SpanStatus::ERROR);
-                    $span->setAttribute('error', true);
-                }
-            }
-        );
+        return $this->build($grpcFullName, SpanKind::KIND_CLIENT)
+            ->setAttribute('rpc.system', 'grpc')
+            ->setAttribute('rpc.service', $serviceName)
+            ->setAttribute('rpc.method', $methodName)
+            ->setAttribute('grpc.service', $serviceName)
+            ->setAttribute('grpc.method', $methodName)
+            ->startSpan();
     }
 }
