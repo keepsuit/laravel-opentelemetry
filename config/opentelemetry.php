@@ -38,6 +38,8 @@ return [
         Watchers\QueryWatcher::class => env('OT_WATCHER_QUERY', true),
 
         Watchers\RedisWatcher::class => env('OT_WATCHER_REDIS', true),
+
+        Watchers\LighthouseWatcher::class => env('OT_WATCHER_LIGHTHOUSE', true),
     ],
 
     /**
