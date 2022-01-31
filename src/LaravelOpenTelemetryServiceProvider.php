@@ -32,6 +32,8 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 
     protected function initTracer(): void
     {
+        $this->app->singleton(Tracer::class);
+
         $this->app->singleton(TracerProvider::class, function () {
             $exporter = match (config('opentelemetry.exporter')) {
                 'jaeger' => JaegerExporter::fromConnectionString(
@@ -71,9 +73,11 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 
                 if ($tracer instanceof TracerProvider) {
                     $tracer->shutdown();
-                    $this->app->forgetInstance(TracerProvider::class);
                 }
             }
+
+            $this->app->forgetInstance(TracerProvider::class);
+            $this->app->forgetInstance(Tracer::class);
         });
     }
 

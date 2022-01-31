@@ -23,6 +23,7 @@ class TraceRequest
         $traceName = sprintf('%s/%s', $request->getServiceName() ?? 'Unknown', $request->getMethodName());
 
         $span = Tracer::start(name: $traceName, spanKind: SpanKind::KIND_SERVER);
+        $span->activate();
 
         $span->setAttribute('rpc.system', 'grpc')
             ->setAttribute('rpc.service', $request->getServiceName())

@@ -39,6 +39,7 @@ class LighthouseWatcher extends Watcher
         $this->requestSpan->activate();
 
         $this->parseSpan = Tracer::start('graphql.parse');
+        $this->parseSpan->activate();
     }
 
     public function recordStartOperation()
@@ -47,11 +48,13 @@ class LighthouseWatcher extends Watcher
         $this->parseSpan = null;
 
         $this->validateSpan = Tracer::start('graphql.validate');
+        $this->validateSpan->activate();
     }
 
     public function recordStartExecution()
     {
         $this->validateSpan?->end();
+        $this->validateSpan = null;
 
         $this->executeSpan = Tracer::start('graphql.execute');
         $this->executeSpan->activate();

@@ -25,6 +25,7 @@ class TraceRequest
         $route = str_starts_with($route, '/') ? $route : '/'.$route;
 
         $span = Tracer::start(name: $route, spanKind: SpanKind::KIND_SERVER);
+        $span->activate();
 
         $span->setAttribute('http.method', $request->method())
             ->setAttribute('http.url', $request->getUri())

@@ -20,6 +20,8 @@ class Tracer
 {
     protected TracerInterface $tracer;
 
+    protected ?Context $carrier = null;
+
     public function __construct(protected TracerProvider $tracerProvider)
     {
         $this->tracer = $this->tracerProvider->getTracer();
@@ -31,7 +33,13 @@ class Tracer
      */
     public function build(string $name, int $spanKind = SpanKind::KIND_INTERNAL): SpanBuilderInterface
     {
-        return $this->tracer->spanBuilder($name)->setSpanKind($spanKind);
+        $builder = $this->tracer->spanBuilder($name)->setSpanKind($spanKind);
+
+        if ($this->carrier !== null && ! $this->activeSpan()->isRecording()) {
+            $builder->setParent($this->carrier);
+        }
+
+        return $builder;
 
         //        // Temporary fix until SpanKind is sent correctly by opentelemetry library
         //        if ($spanKind === SpanKind::KIND_CLIENT) {
@@ -138,7 +146,7 @@ class Tracer
         );
 
         if ($spanContext->isValid()) {
-            Context::getCurrent()->withContextValue(AbstractSpan::wrap($spanContext));
+            $this->carrier = Context::getCurrent()->withContextValue(AbstractSpan::wrap($spanContext));
         }
 
         return $this;
