@@ -3,24 +3,27 @@
 namespace Keepsuit\LaravelOpenTelemetry;
 
 use Closure;
+use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
+use Keepsuit\LaravelGrpc\GrpcRequest;
 use OpenTelemetry\API\Trace\AbstractSpan;
 use OpenTelemetry\API\Trace\SpanBuilderInterface;
 use OpenTelemetry\API\Trace\SpanContext;
 use OpenTelemetry\API\Trace\SpanContextInterface;
 use OpenTelemetry\API\Trace\SpanInterface;
 use OpenTelemetry\API\Trace\SpanKind;
+use OpenTelemetry\API\Trace\StatusCode;
 use OpenTelemetry\API\Trace\TracerInterface;
 use OpenTelemetry\Context\Context;
 use OpenTelemetry\SDK\Trace\Span;
 use OpenTelemetry\SDK\Trace\TracerProvider;
-use Spiral\RoadRunner\GRPC\ContextInterface;
+use Spiral\RoadRunner\GRPC\Exception\GRPCException;
+use Symfony\Component\HttpFoundation\Response;
 
 class Tracer
 {
     protected TracerInterface $tracer;
-
-    protected ?Context $carrier = null;
 
     public function __construct(protected TracerProvider $tracerProvider)
     {
@@ -33,21 +36,7 @@ class Tracer
      */
     public function build(string $name, int $spanKind = SpanKind::KIND_INTERNAL): SpanBuilderInterface
     {
-        $builder = $this->tracer->spanBuilder($name)->setSpanKind($spanKind);
-
-        if ($this->carrier !== null && ! $this->activeSpan()->isRecording()) {
-            $builder->setParent($this->carrier);
-        }
-
-        return $builder;
-
-        //        // Temporary fix until SpanKind is sent correctly by opentelemetry library
-        //        if ($spanKind === SpanKind::KIND_CLIENT) {
-        //            $span->setAttribute('span.kind', 'client');
-        //        }
-        //        if ($spanKind === SpanKind::KIND_SERVER) {
-        //            $span->setAttribute('span.kind', 'server');
-        //        }
+        return $this->tracer->spanBuilder($name)->setSpanKind($spanKind);
     }
 
     /**
@@ -61,6 +50,7 @@ class Tracer
 
     /**
      * @phpstan-param non-empty-string $name
+     * @throws Exception
      */
     public function measure(string $name, Closure $callback)
     {
@@ -69,13 +59,53 @@ class Tracer
 
         try {
             $result = $callback($span);
-        } catch (\Exception $exception) {
+        } catch (Exception $exception) {
+            $this->recordExceptionToSpan($span, $exception);
+
             throw $exception;
         } finally {
             $span->end();
         }
 
         return $result;
+    }
+
+    public function recordExceptionToSpan(SpanInterface $span, Exception $exception): SpanInterface
+    {
+        return $span->recordException($exception)
+            ->setStatus(StatusCode::STATUS_ERROR)
+            ->setAttribute('error', true);
+    }
+
+    public function recordHttpResponseToSpan(SpanInterface $span, Response $response): SpanInterface
+    {
+        $span->setAttribute('http.status_code', $response->getStatusCode())
+            ->setAttribute('http.response_content_length', strlen($response->getContent()));
+
+        if ($response->isSuccessful()) {
+            $span->setStatus(StatusCode::STATUS_OK);
+        }
+
+        if ($response->isServerError() || $response->isClientError()) {
+            $span->setStatus(StatusCode::STATUS_ERROR);
+            $span->setAttribute('error', true);
+        }
+
+        return $span;
+    }
+
+    public function recordGrpcExceptionToSpan(SpanInterface $span, GRPCException $exception): SpanInterface
+    {
+        return $span->recordException($exception)
+            ->setAttribute('rpc.grpc.status_code', $exception->getCode())
+            ->setStatus(StatusCode::STATUS_ERROR)
+            ->setAttribute('error', true);
+    }
+
+    public function recordGrpcSuccessResponseToSpan(SpanInterface $span): SpanInterface
+    {
+        return $span->setAttribute('rpc.grpc.status_code', \Spiral\RoadRunner\GRPC\StatusCode::OK)
+            ->setStatus(StatusCode::STATUS_OK);
     }
 
     public function activeSpan(): SpanInterface
@@ -106,9 +136,39 @@ class Tracer
         return $headers;
     }
 
-    public function initFromRequest(Request $request): self
+    public function initFromHttpRequest(Request $request): SpanInterface
     {
-        return $this->initFromB3Headers([
+        $context = $this->extractContextFromHttpRequest($request);
+
+        /** @var non-empty-string $route */
+        $route = rescue(fn () => Route::getRoutes()->match($request)->uri(), $request->path(), false);
+        $route = str_starts_with($route, '/') ? $route : '/'.$route;
+
+        $builder = $this->build(name: $route, spanKind: SpanKind::KIND_SERVER);
+
+        if ($context !== null) {
+            $builder->setParent($context);
+        }
+
+        $span = $builder->startSpan();
+
+        $span->activate();
+
+        $span->setAttribute('http.method', $request->method())
+            ->setAttribute('http.url', $request->getUri())
+            ->setAttribute('http.target', $request->getRequestUri())
+            ->setAttribute('http.route', $route)
+            ->setAttribute('http.host', $request->getHttpHost())
+            ->setAttribute('http.scheme', $request->getScheme())
+            ->setAttribute('http.user_agent', $request->userAgent())
+            ->setAttribute('http.request_content_length', $request->header('Content-Length'));
+
+        return $span;
+    }
+
+    public function extractContextFromHttpRequest(Request $request): ?Context
+    {
+        return $this->extractContextFromB3Headers([
             'x-b3-traceid' => $request->header('x-b3-traceid'),
             'x-b3-spanid' => $request->header('x-b3-spanid'),
             'x-b3-sampled' => $request->header('x-b3-sampled'),
@@ -116,18 +176,46 @@ class Tracer
         ]);
     }
 
-    public function initFromGrpcContext(ContextInterface $ctx): self
+    public function initFromGrpcRequest(GrpcRequest $request): SpanInterface
     {
-        return $this->initFromB3Headers([
-            'x-b3-traceid' => $ctx->getValue('x-b3-traceid'),
-            'x-b3-spanid' => $ctx->getValue('x-b3-spanid'),
-            'x-b3-sampled' => $ctx->getValue('x-b3-sampled'),
-            'x-b3-parentspanid' => $ctx->getValue('x-b3-parentspanid'),
+        $context = $this->extractContextFromGrpcRequest($request);
+
+        $traceName = sprintf('%s/%s', $request->getServiceName() ?? 'Unknown', $request->getMethodName());
+
+        $builder = $this->build(name: $traceName, spanKind: SpanKind::KIND_SERVER);
+
+        if ($context != null) {
+            $builder->setParent($context);
+        }
+
+        $span = $builder->startSpan();
+
+        $span->activate();
+
+        $span->setAttribute('rpc.system', 'grpc')
+            ->setAttribute('rpc.service', $request->getServiceName())
+            ->setAttribute('rpc.method', $request->getMethodName())
+            ->setAttribute('grpc.service', $request->getServiceName())
+            ->setAttribute('grpc.method', $request->method->getName())
+            ->setAttribute('net.peer.name', $request->context->getValue(':authority'));
+
+        return $span;
+    }
+
+    public function extractContextFromGrpcRequest(GrpcRequest $request): ?Context
+    {
+        return $this->extractContextFromB3Headers([
+            'x-b3-traceid' => $request->context->getValue('x-b3-traceid'),
+            'x-b3-spanid' => $request->context->getValue('x-b3-spanid'),
+            'x-b3-sampled' => $request->context->getValue('x-b3-sampled'),
+            'x-b3-parentspanid' => $request->context->getValue('x-b3-parentspanid'),
         ]);
     }
 
-    public function initFromB3Headers(array $headers): self
+    public function extractContextFromB3Headers(array $headers): ?Context
     {
+        $this->startNewContext();
+
         $headers = collect($headers)
             ->mapWithKeys(fn ($value, $key) => [strtolower($key) => is_array($value) ? $value[0] : $value]);
 
@@ -136,7 +224,7 @@ class Tracer
         $sampled = $headers->get('x-b3-sampled', '1') === '1';
 
         if ($traceId == null || $spanId == null) {
-            return $this;
+            return null;
         }
 
         $spanContext = SpanContext::createFromRemoteParent(
@@ -145,11 +233,11 @@ class Tracer
             traceFlags: $sampled ? SpanContextInterface::TRACE_FLAG_SAMPLED : SpanContextInterface::TRACE_FLAG_DEFAULT
         );
 
-        if ($spanContext->isValid()) {
-            $this->carrier = Context::getCurrent()->withContextValue(AbstractSpan::wrap($spanContext));
+        if (! $spanContext->isValid()) {
+            return null;
         }
 
-        return $this;
+        return Context::getCurrent()->withContextValue(AbstractSpan::wrap($spanContext));
     }
 
     public function isRecording(): bool
@@ -185,5 +273,17 @@ class Tracer
             ->setAttribute('grpc.service', $serviceName)
             ->setAttribute('grpc.method', $methodName)
             ->startSpan();
+    }
+
+    public function terminate(): void
+    {
+        $this->tracerProvider->shutdown();
+
+        $this->startNewContext();
+    }
+
+    protected function startNewContext(): void
+    {
+        Context::getRoot()->activate();
     }
 }
