@@ -12,11 +12,8 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        php: [8.0]
-        laravel: [8.*]
-        include:
-          - laravel: 8.*
-            testbench: ^6.6
+        php: [8.0, 8.1]
+        laravel: [8.*, 9.*]
 
     name: P${{ matrix.php }} - L${{ matrix.laravel }}
 
@@ -41,7 +38,7 @@ jobs:
           COMPOSER_GITHUB: ${{ secrets.COMPOSER_GITHUB }}
         run: |
           composer config --global github-oauth.github.com "$COMPOSER_GITHUB"
-          composer require "laravel/framework:${{ matrix.laravel }}" "orchestra/testbench:${{ matrix.testbench }}" --no-interaction --no-update
+          composer require "illuminate/contracts:${{ matrix.laravel }}" --no-interaction --no-update
           composer update --prefer-dist --no-interaction
 
       - name: Execute tests
