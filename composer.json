@@ -19,7 +19,7 @@
         "php": "^8.0",
         "illuminate/contracts": "^8.37 || ^9.0",
         "illuminate/support": "^8.37 || ^9.0",
-        "open-telemetry/opentelemetry": "^0.0.5 || ^0.0.6",
+        "open-telemetry/opentelemetry": ">=0.0.5 <=0.0.9",
         "spatie/laravel-package-tools": "^1.4.3"
     },
     "require-dev": {
