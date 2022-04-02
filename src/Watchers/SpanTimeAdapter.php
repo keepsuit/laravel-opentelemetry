@@ -2,16 +2,15 @@
 
 namespace Keepsuit\LaravelOpenTelemetry\Watchers;
 
-use OpenTelemetry\SDK\AbstractClock;
+use OpenTelemetry\SDK\Common\Time\ClockFactory;
+use OpenTelemetry\SDK\Common\Time\ClockInterface;
 
 trait SpanTimeAdapter
 {
     protected function getEventStartTimestampNs(float $timeMs): int
     {
-        $MSEC_TO_NSEC = 1000000;
-
-        $nowNs = AbstractClock::getDefault()->now();
-        $durationNs = (int)($timeMs * $MSEC_TO_NSEC);
+        $nowNs = ClockFactory::getDefault()->now();
+        $durationNs = (int)($timeMs * ClockInterface::NANOS_PER_MILLISECOND);
 
         return $nowNs - $durationNs;
     }
