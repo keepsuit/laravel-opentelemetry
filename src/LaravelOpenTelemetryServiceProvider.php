@@ -4,10 +4,12 @@ namespace Keepsuit\LaravelOpenTelemetry;
 
 use Keepsuit\LaravelOpenTelemetry\Watchers\Watcher;
 use OpenTelemetry\Contrib\Jaeger\Exporter as JaegerExporter;
+use OpenTelemetry\Contrib\Jaeger\HttpCollectorExporter as JaegerHttpCollectorExporter;
 use OpenTelemetry\Contrib\Zipkin\Exporter as ZipkinExporter;
 use OpenTelemetry\SDK\Trace\Sampler\AlwaysOffSampler;
 use OpenTelemetry\SDK\Trace\Sampler\AlwaysOnSampler;
 use OpenTelemetry\SDK\Trace\Sampler\ParentBased;
+use OpenTelemetry\SDK\Trace\SpanExporter\ConsoleSpanExporter;
 use OpenTelemetry\SDK\Trace\SpanProcessor\BatchSpanProcessor;
 use OpenTelemetry\SDK\Trace\TracerProvider;
 use Spatie\LaravelPackageTools\Package;
@@ -40,10 +42,15 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
                     config('opentelemetry.exporters.jaeger.endpoint'),
                     config('opentelemetry.service_name'),
                 ),
+                'jaeger-http' => JaegerHttpCollectorExporter::fromConnectionString(
+                    config('opentelemetry.exporters.jaeger.endpoint'),
+                    config('opentelemetry.service_name'),
+                ),
                 'zipkin' => ZipkinExporter::fromConnectionString(
                     config('opentelemetry.exporters.zipkin.endpoint'),
                     config('opentelemetry.service_name'),
                 ),
+                'console' => ConsoleSpanExporter::fromConnectionString(),
                 default => null
             };
 
