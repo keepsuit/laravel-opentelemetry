@@ -47,23 +47,23 @@ return [
      */
     'exporters' => [
         'jaeger' => [
-            'endpoint' => 'http://localhost:9411/api/v2/spans',
+            'endpoint' => env('OT_JAEGER_ENDPOINT', 'http://localhost:9411/api/v2/spans'),
         ],
 
         'jaeger-http' => [
-            'endpoint' => 'http://localhost:14268/api/traces',
+            'endpoint' => env('OT_JAEGER_HTTP_ENDPOINT', 'http://localhost:14268/api/traces'),
         ],
 
         'zipkin' => [
-            'endpoint' => 'http://localhost:9411/api/v2/spans',
+            'endpoint' => env('OT_ZIPKIN_HTTP_ENDPOINT', 'http://localhost:9411/api/v2/spans'),
         ],
 
         'otlp-http' => [
-            'endpoint' => 'http://localhost:4318/v1/traces',
+            'endpoint' => env('OT_OTLP_HTTP_ENDPOINT', 'http://localhost:4318/v1/traces'),
         ],
 
         'otlp-grpc' => [
-            'endpoint' => 'localhost:4317',
+            'endpoint' => env('OT_OTLP_GRPC_ENDPOINT', 'localhost:4317'),
         ],
     ],
 ];
