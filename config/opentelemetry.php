@@ -50,8 +50,20 @@ return [
             'endpoint' => 'http://localhost:9411/api/v2/spans',
         ],
 
+        'jaeger-http' => [
+            'endpoint' => 'http://localhost:14268/api/traces',
+        ],
+
         'zipkin' => [
             'endpoint' => 'http://localhost:9411/api/v2/spans',
+        ],
+
+        'otlp-http' => [
+            'endpoint' => 'http://localhost:4318/v1/traces',
+        ],
+
+        'otlp-grpc' => [
+            'endpoint' => 'localhost:4317',
         ],
     ],
 ];

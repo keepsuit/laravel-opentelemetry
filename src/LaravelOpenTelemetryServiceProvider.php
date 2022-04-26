@@ -2,10 +2,14 @@
 
 namespace Keepsuit\LaravelOpenTelemetry;
 
+use Illuminate\Support\Env;
 use Keepsuit\LaravelOpenTelemetry\Watchers\Watcher;
 use OpenTelemetry\Contrib\Jaeger\Exporter as JaegerExporter;
 use OpenTelemetry\Contrib\Jaeger\HttpCollectorExporter as JaegerHttpCollectorExporter;
+use OpenTelemetry\Contrib\OtlpGrpc\Exporter as OtlpGrpcExporter;
+use OpenTelemetry\Contrib\OtlpHttp\Exporter as OtlpHttpExporter;
 use OpenTelemetry\Contrib\Zipkin\Exporter as ZipkinExporter;
+use OpenTelemetry\SDK\Common\Environment\Variables as OTELVariables;
 use OpenTelemetry\SDK\Trace\Sampler\AlwaysOffSampler;
 use OpenTelemetry\SDK\Trace\Sampler\AlwaysOnSampler;
 use OpenTelemetry\SDK\Trace\Sampler\ParentBased;
@@ -21,6 +25,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
     {
         parent::register();
 
+        $this->configureEnvironmentVariables();
         $this->initTracer();
         $this->registerWatchers();
     }
@@ -43,11 +48,19 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
                     config('opentelemetry.service_name'),
                 ),
                 'jaeger-http' => JaegerHttpCollectorExporter::fromConnectionString(
-                    config('opentelemetry.exporters.jaeger.endpoint'),
+                    config('opentelemetry.exporters.jaeger-http.endpoint'),
                     config('opentelemetry.service_name'),
                 ),
                 'zipkin' => ZipkinExporter::fromConnectionString(
                     config('opentelemetry.exporters.zipkin.endpoint'),
+                    config('opentelemetry.service_name'),
+                ),
+                'otlp-http' => OtlpHttpExporter::fromConnectionString(
+                    config('opentelemetry.exporters.otlp-http.endpoint'),
+                    config('opentelemetry.service_name'),
+                ),
+                'otlp-grpc' => OtlpGrpcExporter::fromConnectionString(
+                    config('opentelemetry.exporters.otlp-grpc.endpoint'),
                     config('opentelemetry.service_name'),
                 ),
                 'console' => ConsoleSpanExporter::fromConnectionString(),
@@ -114,5 +127,13 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 
             $watcher->register($this->app);
         }
+    }
+
+    private function configureEnvironmentVariables(): void
+    {
+        $envRepository = Env::getRepository();
+
+        $envRepository->set(OTELVariables::OTEL_EXPORTER_OTLP_TRACES_ENDPOINT, config('opentelemetry.exporters.otlp-http.endpoint'));
+        $envRepository->set(OTELVariables::OTEL_SERVICE_NAME, config('opentelemetry.service_name'));
     }
 }
