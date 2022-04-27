@@ -33,7 +33,7 @@ class LighthouseWatcher extends Watcher
         $app['events']->listen(EndRequest::class, [$this, 'recordEndRequest']);
     }
 
-    public function recordStartRequest()
+    public function recordStartRequest(): void
     {
         $this->requestSpan = Tracer::start('graphql.request');
         $this->requestSpan->activate();
@@ -42,7 +42,7 @@ class LighthouseWatcher extends Watcher
         $this->parseSpan->activate();
     }
 
-    public function recordStartOperation()
+    public function recordStartOperation(): void
     {
         $this->parseSpan?->end();
         $this->parseSpan = null;
@@ -51,7 +51,7 @@ class LighthouseWatcher extends Watcher
         $this->validateSpan->activate();
     }
 
-    public function recordStartExecution()
+    public function recordStartExecution(): void
     {
         $this->validateSpan?->end();
         $this->validateSpan = null;
@@ -60,13 +60,13 @@ class LighthouseWatcher extends Watcher
         $this->executeSpan->activate();
     }
 
-    public function recordEndExecution()
+    public function recordEndExecution(): void
     {
         $this->executeSpan?->end();
         $this->executeSpan = null;
     }
 
-    public function recordEndRequest()
+    public function recordEndRequest(): void
     {
         $this->requestSpan?->end();
         $this->requestSpan = null;

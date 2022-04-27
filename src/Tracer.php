@@ -49,8 +49,12 @@ class Tracer
     }
 
     /**
-     * @phpstan-param non-empty-string $name
+     * @template U
+     *
+     * @param non-empty-string $name
+     * @param Closure(SpanInterface $span): U $callback
      * @throws Exception
+     * @return U
      */
     public function measure(string $name, Closure $callback)
     {

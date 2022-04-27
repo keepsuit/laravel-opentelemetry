@@ -101,7 +101,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         });
     }
 
-    protected function registerWatchers()
+    protected function registerWatchers(): void
     {
         if (config('opentelemetry.enabled') === false) {
             return;
@@ -136,7 +136,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         if (config('opentelemetry.exporters.otlp-http.endpoint')) {
             $envRepository->set(OTELVariables::OTEL_EXPORTER_OTLP_TRACES_ENDPOINT, config('opentelemetry.exporters.otlp-http.endpoint'));
         }
-        
+
         $envRepository->set(OTELVariables::OTEL_SERVICE_NAME, config('opentelemetry.service_name'));
     }
 }

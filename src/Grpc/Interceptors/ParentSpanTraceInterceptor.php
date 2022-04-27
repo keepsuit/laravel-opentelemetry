@@ -37,8 +37,6 @@ class ParentSpanTraceInterceptor extends Interceptor
 
     protected function injectParentSpanTrace(array $metadata): array
     {
-        $metadata = array_merge($metadata, Tracer::activeSpanB3Headers());
-
-        return $metadata;
+        return array_merge($metadata, Tracer::activeSpanB3Headers());
     }
 }

@@ -9,7 +9,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class TraceRequest
 {
-    public function handle(Request $request, Closure $next)
+    public function handle(Request $request, Closure $next): mixed
     {
         if ($request->is(config('opentelemetry.excluded_paths', []))) {
             return $next($request);

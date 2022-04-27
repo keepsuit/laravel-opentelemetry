@@ -6,11 +6,10 @@ use Illuminate\Contracts\Foundation\Application;
 
 abstract class Watcher
 {
-    public array $options = [];
-
-    public function __construct(array $options = [])
-    {
-        $this->options = $options;
+    public function __construct(
+        /** @var array<string, mixed> */
+        public array $options = []
+    ) {
     }
 
     abstract public function register(Application $app): void;
