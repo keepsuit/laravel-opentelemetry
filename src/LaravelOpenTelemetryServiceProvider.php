@@ -133,7 +133,10 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
     {
         $envRepository = Env::getRepository();
 
-        $envRepository->set(OTELVariables::OTEL_EXPORTER_OTLP_TRACES_ENDPOINT, config('opentelemetry.exporters.otlp-http.endpoint'));
+        if (config('opentelemetry.exporters.otlp-http.endpoint')) {
+            $envRepository->set(OTELVariables::OTEL_EXPORTER_OTLP_TRACES_ENDPOINT, config('opentelemetry.exporters.otlp-http.endpoint'));
+        }
+        
         $envRepository->set(OTELVariables::OTEL_SERVICE_NAME, config('opentelemetry.service_name'));
     }
 }
