@@ -8,9 +8,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Keepsuit\LaravelGrpc\GrpcRequest;
 use OpenTelemetry\API\Trace\AbstractSpan;
+use OpenTelemetry\API\Trace\Propagation\B3MultiPropagator;
 use OpenTelemetry\API\Trace\SpanBuilderInterface;
-use OpenTelemetry\API\Trace\SpanContext;
-use OpenTelemetry\API\Trace\SpanContextInterface;
 use OpenTelemetry\API\Trace\SpanInterface;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
@@ -121,28 +120,14 @@ class Tracer
     {
         $headers = [];
 
-        $activeSpan = $this->activeSpan();
-
-        if (! $activeSpan->getContext()->isValid()) {
-            return [];
-        }
-
-        $spanContext = $activeSpan->getContext();
-
-        $headers['x-b3-traceid'] = [$spanContext->getTraceId()];
-        $headers['x-b3-spanid'] = [$spanContext->getSpanId()];
-        $headers['x-b3-sampled'] = [$spanContext->isSampled() ? '1' : '0'];
-
-        if ($activeSpan instanceof Span && $activeSpan->getParentContext()->isValid()) {
-            $headers['x-b3-parentspanid'] = [$activeSpan->getParentContext()->getSpanId()];
-        }
+        B3MultiPropagator::getInstance()->inject($headers);
 
         return $headers;
     }
 
     public function initFromHttpRequest(Request $request): SpanInterface
     {
-        $context = $this->extractContextFromHttpRequest($request);
+        $context = B3MultiPropagator::getInstance()->extract($request->headers->all());
 
         /** @var non-empty-string $route */
         $route = rescue(fn () => Route::getRoutes()->match($request)->uri(), $request->path(), false);
@@ -150,9 +135,7 @@ class Tracer
 
         $builder = $this->build(name: $route, spanKind: SpanKind::KIND_SERVER);
 
-        if ($context !== null) {
-            $builder->setParent($context);
-        }
+        $builder->setParent($context);
 
         $span = $builder->startSpan();
 
@@ -170,27 +153,15 @@ class Tracer
         return $span;
     }
 
-    public function extractContextFromHttpRequest(Request $request): ?Context
-    {
-        return $this->extractContextFromB3Headers([
-            'x-b3-traceid' => $request->header('x-b3-traceid'),
-            'x-b3-spanid' => $request->header('x-b3-spanid'),
-            'x-b3-sampled' => $request->header('x-b3-sampled'),
-            'x-b3-parentspanid' => $request->header('x-b3-parentspanid'),
-        ]);
-    }
-
     public function initFromGrpcRequest(GrpcRequest $request): SpanInterface
     {
-        $context = $this->extractContextFromGrpcRequest($request);
+        $context = B3MultiPropagator::getInstance()->extract($request->context->getValues());
 
         $traceName = sprintf('%s/%s', $request->getServiceName() ?? 'Unknown', $request->getMethodName());
 
         $builder = $this->build(name: $traceName, spanKind: SpanKind::KIND_SERVER);
 
-        if ($context != null) {
-            $builder->setParent($context);
-        }
+        $builder->setParent($context);
 
         $span = $builder->startSpan();
 
@@ -204,44 +175,6 @@ class Tracer
             ->setAttribute('net.peer.name', $request->context->getValue(':authority'));
 
         return $span;
-    }
-
-    public function extractContextFromGrpcRequest(GrpcRequest $request): ?Context
-    {
-        return $this->extractContextFromB3Headers([
-            'x-b3-traceid' => $request->context->getValue('x-b3-traceid'),
-            'x-b3-spanid' => $request->context->getValue('x-b3-spanid'),
-            'x-b3-sampled' => $request->context->getValue('x-b3-sampled'),
-            'x-b3-parentspanid' => $request->context->getValue('x-b3-parentspanid'),
-        ]);
-    }
-
-    public function extractContextFromB3Headers(array $headers): ?Context
-    {
-        $this->startNewContext();
-
-        $headers = collect($headers)
-            ->mapWithKeys(fn ($value, $key) => [strtolower($key) => is_array($value) ? $value[0] : $value]);
-
-        $traceId = $headers->get('x-b3-traceid');
-        $spanId = $headers->get('x-b3-spanid');
-        $sampled = $headers->get('x-b3-sampled', '1') === '1';
-
-        if ($traceId == null || $spanId == null) {
-            return null;
-        }
-
-        $spanContext = SpanContext::createFromRemoteParent(
-            traceId: $traceId,
-            spanId: $spanId,
-            traceFlags: $sampled ? SpanContextInterface::TRACE_FLAG_SAMPLED : SpanContextInterface::TRACE_FLAG_DEFAULT
-        );
-
-        if (! $spanContext->isValid()) {
-            return null;
-        }
-
-        return Context::getCurrent()->withContextValue(AbstractSpan::wrap($spanContext));
     }
 
     public function isRecording(): bool
