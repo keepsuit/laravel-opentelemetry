@@ -39,9 +39,9 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 
     protected function initTracer(): void
     {
-        $this->app->singleton(Tracer::class);
+        $this->app->scoped(Tracer::class);
 
-        $this->app->singleton(TracerProvider::class, function () {
+        $this->app->scoped(TracerProvider::class, function () {
             $exporter = match (config('opentelemetry.exporter')) {
                 'jaeger' => JaegerExporter::fromConnectionString(
                     config('opentelemetry.exporters.jaeger.endpoint'),
@@ -81,10 +81,10 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
                 return $enabled ? new AlwaysOnSampler() : new AlwaysOffSampler();
             });
 
-            return tap(new TracerProvider(
+            return new TracerProvider(
                 spanProcessors: [new BatchSpanProcessor($exporter)],
                 sampler: $sampler
-            ))->getTracer();
+            );
         });
 
         $this->app->terminating(function () {
@@ -95,9 +95,6 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
                     $tracer->terminate();
                 }
             }
-
-            $this->app->forgetInstance(TracerProvider::class);
-            $this->app->forgetInstance(Tracer::class);
         });
     }
 

@@ -27,7 +27,7 @@ class Tracer
 
     public function __construct(protected TracerProvider $tracerProvider)
     {
-        $this->tracer = $this->tracerProvider->getTracer();
+        $this->tracer = $this->tracerProvider->getTracer('io.opentelemetry.contrib.php');
     }
 
     /**
