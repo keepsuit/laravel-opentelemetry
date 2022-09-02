@@ -10,6 +10,7 @@ use OpenTelemetry\Contrib\OtlpGrpc\Exporter as OtlpGrpcExporter;
 use OpenTelemetry\Contrib\OtlpHttp\Exporter as OtlpHttpExporter;
 use OpenTelemetry\Contrib\Zipkin\Exporter as ZipkinExporter;
 use OpenTelemetry\SDK\Common\Environment\Variables as OTELVariables;
+use OpenTelemetry\SDK\Common\Time\ClockFactory;
 use OpenTelemetry\SDK\Trace\Sampler\AlwaysOffSampler;
 use OpenTelemetry\SDK\Trace\Sampler\AlwaysOnSampler;
 use OpenTelemetry\SDK\Trace\Sampler\ParentBased;
@@ -82,7 +83,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
             });
 
             return new TracerProvider(
-                spanProcessors: [new BatchSpanProcessor($exporter)],
+                spanProcessors: [new BatchSpanProcessor($exporter, ClockFactory::getDefault())],
                 sampler: $sampler
             );
         });
