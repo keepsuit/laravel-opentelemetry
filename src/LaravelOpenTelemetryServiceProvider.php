@@ -14,7 +14,9 @@ use OpenTelemetry\SDK\Common\Time\ClockFactory;
 use OpenTelemetry\SDK\Trace\Sampler\AlwaysOffSampler;
 use OpenTelemetry\SDK\Trace\Sampler\AlwaysOnSampler;
 use OpenTelemetry\SDK\Trace\Sampler\ParentBased;
+use OpenTelemetry\SDK\Trace\SamplerInterface;
 use OpenTelemetry\SDK\Trace\SpanExporter\ConsoleSpanExporter;
+use OpenTelemetry\SDK\Trace\SpanExporterInterface;
 use OpenTelemetry\SDK\Trace\SpanProcessor\BatchSpanProcessor;
 use OpenTelemetry\SDK\Trace\TracerProvider;
 use Spatie\LaravelPackageTools\Package;
@@ -43,6 +45,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         $this->app->scoped(Tracer::class);
 
         $this->app->scoped(TracerProvider::class, function () {
+            /** @var SpanExporterInterface|null $exporter */
             $exporter = match (config('opentelemetry.exporter')) {
                 'jaeger' => JaegerExporter::fromConnectionString(
                     config('opentelemetry.exporters.jaeger.endpoint'),
@@ -68,9 +71,10 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
                 default => null
             };
 
-            $sampler = value(function () use ($exporter) {
+            /** @var SamplerInterface $sampler */
+            $sampler = value(function () use ($exporter): SamplerInterface {
                 if ($exporter === null) {
-                    return null;
+                    return new AlwaysOffSampler();
                 }
 
                 $enabled = config('opentelemetry.enabled', true);
@@ -83,7 +87,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
             });
 
             return new TracerProvider(
-                spanProcessors: [new BatchSpanProcessor($exporter, ClockFactory::getDefault())],
+                spanProcessors: $exporter !== null ? new BatchSpanProcessor($exporter, ClockFactory::getDefault()) : null,
                 sampler: $sampler
             );
         });
