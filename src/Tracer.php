@@ -58,7 +58,6 @@ class Tracer
     public function measure(string $name, Closure $callback)
     {
         $span = $this->start($name);
-        $span->activate();
 
         try {
             $result = $callback($span);
