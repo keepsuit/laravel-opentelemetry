@@ -12,8 +12,8 @@ use OpenTelemetry\API\Trace\SpanInterface;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
 use OpenTelemetry\API\Trace\TracerInterface;
+use OpenTelemetry\Context\Propagation\TextMapPropagatorInterface;
 use OpenTelemetry\Context\ScopeInterface;
-use OpenTelemetry\Extension\Propagator\B3\B3MultiPropagator;
 use OpenTelemetry\SDK\Trace\Span;
 use OpenTelemetry\SDK\Trace\TracerProvider;
 use Spiral\RoadRunner\GRPC\Exception\GRPCException;
@@ -25,7 +25,7 @@ class Tracer
 
     protected ?ScopeInterface $rootScope = null;
 
-    public function __construct(protected TracerProvider $tracerProvider)
+    public function __construct(protected TracerProvider $tracerProvider, protected TextMapPropagatorInterface $propagator)
     {
         $this->tracer = $this->tracerProvider->getTracer('io.opentelemetry.contrib.php');
     }
@@ -116,18 +116,18 @@ class Tracer
         return Span::getCurrent();
     }
 
-    public function activeSpanB3Headers(): array
+    public function activeSpanPropagationHeaders(): array
     {
         $headers = [];
 
-        B3MultiPropagator::getInstance()->inject($headers);
+        $this->propagator->inject($headers);
 
         return $headers;
     }
 
     public function initFromHttpRequest(Request $request): SpanInterface
     {
-        $context = B3MultiPropagator::getInstance()->extract($request->headers->all());
+        $context = $this->propagator->extract($request->headers->all());
 
         /** @var non-empty-string $route */
         $route = rescue(fn () => Route::getRoutes()->match($request)->uri(), $request->path(), false);
@@ -157,7 +157,7 @@ class Tracer
 
     public function initFromGrpcRequest(GrpcRequest $request): SpanInterface
     {
-        $context = B3MultiPropagator::getInstance()->extract($request->context->getValues());
+        $context = $this->propagator->extract($request->context->getValues());
 
         $traceName = sprintf('%s/%s', $request->getServiceName() ?? 'Unknown', $request->getMethodName());
 

@@ -21,7 +21,7 @@ use Symfony\Component\HttpFoundation\Response;
  * @method static SpanInterface recordGrpcExceptionToSpan(SpanInterface $span, GRPCException $exception)
  * @method static SpanInterface recordGrpcSuccessResponseToSpan(SpanInterface $span)
  * @method static SpanInterface activeSpan()
- * @method static array activeSpanB3Headers()
+ * @method static array activeSpanPropagationHeaders()
  * @method static SpanInterface initFromHttpRequest(Request $request)
  * @method static SpanInterface initFromGrpcRequest(GrpcRequest $request)
  * @method static Context|null extractContextFromHttpRequest(Request $request)

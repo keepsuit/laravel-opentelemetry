@@ -37,7 +37,7 @@ class ParentSpanTraceInterceptor extends Interceptor
 
     protected function injectParentSpanTrace(array $metadata): array
     {
-        $headers = Tracer::activeSpanB3Headers();
+        $headers = Tracer::activeSpanPropagationHeaders();
 
         foreach ($headers as $key => $value) {
             $metadata[$key] = is_array($value) ? $value : [$value];

@@ -1,6 +1,5 @@
 <?php
 
-
 use Keepsuit\LaravelOpenTelemetry\Watchers;
 
 return [
@@ -17,9 +16,15 @@ return [
 
     /**
      * Exporter to use
-     * Supported: 'jaeger', 'zipkin', 'null'
+     * Supported: 'jaeger', 'jaeger-http', 'zipkin', 'otlp-http', 'otlp-grpc', 'null'
      */
-    'exporter' => env('OT_EXPORTER', 'jaeger'),
+    'exporter' => env('OT_EXPORTER', 'otlp-http'),
+
+    /**
+     * Propagator to use
+     * Supported: 'b3', 'b3multi', 'tracecontext',
+     */
+    'propagator' => env('OT_PROPAGATOR', 'tracecontext'),
 
     /**
      * Http paths not to trace
@@ -47,19 +52,19 @@ return [
      */
     'exporters' => [
         'jaeger' => [
-            'endpoint' => env('OT_JAEGER_ENDPOINT', 'http://localhost:9411/api/v2/spans'),
+            'endpoint' => env('OT_JAEGER_ENDPOINT', 'http://localhost:9411'),
         ],
 
         'jaeger-http' => [
-            'endpoint' => env('OT_JAEGER_HTTP_ENDPOINT', 'http://localhost:14268/api/traces'),
+            'endpoint' => env('OT_JAEGER_HTTP_ENDPOINT', 'http://localhost:14268'),
         ],
 
         'zipkin' => [
-            'endpoint' => env('OT_ZIPKIN_HTTP_ENDPOINT', 'http://localhost:9411/api/v2/spans'),
+            'endpoint' => env('OT_ZIPKIN_HTTP_ENDPOINT', 'http://localhost:9411'),
         ],
 
         'otlp-http' => [
-            'endpoint' => env('OT_OTLP_HTTP_ENDPOINT', 'http://localhost:4318/v1/traces'),
+            'endpoint' => env('OT_OTLP_HTTP_ENDPOINT', 'http://localhost:4318'),
         ],
 
         'otlp-grpc' => [
