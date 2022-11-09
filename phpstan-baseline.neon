@@ -90,3 +90,8 @@ parameters:
 			count: 1
 			path: src/Grpc/Interceptors/ParentSpanTraceInterceptor.php
 
+		-
+			message: "#^Parameter \\#1 \\$name of static method Keepsuit\\\\LaravelOpenTelemetry\\\\Tracer\\:\\:build\\(\\) expects non\\-empty\\-string, string given\\.$#"
+			count: 1
+			path: src/Watchers/QueueWatcher.php
+

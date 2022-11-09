@@ -4,6 +4,7 @@ namespace Keepsuit\LaravelOpenTelemetry;
 
 use Closure;
 use Exception;
+use Illuminate\Foundation\Bus\PendingDispatch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Keepsuit\LaravelGrpc\GrpcRequest;
@@ -58,7 +59,7 @@ class Tracer
      */
     public function measure(string $name, Closure $callback)
     {
-        $span = $this->start($name);
+        $span = $this->start($name, SpanKind::KIND_INTERNAL);
 
         try {
             $result = $callback($span);
@@ -68,6 +69,38 @@ class Tracer
             throw $exception;
         } finally {
             $span->end();
+        }
+
+        return $result;
+    }
+
+    /**
+     * @template U
+     *
+     * @param  non-empty-string                 $name
+     * @param  Closure(SpanInterface $span): U  $callback
+     * @throws Exception
+     * @return U
+     */
+    public function measureAsync(string $name, Closure $callback)
+    {
+        $span = $this->start($name, SpanKind::KIND_PRODUCER);
+        $scope = $span->activate();
+
+        try {
+            $result = $callback($span);
+
+            // Fix: Dispatch is effective only on destruct
+            if ($result instanceof PendingDispatch) {
+                $result = null;
+            }
+        } catch (Exception $exception) {
+            $this->recordExceptionToSpan($span, $exception);
+
+            throw $exception;
+        } finally {
+            $span->end();
+            $scope->detach();
         }
 
         return $result;
