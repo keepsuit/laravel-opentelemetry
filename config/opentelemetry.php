@@ -63,7 +63,7 @@ return [
         ],
 
         'otlp-grpc' => [
-            'endpoint' => env('OT_OTLP_GRPC_ENDPOINT', 'localhost:4317'),
+            'endpoint' => env('OT_OTLP_GRPC_ENDPOINT', 'http://localhost:4317'),
         ],
     ],
 ];
