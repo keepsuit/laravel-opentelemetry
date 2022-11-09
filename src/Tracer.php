@@ -7,13 +7,12 @@ use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Keepsuit\LaravelGrpc\GrpcRequest;
-use OpenTelemetry\API\Trace\AbstractSpan;
 use OpenTelemetry\API\Trace\SpanBuilderInterface;
 use OpenTelemetry\API\Trace\SpanInterface;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
 use OpenTelemetry\API\Trace\TracerInterface;
-use OpenTelemetry\Context\Context;
+use OpenTelemetry\Context\ScopeInterface;
 use OpenTelemetry\Extension\Propagator\B3\B3MultiPropagator;
 use OpenTelemetry\SDK\Trace\Span;
 use OpenTelemetry\SDK\Trace\TracerProvider;
@@ -23,6 +22,8 @@ use Symfony\Component\HttpFoundation\Response;
 class Tracer
 {
     protected TracerInterface $tracer;
+
+    protected ?ScopeInterface $rootScope = null;
 
     public function __construct(protected TracerProvider $tracerProvider)
     {
@@ -50,8 +51,8 @@ class Tracer
     /**
      * @template U
      *
-     * @param non-empty-string $name
-     * @param Closure(SpanInterface $span): U $callback
+     * @param  non-empty-string                 $name
+     * @param  Closure(SpanInterface $span): U  $callback
      * @throws Exception
      * @return U
      */
@@ -112,7 +113,7 @@ class Tracer
 
     public function activeSpan(): SpanInterface
     {
-        return Span::fromContext(Context::getCurrent());
+        return Span::getCurrent();
     }
 
     public function activeSpanB3Headers(): array
@@ -138,7 +139,9 @@ class Tracer
 
         $span = $builder->startSpan();
 
-        $span->activate();
+        $this->rootScope?->detach();
+
+        $this->rootScope = $span->activate();
 
         $span->setAttribute('http.method', $request->method())
             ->setAttribute('http.url', $request->getUri())
@@ -164,7 +167,9 @@ class Tracer
 
         $span = $builder->startSpan();
 
-        $span->activate();
+        $this->rootScope?->detach();
+
+        $this->rootScope = $span->activate();
 
         $span->setAttribute('rpc.system', 'grpc')
             ->setAttribute('rpc.service', $request->getServiceName())
@@ -189,7 +194,7 @@ class Tracer
         }
 
         if ($enabled === 'parent') {
-            return AbstractSpan::fromContext(Context::getCurrent())->getContext()->isSampled();
+            return Span::getCurrent()->getContext()->isSampled();
         }
 
         return false;
@@ -213,13 +218,8 @@ class Tracer
 
     public function terminate(): void
     {
+        $this->rootScope?->detach();
+
         $this->tracerProvider->shutdown();
-
-        $this->startNewContext();
-    }
-
-    protected function startNewContext(): void
-    {
-        Context::getRoot()->activate();
     }
 }
