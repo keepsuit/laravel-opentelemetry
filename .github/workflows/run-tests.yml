@@ -2,9 +2,9 @@ name: run-tests
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   pull_request:
-    branches: [main]
+    branches: [ main ]
 
 jobs:
   test:
@@ -12,14 +12,20 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        php: [8.1]
-        laravel: [9.*]
+        php: [ 8.1 ]
+        laravel: [ 9.* ]
 
     name: P${{ matrix.php }} - L${{ matrix.laravel }}
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.composer/cache/files
+          key: dependencies-laravel-${{ matrix.laravel }}-php-${{ matrix.php }}-composer-${{ hashFiles('composer.json') }}
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -45,10 +51,11 @@ jobs:
         run: vendor/bin/phpunit
 
   deploy:
-    needs: [test]
+    needs: [ test ]
     runs-on: ubuntu-latest
     steps:
       - name: Deploy
         env:
-          TOKEN: ${{ secrets.GITLAB_SATIS_TRIGGER_TOKEN }}
-        run: curl --request POST --form "token=$TOKEN" --form ref=master https://gitlab.com/api/v4/projects/16293012/trigger/pipeline
+          TOKEN: ${{ secrets.SATIS_WEBHOOK_TOKEN }}
+        run: |
+          curl --request POST -H "Authorization: Bearer $TOKEN" --form "repository=https://github.com/${{github.repository}}" https://composer.20web.it/update
