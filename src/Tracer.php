@@ -252,6 +252,7 @@ class Tracer
     public function terminate(): void
     {
         $this->rootScope?->detach();
+        $this->rootScope = null;
 
         $this->tracerProvider->shutdown();
     }
