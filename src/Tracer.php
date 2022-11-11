@@ -6,6 +6,7 @@ use Closure;
 use Exception;
 use Illuminate\Foundation\Bus\PendingDispatch;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Keepsuit\LaravelGrpc\GrpcRequest;
 use OpenTelemetry\API\Trace\SpanBuilderInterface;
@@ -149,6 +150,11 @@ class Tracer
         return Span::getCurrent();
     }
 
+    public function traceId(): string
+    {
+        return Span::getCurrent()->getContext()->getTraceId();
+    }
+
     public function activeSpanPropagationHeaders(): array
     {
         $headers = [];
@@ -172,9 +178,7 @@ class Tracer
 
         $span = $builder->startSpan();
 
-        $this->rootScope?->detach();
-
-        $this->rootScope = $span->activate();
+        $this->activateRootSpan($span);
 
         $span->setAttribute('http.method', $request->method())
             ->setAttribute('http.url', $request->getUri())
@@ -200,9 +204,7 @@ class Tracer
 
         $span = $builder->startSpan();
 
-        $this->rootScope?->detach();
-
-        $this->rootScope = $span->activate();
+        $this->activateRootSpan($span);
 
         $span->setAttribute('rpc.system', 'grpc')
             ->setAttribute('rpc.service', $request->getServiceName())
@@ -255,5 +257,20 @@ class Tracer
         $this->rootScope = null;
 
         $this->tracerProvider->shutdown();
+    }
+
+    protected function activateRootSpan(SpanInterface $span): void
+    {
+        $this->rootScope?->detach();
+
+        $this->rootScope = $span->activate();
+
+        if (config('opentelemetry.logs.inject_trace_id', true)) {
+            $field = config('opentelemetry.logs.trace_id_field', 'traceId');
+
+            Log::shareContext([
+                $field => $span->getContext()->getTraceId(),
+            ]);
+        }
     }
 }

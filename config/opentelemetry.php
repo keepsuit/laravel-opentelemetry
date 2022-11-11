@@ -73,4 +73,16 @@ return [
             'endpoint' => env('OT_OTLP_GRPC_ENDPOINT', 'http://localhost:4317'),
         ],
     ],
+
+    'logs' => [
+        /**
+         * Inject active trace id in log context
+         */
+        'inject_trace_id' => true,
+
+        /**
+         * Context field name for trace id
+         */
+        'trace_id_field' => 'traceId',
+    ],
 ];

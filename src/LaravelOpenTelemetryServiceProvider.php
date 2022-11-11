@@ -2,7 +2,9 @@
 
 namespace Keepsuit\LaravelOpenTelemetry;
 
+use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Support\Env;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Keepsuit\LaravelOpenTelemetry\Watchers\Watcher;
 use OpenTelemetry\API\Common\Signal\Signals;
