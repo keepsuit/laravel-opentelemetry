@@ -16,8 +16,11 @@ class LighthouseWatcher extends Watcher
     use SpanTimeAdapter;
 
     protected ?Closure $endRequestSpan = null;
+
     protected ?Closure $endParseSpan = null;
+
     protected ?Closure $endValidateSpan = null;
+
     protected ?Closure $endExecuteSpan = null;
 
     public function register(Application $app): void

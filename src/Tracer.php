@@ -50,10 +50,11 @@ class Tracer
     /**
      * @template U
      *
-     * @param  non-empty-string                 $name
+     * @param  non-empty-string  $name
      * @param  Closure(SpanInterface $span): U  $callback
-     * @throws Exception
      * @return U
+     *
+     * @throws Exception
      */
     public function measure(string $name, Closure $callback)
     {
@@ -77,10 +78,11 @@ class Tracer
     /**
      * @template U
      *
-     * @param  non-empty-string                 $name
+     * @param  non-empty-string  $name
      * @param  Closure(SpanInterface $span): U  $callback
-     * @throws Exception
      * @return U
+     *
+     * @throws Exception
      */
     public function measureAsync(string $name, Closure $callback)
     {

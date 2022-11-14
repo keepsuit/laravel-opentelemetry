@@ -52,20 +52,20 @@ class RedisWatcher extends Watcher
                         return json_encode($value);
                     }
 
-                    return is_int($key) ? $value : sprintf("%s %s", $key, $value);
+                    return is_int($key) ? $value : sprintf('%s %s', $key, $value);
                 })->implode(' ');
             }
 
             return $parameter;
         })->implode(' ');
 
-        return sprintf("%s %s", $command, $parameters);
+        return sprintf('%s %s', $command, $parameters);
     }
 
     private function registerRedisEvents(mixed $redis, Application $app): void
     {
         if ($redis instanceof RedisManager) {
-            foreach ((array)$redis->connections() as $connection) {
+            foreach ((array) $redis->connections() as $connection) {
                 $connection->setEventDispatcher($app['events']);
             }
 
