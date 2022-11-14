@@ -15,7 +15,6 @@ use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
 use OpenTelemetry\API\Trace\TracerInterface;
 use OpenTelemetry\Context\Propagation\TextMapPropagatorInterface;
-use OpenTelemetry\Context\ScopeInterface;
 use OpenTelemetry\SDK\Trace\Span;
 use OpenTelemetry\SDK\Trace\TracerProvider;
 use Spiral\RoadRunner\GRPC\Exception\GRPCException;
@@ -25,11 +24,9 @@ class Tracer
 {
     protected TracerInterface $tracer;
 
-    protected ?ScopeInterface $rootScope = null;
-
-    public function __construct(protected TracerProvider $tracerProvider, protected TextMapPropagatorInterface $propagator)
+    public function __construct(TracerProvider $tracerProvider, protected TextMapPropagatorInterface $propagator)
     {
-        $this->tracer = $this->tracerProvider->getTracer('io.opentelemetry.contrib.php');
+        $this->tracer = $tracerProvider->getTracer('io.opentelemetry.contrib.php');
     }
 
     /**
@@ -61,6 +58,7 @@ class Tracer
     public function measure(string $name, Closure $callback)
     {
         $span = $this->start($name, SpanKind::KIND_INTERNAL);
+        $scope = $span->activate();
 
         try {
             $result = $callback($span);
@@ -70,6 +68,7 @@ class Tracer
             throw $exception;
         } finally {
             $span->end();
+            $scope->detach();
         }
 
         return $result;
@@ -178,7 +177,7 @@ class Tracer
 
         $span = $builder->startSpan();
 
-        $this->activateRootSpan($span);
+        $this->setTraceIdForLogs($span);
 
         $span->setAttribute('http.method', $request->method())
             ->setAttribute('http.url', $request->getUri())
@@ -204,7 +203,7 @@ class Tracer
 
         $span = $builder->startSpan();
 
-        $this->activateRootSpan($span);
+        $this->setTraceIdForLogs($span);
 
         $span->setAttribute('rpc.system', 'grpc')
             ->setAttribute('rpc.service', $request->getServiceName())
@@ -251,20 +250,8 @@ class Tracer
             ->startSpan();
     }
 
-    public function terminate(): void
+    protected function setTraceIdForLogs(SpanInterface $span): void
     {
-        $this->rootScope?->detach();
-        $this->rootScope = null;
-
-        $this->tracerProvider->shutdown();
-    }
-
-    protected function activateRootSpan(SpanInterface $span): void
-    {
-        $this->rootScope?->detach();
-
-        $this->rootScope = $span->activate();
-
         if (config('opentelemetry.logs.inject_trace_id', true)) {
             $field = config('opentelemetry.logs.trace_id_field', 'traceId');
 

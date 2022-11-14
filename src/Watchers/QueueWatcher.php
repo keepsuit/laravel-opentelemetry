@@ -39,18 +39,21 @@ class QueueWatcher extends Watcher
                 ->setParent($context)
                 ->startSpan();
 
-            $span->activate();
+            $scope = $span->activate();
 
-            $this->startedSpans[$event->job->getJobId()] = $span;
+            $this->startedSpans[$event->job->getJobId()] = [$span, $scope];
         });
     }
 
     protected function recordJobEnd(): void
     {
         app('events')->listen(JobProcessed::class, function (JobProcessed $event) {
-            $span = $this->startedSpans[$event->job->getJobId()] ?? null;
+            [$span, $scope] = $this->startedSpans[$event->job->getJobId()] ?? [null, null];
 
             $span?->end();
+            $scope?->detach();
+
+            unset($this->startedSpans[$event->job->getJobId()]);
         });
     }
 

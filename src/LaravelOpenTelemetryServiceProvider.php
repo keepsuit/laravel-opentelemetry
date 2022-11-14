@@ -2,9 +2,7 @@
 
 namespace Keepsuit\LaravelOpenTelemetry;
 
-use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Support\Env;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Keepsuit\LaravelOpenTelemetry\Watchers\Watcher;
 use OpenTelemetry\API\Common\Signal\Signals;
@@ -21,14 +19,15 @@ use OpenTelemetry\Extension\Propagator\B3\B3MultiPropagator;
 use OpenTelemetry\Extension\Propagator\B3\B3SinglePropagator;
 use OpenTelemetry\SDK\Common\Environment\Variables as OTELVariables;
 use OpenTelemetry\SDK\Common\Otlp\HttpEndpointResolver;
-use OpenTelemetry\SDK\Common\Time\ClockFactory;
+use OpenTelemetry\SDK\Resource\ResourceInfoFactory;
 use OpenTelemetry\SDK\Trace\Sampler\AlwaysOffSampler;
 use OpenTelemetry\SDK\Trace\Sampler\AlwaysOnSampler;
 use OpenTelemetry\SDK\Trace\Sampler\ParentBased;
 use OpenTelemetry\SDK\Trace\SamplerInterface;
 use OpenTelemetry\SDK\Trace\SpanExporter\ConsoleSpanExporter;
+use OpenTelemetry\SDK\Trace\SpanExporter\InMemoryExporter;
 use OpenTelemetry\SDK\Trace\SpanExporterInterface;
-use OpenTelemetry\SDK\Trace\SpanProcessor\BatchSpanProcessor;
+use OpenTelemetry\SDK\Trace\SpanProcessor\BatchSpanProcessorBuilder;
 use OpenTelemetry\SDK\Trace\TracerProvider;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
@@ -64,7 +63,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         });
 
         $this->app->scoped(TracerProvider::class, function () {
-            /** @var SpanExporterInterface|null $exporter */
+            /** @var SpanExporterInterface $exporter */
             $exporter = match (config('opentelemetry.exporter')) {
                 'jaeger' => JaegerExporter::fromConnectionString(
                     Str::of(config('opentelemetry.exporters.jaeger.endpoint'))->rtrim('/')->append('/api/v2/spans')->toString(),
@@ -88,15 +87,11 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
                     (new GrpcTransportFactory())->create(config('opentelemetry.exporters.otlp-grpc.endpoint').OtlpUtil::method(Signals::TRACE))
                 ),
                 'console' => ConsoleSpanExporter::fromConnectionString(),
-                default => null
+                default => InMemoryExporter::fromConnectionString(),
             };
 
             /** @var SamplerInterface $sampler */
-            $sampler = value(function () use ($exporter): SamplerInterface {
-                if ($exporter === null) {
-                    return new AlwaysOffSampler();
-                }
-
+            $sampler = value(function (): SamplerInterface {
                 $enabled = config('opentelemetry.enabled', true);
 
                 if ($enabled === 'parent') {
@@ -106,19 +101,16 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
                 return $enabled ? new AlwaysOnSampler() : new AlwaysOffSampler();
             });
 
-            return new TracerProvider(
-                spanProcessors: $exporter !== null ? new BatchSpanProcessor($exporter, ClockFactory::getDefault()) : null,
-                sampler: $sampler
-            );
+            return TracerProvider::builder()
+                ->addSpanProcessor((new BatchSpanProcessorBuilder($exporter))->build())
+                ->setResource(ResourceInfoFactory::defaultResource())
+                ->setSampler($sampler)
+                ->build();
         });
 
         $this->app->terminating(function () {
-            if (app()->resolved(Tracer::class)) {
-                $tracer = app(Tracer::class);
-
-                if ($tracer instanceof Tracer) {
-                    $tracer->terminate();
-                }
+            if (app()->resolved(TracerProvider::class)) {
+                app(TracerProvider::class)->shutdown();
             }
         });
     }

@@ -16,6 +16,7 @@ class TraceRequest
         }
 
         $span = Tracer::initFromHttpRequest($request);
+        $scope = $span->activate();
 
         try {
             $response = $next($request);
@@ -31,6 +32,7 @@ class TraceRequest
             throw $exception;
         } finally {
             $span->end();
+            $scope->detach();
         }
     }
 }

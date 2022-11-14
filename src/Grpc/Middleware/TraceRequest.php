@@ -18,6 +18,7 @@ class TraceRequest
         }
 
         $span = Tracer::initFromGrpcRequest($request);
+        $scope = $span->activate();
 
         try {
             /** @var string $response */
@@ -32,6 +33,7 @@ class TraceRequest
             throw $e;
         } finally {
             $span->end();
+            $scope->detach();
         }
     }
 }
