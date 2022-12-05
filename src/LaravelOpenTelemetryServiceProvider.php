@@ -2,6 +2,8 @@
 
 namespace Keepsuit\LaravelOpenTelemetry;
 
+use Http\Discovery\Psr17FactoryDiscovery;
+use Http\Discovery\Psr18ClientDiscovery;
 use Illuminate\Support\Env;
 use Illuminate\Support\Str;
 use Keepsuit\LaravelOpenTelemetry\Watchers\Watcher;
@@ -17,15 +19,16 @@ use OpenTelemetry\Contrib\Otlp\SpanExporter as OtlpSpanExporter;
 use OpenTelemetry\Contrib\Zipkin\Exporter as ZipkinExporter;
 use OpenTelemetry\Extension\Propagator\B3\B3MultiPropagator;
 use OpenTelemetry\Extension\Propagator\B3\B3SinglePropagator;
-use OpenTelemetry\SDK\Common\Environment\Variables as OTELVariables;
+use OpenTelemetry\SDK\Common\Configuration\Variables as OTELVariables;
+use OpenTelemetry\SDK\Common\Export\Http\PsrTransportFactory;
 use OpenTelemetry\SDK\Common\Otlp\HttpEndpointResolver;
 use OpenTelemetry\SDK\Resource\ResourceInfoFactory;
 use OpenTelemetry\SDK\Trace\Sampler\AlwaysOffSampler;
 use OpenTelemetry\SDK\Trace\Sampler\AlwaysOnSampler;
 use OpenTelemetry\SDK\Trace\Sampler\ParentBased;
 use OpenTelemetry\SDK\Trace\SamplerInterface;
-use OpenTelemetry\SDK\Trace\SpanExporter\ConsoleSpanExporter;
-use OpenTelemetry\SDK\Trace\SpanExporter\InMemoryExporter;
+use OpenTelemetry\SDK\Trace\SpanExporter\ConsoleSpanExporterFactory;
+use OpenTelemetry\SDK\Trace\SpanExporter\InMemorySpanExporterFactory;
 use OpenTelemetry\SDK\Trace\SpanExporterInterface;
 use OpenTelemetry\SDK\Trace\SpanProcessor\BatchSpanProcessorBuilder;
 use OpenTelemetry\SDK\Trace\TracerProvider;
@@ -65,17 +68,26 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         $this->app->scoped(TracerProvider::class, function () {
             /** @var SpanExporterInterface $exporter */
             $exporter = match (config('opentelemetry.exporter')) {
-                'jaeger' => JaegerExporter::fromConnectionString(
-                    Str::of(config('opentelemetry.exporters.jaeger.endpoint'))->rtrim('/')->append('/api/v2/spans')->toString(),
+                'jaeger' => new JaegerExporter(
                     config('opentelemetry.service_name'),
+                    PsrTransportFactory::discover()->create(
+                        Str::of(config('opentelemetry.exporters.jaeger.endpoint'))->rtrim('/')->append('/api/v2/spans')->toString(),
+                        'application/json'
+                    ),
                 ),
-                'jaeger-http' => JaegerHttpCollectorExporter::fromConnectionString(
+                'jaeger-http' => new JaegerHttpCollectorExporter(
                     Str::of(config('opentelemetry.exporters.jaeger-http.endpoint'))->rtrim('/')->append('/api/traces')->toString(),
                     config('opentelemetry.service_name'),
+                    Psr18ClientDiscovery::find(),
+                    Psr17FactoryDiscovery::findRequestFactory(),
+                    Psr17FactoryDiscovery::findStreamFactory(),
                 ),
-                'zipkin' => ZipkinExporter::fromConnectionString(
-                    Str::of(config('opentelemetry.exporters.zipkin.endpoint'))->rtrim('/')->append('/api/v2/spans')->toString(),
+                'zipkin' => new ZipkinExporter(
                     config('opentelemetry.service_name'),
+                    PsrTransportFactory::discover()->create(
+                        Str::of(config('opentelemetry.exporters.zipkin.endpoint'))->rtrim('/')->append('/api/v2/spans')->toString(),
+                        'application/json'
+                    ),
                 ),
                 'otlp-http' => new OtlpSpanExporter(
                     (new OtlpHttpTransportFactory())->create(
@@ -86,8 +98,8 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
                 'otlp-grpc' => new OtlpSpanExporter(
                     (new GrpcTransportFactory())->create(config('opentelemetry.exporters.otlp-grpc.endpoint').OtlpUtil::method(Signals::TRACE))
                 ),
-                'console' => ConsoleSpanExporter::fromConnectionString(),
-                default => InMemoryExporter::fromConnectionString(),
+                'console' => (new ConsoleSpanExporterFactory())->create(),
+                default => (new InMemorySpanExporterFactory())->create(),
             };
 
             /** @var SamplerInterface $sampler */
