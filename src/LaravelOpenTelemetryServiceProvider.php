@@ -2,8 +2,6 @@
 
 namespace Keepsuit\LaravelOpenTelemetry;
 
-use Http\Discovery\Psr17FactoryDiscovery;
-use Http\Discovery\Psr18ClientDiscovery;
 use Illuminate\Support\Env;
 use Illuminate\Support\Str;
 use Keepsuit\LaravelOpenTelemetry\Watchers\Watcher;
@@ -11,8 +9,6 @@ use OpenTelemetry\API\Common\Signal\Signals;
 use OpenTelemetry\API\Trace\Propagation\TraceContextPropagator;
 use OpenTelemetry\Context\Propagation\TextMapPropagatorInterface;
 use OpenTelemetry\Contrib\Grpc\GrpcTransportFactory;
-use OpenTelemetry\Contrib\Jaeger\Exporter as JaegerExporter;
-use OpenTelemetry\Contrib\Jaeger\HttpCollectorExporter as JaegerHttpCollectorExporter;
 use OpenTelemetry\Contrib\Otlp\OtlpHttpTransportFactory;
 use OpenTelemetry\Contrib\Otlp\OtlpUtil;
 use OpenTelemetry\Contrib\Otlp\SpanExporter as OtlpSpanExporter;
@@ -68,34 +64,19 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         $this->app->scoped(TracerProvider::class, function () {
             /** @var SpanExporterInterface $exporter */
             $exporter = match (config('opentelemetry.exporter')) {
-                'jaeger' => new JaegerExporter(
-                    config('opentelemetry.service_name'),
-                    PsrTransportFactory::discover()->create(
-                        Str::of(config('opentelemetry.exporters.jaeger.endpoint'))->rtrim('/')->append('/api/v2/spans')->toString(),
-                        'application/json'
-                    ),
-                ),
-                'jaeger-http' => new JaegerHttpCollectorExporter(
-                    Str::of(config('opentelemetry.exporters.jaeger-http.endpoint'))->rtrim('/')->append('/api/traces')->toString(),
-                    config('opentelemetry.service_name'),
-                    Psr18ClientDiscovery::find(),
-                    Psr17FactoryDiscovery::findRequestFactory(),
-                    Psr17FactoryDiscovery::findStreamFactory(),
-                ),
                 'zipkin' => new ZipkinExporter(
-                    config('opentelemetry.service_name'),
                     PsrTransportFactory::discover()->create(
                         Str::of(config('opentelemetry.exporters.zipkin.endpoint'))->rtrim('/')->append('/api/v2/spans')->toString(),
                         'application/json'
                     ),
                 ),
-                'otlp-http' => new OtlpSpanExporter(
+                'http' => new OtlpSpanExporter(
                     (new OtlpHttpTransportFactory())->create(
                         (new HttpEndpointResolver())->resolveToString(config('opentelemetry.exporters.otlp-http.endpoint'), Signals::TRACE),
                         'application/x-protobuf'
                     )
                 ),
-                'otlp-grpc' => new OtlpSpanExporter(
+                'grpc' => new OtlpSpanExporter(
                     (new GrpcTransportFactory())->create(config('opentelemetry.exporters.otlp-grpc.endpoint').OtlpUtil::method(Signals::TRACE))
                 ),
                 'console' => (new ConsoleSpanExporterFactory())->create(),

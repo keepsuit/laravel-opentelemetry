@@ -16,9 +16,9 @@ return [
 
     /**
      * Exporter to use
-     * Supported: 'jaeger', 'jaeger-http', 'zipkin', 'otlp-http', 'otlp-grpc', 'null'
+     * Supported: 'zipkin', 'http', 'grpc', 'console', 'null'
      */
-    'exporter' => env('OT_EXPORTER', 'otlp-http'),
+    'exporter' => env('OT_EXPORTER', 'http'),
 
     /**
      * Propagator to use
@@ -53,23 +53,15 @@ return [
      * Exporters config
      */
     'exporters' => [
-        'jaeger' => [
-            'endpoint' => env('OT_JAEGER_ENDPOINT', 'http://localhost:9411'),
-        ],
-
-        'jaeger-http' => [
-            'endpoint' => env('OT_JAEGER_HTTP_ENDPOINT', 'http://localhost:14268'),
-        ],
-
         'zipkin' => [
             'endpoint' => env('OT_ZIPKIN_HTTP_ENDPOINT', 'http://localhost:9411'),
         ],
 
-        'otlp-http' => [
+        'http' => [
             'endpoint' => env('OT_OTLP_HTTP_ENDPOINT', 'http://localhost:4318'),
         ],
 
-        'otlp-grpc' => [
+        'grpc' => [
             'endpoint' => env('OT_OTLP_GRPC_ENDPOINT', 'http://localhost:4317'),
         ],
     ],
