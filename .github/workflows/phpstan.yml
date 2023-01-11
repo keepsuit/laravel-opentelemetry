@@ -4,7 +4,8 @@ on:
   push:
     paths:
       - '**.php'
-      - 'phpstan.neon.dist'
+      - 'phpstan.neon'
+      - 'phpstan-baseline.neon'
 
 jobs:
   phpstan:
