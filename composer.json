@@ -19,10 +19,13 @@
         "php": "^8.0",
         "illuminate/contracts": "^9.0",
         "illuminate/support": "^9.0",
-        "open-telemetry/opentelemetry": "^1.0.0",
+        "open-telemetry/sdk": "^1.0.0",
+        "open-telemetry/sdk-contrib": "^1.0.0",
+        "open-telemetry/extension-propagator-b3": "^1.0.0",
         "spatie/laravel-package-tools": "^1.4.3"
     },
     "require-dev": {
+        "grpc/grpc": "^1.42",
         "guzzlehttp/guzzle": "^7.3",
         "keepsuit/laravel-grpc": "^0.2.0",
         "laravel/pint": "^1.2",
