@@ -72,12 +72,12 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
                 ),
                 'http' => new OtlpSpanExporter(
                     (new OtlpHttpTransportFactory())->create(
-                        (new HttpEndpointResolver())->resolveToString(config('opentelemetry.exporters.otlp-http.endpoint'), Signals::TRACE),
+                        (new HttpEndpointResolver())->resolveToString(config('opentelemetry.exporters.http.endpoint'), Signals::TRACE),
                         'application/x-protobuf'
                     )
                 ),
                 'grpc' => new OtlpSpanExporter(
-                    (new GrpcTransportFactory())->create(config('opentelemetry.exporters.otlp-grpc.endpoint').OtlpUtil::method(Signals::TRACE))
+                    (new GrpcTransportFactory())->create(config('opentelemetry.exporters.grpc.endpoint').OtlpUtil::method(Signals::TRACE))
                 ),
                 'console' => (new ConsoleSpanExporterFactory())->create(),
                 default => (new InMemorySpanExporterFactory())->create(),
