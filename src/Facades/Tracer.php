@@ -33,7 +33,7 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class Tracer extends Facade
 {
-    protected static function getFacadeAccessor()
+    protected static function getFacadeAccessor(): string
     {
         return \Keepsuit\LaravelOpenTelemetry\Tracer::class;
     }
