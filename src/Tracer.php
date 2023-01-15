@@ -14,6 +14,8 @@ use OpenTelemetry\API\Trace\SpanInterface;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
 use OpenTelemetry\API\Trace\TracerInterface;
+use OpenTelemetry\Context\Context;
+use OpenTelemetry\Context\ContextStorageScopeInterface;
 use OpenTelemetry\SDK\Trace\Span;
 use Spiral\RoadRunner\GRPC\Exception\GRPCException;
 use Symfony\Component\HttpFoundation\Response;
@@ -140,14 +142,19 @@ class Tracer
             ->setStatus(StatusCode::STATUS_OK);
     }
 
+    public function activeScope(): ?ContextStorageScopeInterface
+    {
+        return Context::storage()->scope();
+    }
+
     public function activeSpan(): SpanInterface
     {
-        return Span::getCurrent();
+        return Span::fromContext($this->activeScope()->context());
     }
 
     public function traceId(): string
     {
-        return Span::getCurrent()->getContext()->getTraceId();
+        return $this->activeSpan()->getContext()->getTraceId();
     }
 
     public function activeSpanPropagationHeaders(): array

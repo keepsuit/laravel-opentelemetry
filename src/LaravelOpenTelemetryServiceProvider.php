@@ -5,6 +5,7 @@ namespace Keepsuit\LaravelOpenTelemetry;
 use Composer\InstalledVersions;
 use Illuminate\Support\Env;
 use Illuminate\Support\Str;
+use Keepsuit\LaravelOpenTelemetry\Support\CarbonClock;
 use Keepsuit\LaravelOpenTelemetry\Watchers\Watcher;
 use OpenTelemetry\API\Common\Instrumentation\CachedInstrumentation;
 use OpenTelemetry\API\Common\Signal\Signals;
@@ -59,6 +60,8 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 
     protected function initTracer(): void
     {
+        ClockFactory::setDefault(new CarbonClock());
+
         $resource = ResourceInfoFactory::merge(
             ResourceInfoFactory::defaultResource(),
             ResourceInfo::create(Attributes::create([
