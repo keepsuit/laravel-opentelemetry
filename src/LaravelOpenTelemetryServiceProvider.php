@@ -137,6 +137,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
             ->setMeterProvider($meterProvider)
             ->setTracerProvider($tracerProvider)
             ->setPropagator($propagator)
+            ->setAutoShutdown(true)
             ->buildAndRegisterGlobal();
 
         $instrumentation = new CachedInstrumentation(
@@ -148,10 +149,6 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         $this->app->bind(MeterInterface::class, fn () => $instrumentation->meter());
         $this->app->bind(TextMapPropagatorInterface::class, fn () => $propagator);
         $this->app->bind(SpanExporterInterface::class, fn () => $spanExporter);
-
-        $this->app->terminating(function () use ($tracerProvider) {
-            $tracerProvider->shutdown();
-        });
     }
 
     protected function registerWatchers(): void
