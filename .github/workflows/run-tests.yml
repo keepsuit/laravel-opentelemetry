@@ -48,7 +48,7 @@ jobs:
           composer update --prefer-dist --no-interaction
 
       - name: Execute tests
-        run: vendor/bin/phpunit
+        run: vendor/bin/pest
 
   deploy:
     needs: [ test ]
