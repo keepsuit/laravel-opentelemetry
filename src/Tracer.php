@@ -14,28 +14,22 @@ use OpenTelemetry\API\Trace\SpanInterface;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
 use OpenTelemetry\API\Trace\TracerInterface;
-use OpenTelemetry\Context\Propagation\TextMapPropagatorInterface;
 use OpenTelemetry\SDK\Trace\Span;
-use OpenTelemetry\SDK\Trace\TracerProvider;
 use Spiral\RoadRunner\GRPC\Exception\GRPCException;
 use Symfony\Component\HttpFoundation\Response;
 
 class Tracer
 {
-    protected TracerInterface $tracer;
-
-    public function __construct(TracerProvider $tracerProvider, protected TextMapPropagatorInterface $propagator)
+    public function __construct(protected TracerInterface $tracer)
     {
-        $this->tracer = $tracerProvider->getTracer('io.opentelemetry.contrib.php');
     }
 
     /**
      * @phpstan-param non-empty-string $name
-     * @phpstan-param SpanKind::KIND_* $spanKind
      */
-    public function build(string $name, int $spanKind = SpanKind::KIND_INTERNAL): SpanBuilderInterface
+    public function build(string $name): SpanBuilderInterface
     {
-        return $this->tracer->spanBuilder($name)->setSpanKind($spanKind);
+        return $this->tracer->spanBuilder($name);
     }
 
     /**
@@ -44,7 +38,7 @@ class Tracer
      */
     public function start(string $name, int $spanKind = SpanKind::KIND_INTERNAL): SpanInterface
     {
-        return $this->build($name, $spanKind)->startSpan();
+        return $this->build($name)->setSpanKind($spanKind)->startSpan();
     }
 
     /**
@@ -173,11 +167,10 @@ class Tracer
         $route = rescue(fn () => Route::getRoutes()->match($request)->uri(), $request->path(), false);
         $route = str_starts_with($route, '/') ? $route : '/'.$route;
 
-        $builder = $this->build(name: $route, spanKind: SpanKind::KIND_SERVER);
-
-        $builder->setParent($context);
-
-        $span = $builder->startSpan();
+        $span = $this->build(name: $route)
+            ->setSpanKind(SpanKind::KIND_SERVER)
+            ->setParent($context)
+            ->startSpan();
 
         $this->setTraceIdForLogs($span);
 
@@ -199,11 +192,10 @@ class Tracer
 
         $traceName = sprintf('%s/%s', $request->getServiceName() ?? 'Unknown', $request->getMethodName());
 
-        $builder = $this->build(name: $traceName, spanKind: SpanKind::KIND_SERVER);
-
-        $builder->setParent($context);
-
-        $span = $builder->startSpan();
+        $span = $this->build(name: $traceName)
+            ->setSpanKind(SpanKind::KIND_SERVER)
+            ->setParent($context)
+            ->startSpan();
 
         $this->setTraceIdForLogs($span);
 
@@ -219,10 +211,6 @@ class Tracer
 
     public function isRecording(): bool
     {
-        if (config('opentelemetry.exporter') === null) {
-            return false;
-        }
-
         $enabled = config('opentelemetry.enabled', true);
 
         if (is_bool($enabled)) {
@@ -243,7 +231,8 @@ class Tracer
     {
         [$serviceName, $methodName] = explode('/', $grpcFullName, 2);
 
-        return $this->build($grpcFullName, SpanKind::KIND_CLIENT)
+        return $this->build($grpcFullName)
+            ->setSpanKind(SpanKind::KIND_CLIENT)
             ->setAttribute('rpc.system', 'grpc')
             ->setAttribute('rpc.service', $serviceName)
             ->setAttribute('rpc.method', $methodName)

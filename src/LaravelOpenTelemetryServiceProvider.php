@@ -2,6 +2,7 @@
 
 namespace Keepsuit\LaravelOpenTelemetry;
 
+use Composer\InstalledVersions;
 use Illuminate\Support\Env;
 use Illuminate\Support\Str;
 use Keepsuit\LaravelOpenTelemetry\Watchers\Watcher;
@@ -133,7 +134,10 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
             ->setPropagator($propagator)
             ->buildAndRegisterGlobal();
 
-        $instrumentation = new CachedInstrumentation('laravel-opentelemetry');
+        $instrumentation = new CachedInstrumentation(
+            'laravel-opentelemetry',
+            class_exists(InstalledVersions::class) ? InstalledVersions::getPrettyVersion('keepsuit/laravel-opentelemetry') : null
+        );
 
         $this->app->bind(TracerInterface::class, fn () => $instrumentation->tracer());
         $this->app->bind(MeterInterface::class, fn () => $instrumentation->meter());

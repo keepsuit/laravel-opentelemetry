@@ -35,7 +35,8 @@ class QueueWatcher extends Watcher
             /** @var ContextInterface $context */
             $context = app(TextMapPropagatorInterface::class)->extract($event->job->payload());
 
-            $span = Tracer::build($event->job->resolveName(), SpanKind::KIND_CONSUMER)
+            $span = Tracer::build($event->job->resolveName())
+                ->setSpanKind(SpanKind::KIND_CONSUMER)
                 ->setParent($context)
                 ->startSpan();
 

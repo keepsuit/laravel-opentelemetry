@@ -20,7 +20,8 @@ class QueryWatcher extends Watcher
     {
         $traceName = sprintf('%s %s', $event->connection->getDriverName(), $event->connection->getDatabaseName());
 
-        $span = Tracer::build($traceName, SpanKind::KIND_CLIENT)
+        $span = Tracer::build($traceName)
+            ->setSpanKind(SpanKind::KIND_CLIENT)
             ->setStartTimestamp($this->getEventStartTimestampNs($event->time))
             ->startSpan();
 

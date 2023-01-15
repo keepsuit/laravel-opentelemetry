@@ -1,6 +1,6 @@
 <?php
 
-it('can resolve meter', function () {
+it('can build open telemetry meter', function () {
     /** @var \OpenTelemetry\SDK\Metrics\Meter $meter */
     $meter = app(\OpenTelemetry\API\Metrics\MeterInterface::class);
 

@@ -27,7 +27,8 @@ class RedisWatcher extends Watcher
     {
         $traceName = sprintf('redis %s %s', $event->connection->getName(), $event->command);
 
-        $span = Tracer::build($traceName, SpanKind::KIND_CLIENT)
+        $span = Tracer::build($traceName)
+            ->setSpanKind(SpanKind::KIND_CLIENT)
             ->setStartTimestamp($this->getEventStartTimestampNs($event->time))
             ->startSpan();
 

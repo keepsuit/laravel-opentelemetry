@@ -13,7 +13,7 @@ use Spiral\RoadRunner\GRPC\Exception\GRPCException;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * @method static SpanBuilderInterface build(string $name, int $spanKind = SpanKind::KIND_INTERNAL)
+ * @method static SpanBuilderInterface build(string $name)
  * @method static SpanInterface start(string $name, int $spanKind = SpanKind::KIND_INTERNAL)
  * @method static mixed measure(string $name, \Closure $callback)
  * @method static mixed measureAsync(string $name, \Closure $callback)

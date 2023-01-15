@@ -26,6 +26,6 @@ class TestCase extends Orchestra
 
     public function getEnvironmentSetUp($app): void
     {
-        config()->set('database.default', 'testing');
+        config()->set('opentelemetry.exporter', null);
     }
 }
