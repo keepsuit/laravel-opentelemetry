@@ -17,7 +17,7 @@ use Symfony\Component\HttpFoundation\Response;
  * @method static SpanInterface start(string $name, int $spanKind = SpanKind::KIND_INTERNAL)
  * @method static mixed measure(string $name, \Closure $callback)
  * @method static mixed measureAsync(string $name, \Closure $callback)
- * @method static SpanInterface recordExceptionToSpan(SpanInterface $span, \Exception $exception)
+ * @method static SpanInterface recordExceptionToSpan(SpanInterface $span, \Throwable $exception)
  * @method static SpanInterface recordHttpResponseToSpan(SpanInterface $span, Response $response)
  * @method static SpanInterface recordGrpcExceptionToSpan(SpanInterface $span, GRPCException $exception)
  * @method static SpanInterface recordGrpcSuccessResponseToSpan(SpanInterface $span)

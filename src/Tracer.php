@@ -16,14 +16,18 @@ use OpenTelemetry\API\Trace\StatusCode;
 use OpenTelemetry\API\Trace\TracerInterface;
 use OpenTelemetry\Context\Context;
 use OpenTelemetry\Context\ContextStorageScopeInterface;
+use OpenTelemetry\Context\Propagation\TextMapPropagatorInterface;
 use OpenTelemetry\SDK\Trace\Span;
 use Spiral\RoadRunner\GRPC\Exception\GRPCException;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 class Tracer
 {
-    public function __construct(protected TracerInterface $tracer)
-    {
+    public function __construct(
+        protected TracerInterface $tracer,
+        protected TextMapPropagatorInterface $propagator
+    ) {
     }
 
     /**
@@ -104,7 +108,7 @@ class Tracer
         return $result;
     }
 
-    public function recordExceptionToSpan(SpanInterface $span, Exception $exception): SpanInterface
+    public function recordExceptionToSpan(SpanInterface $span, Throwable $exception): SpanInterface
     {
         return $span->recordException($exception)
             ->setStatus(StatusCode::STATUS_ERROR)

@@ -12,6 +12,7 @@ use OpenTelemetry\API\Common\Signal\Signals;
 use OpenTelemetry\API\Metrics\MeterInterface;
 use OpenTelemetry\API\Trace\Propagation\TraceContextPropagator;
 use OpenTelemetry\API\Trace\TracerInterface;
+use OpenTelemetry\Context\Propagation\TextMapPropagatorInterface;
 use OpenTelemetry\Contrib\Grpc\GrpcTransportFactory;
 use OpenTelemetry\Contrib\Otlp\MetricExporter;
 use OpenTelemetry\Contrib\Otlp\OtlpHttpTransportFactory;
@@ -36,6 +37,7 @@ use OpenTelemetry\SDK\Trace\Sampler\AlwaysOnSampler;
 use OpenTelemetry\SDK\Trace\Sampler\ParentBased;
 use OpenTelemetry\SDK\Trace\SpanExporter\ConsoleSpanExporterFactory;
 use OpenTelemetry\SDK\Trace\SpanExporter\InMemorySpanExporterFactory;
+use OpenTelemetry\SDK\Trace\SpanExporterInterface;
 use OpenTelemetry\SDK\Trace\SpanProcessor\BatchSpanProcessorBuilder;
 use OpenTelemetry\SDK\Trace\TracerProvider;
 use OpenTelemetry\SemConv\ResourceAttributes;
@@ -144,6 +146,8 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 
         $this->app->bind(TracerInterface::class, fn () => $instrumentation->tracer());
         $this->app->bind(MeterInterface::class, fn () => $instrumentation->meter());
+        $this->app->bind(TextMapPropagatorInterface::class, fn () => $propagator);
+        $this->app->bind(SpanExporterInterface::class, fn () => $spanExporter);
 
         $this->app->terminating(function () use ($tracerProvider) {
             $tracerProvider->shutdown();

@@ -26,7 +26,7 @@ class TraceRequest
             }
 
             return $response;
-        } catch (\Exception $exception) {
+        } catch (\Throwable $exception) {
             Tracer::recordExceptionToSpan($span, $exception);
 
             throw $exception;

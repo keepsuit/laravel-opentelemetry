@@ -182,8 +182,6 @@ it('can record exceptions thrown in the callback', function () {
     } catch (Exception) {
     }
 
-    ray($callbackSpan->toSpanData());
-
     expect($callbackSpan->toSpanData())
         ->hasEnded()->toBeTrue()
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_ERROR)
