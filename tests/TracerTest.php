@@ -195,3 +195,36 @@ it('can record exceptions thrown in the callback', function () {
             'exception.message' => 'test exception',
         ]);
 });
+
+it('provides headers for propagation', function () {
+    $span = Tracer::start('test span');
+    $scope = $span->activate();
+
+    expect(Tracer::activeSpanPropagationHeaders())
+        ->toMatchArray([
+            'traceparent' => sprintf('00-%s-%s-01', $span->getContext()->getTraceId(), $span->getContext()->getSpanId()),
+        ]);
+
+    $scope->detach();
+    $span->end();
+});
+
+it('provides traceId and spanId for propagation', function () {
+    $span = Tracer::start('test span');
+    $scope = $span->activate();
+
+    expect(Tracer::traceId())->toBe($span->getContext()->getTraceId());
+
+    $scope->detach();
+    $span->end();
+});
+
+it('provides active span', function () {
+    $span = Tracer::start('test span');
+    $scope = $span->activate();
+
+    expect(Tracer::activeSpan())->toBe($span);
+
+    $scope->detach();
+    $span->end();
+});

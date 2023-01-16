@@ -9,6 +9,7 @@ use OpenTelemetry\API\Trace\SpanBuilderInterface;
 use OpenTelemetry\API\Trace\SpanInterface;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\Context\Context;
+use OpenTelemetry\Context\ScopeInterface;
 use Spiral\RoadRunner\GRPC\Exception\GRPCException;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -16,6 +17,7 @@ use Symfony\Component\HttpFoundation\Response;
  * @method static bool isRecording()
  * @method static string traceId()
  * @method static SpanInterface activeSpan()
+ * @method static ScopeInterface activeScope()
  * @method static array activeSpanPropagationHeaders()
  * @method static SpanBuilderInterface build(string $name)
  * @method static SpanInterface start(string $name, int $spanKind = SpanKind::KIND_INTERNAL)
