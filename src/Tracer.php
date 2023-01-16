@@ -20,6 +20,7 @@ use OpenTelemetry\Context\ContextStorageScopeInterface;
 use OpenTelemetry\Context\Propagation\TextMapPropagatorInterface;
 use OpenTelemetry\SDK\Trace\Span;
 use OpenTelemetry\SDK\Trace\TracerProvider;
+use OpenTelemetry\SDK\Trace\TracerProviderInterface;
 use Spiral\RoadRunner\GRPC\Exception\GRPCException;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
@@ -161,14 +162,6 @@ class Tracer
     public function traceId(): string
     {
         return $this->activeSpan()->getContext()->getTraceId();
-    }
-
-    public function flush(): void
-    {
-        $tracerProvider = Globals::tracerProvider();
-        assert($tracerProvider instanceof TracerProvider);
-
-        $tracerProvider->forceFlush();
     }
 
     public function activeSpanPropagationHeaders(): array

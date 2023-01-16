@@ -149,6 +149,8 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         $this->app->bind(MeterInterface::class, fn () => $instrumentation->meter());
         $this->app->bind(TextMapPropagatorInterface::class, fn () => $propagator);
         $this->app->bind(SpanExporterInterface::class, fn () => $spanExporter);
+
+        $this->app->terminating(fn () => $tracerProvider->forceFlush());
     }
 
     protected function registerWatchers(): void

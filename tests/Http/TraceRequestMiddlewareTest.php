@@ -21,8 +21,6 @@ it('can trace a request', function () {
 
     $traceId = $response->content();
 
-    Tracer::flush();
-
     $spans = getRecordedSpans();
 
     expect($spans)
@@ -50,8 +48,6 @@ it('can record route exception', function () {
     $response = $this->get('test-exception');
 
     $response->assertServerError();
-
-    Tracer::flush();
 
     $spans = getRecordedSpans();
 
