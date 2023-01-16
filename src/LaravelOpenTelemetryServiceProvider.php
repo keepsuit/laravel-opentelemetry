@@ -3,8 +3,10 @@
 namespace Keepsuit\LaravelOpenTelemetry;
 
 use Composer\InstalledVersions;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Env;
 use Illuminate\Support\Str;
+use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Support\CarbonClock;
 use Keepsuit\LaravelOpenTelemetry\Watchers\Watcher;
 use OpenTelemetry\API\Common\Instrumentation\CachedInstrumentation;
@@ -50,6 +52,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
     {
         $this->configureEnvironmentVariables();
         $this->initTracer();
+        $this->registerMacros();
         $this->registerWatchers();
     }
 
@@ -179,6 +182,15 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 
             $watcher->register($this->app);
         }
+    }
+
+    private function registerMacros(): void
+    {
+        PendingRequest::macro('withTrace', function () {
+            ray('withTrace', Tracer::activeSpanPropagationHeaders());
+            /** @var PendingRequest $this */
+            return $this->withHeaders(Tracer::activeSpanPropagationHeaders());
+        });
     }
 
     private function configureEnvironmentVariables(): void
