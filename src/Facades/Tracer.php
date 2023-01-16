@@ -13,6 +13,10 @@ use Spiral\RoadRunner\GRPC\Exception\GRPCException;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
+ * @method static bool isRecording()
+ * @method static string traceId()
+ * @method static SpanInterface activeSpan()
+ * @method static array activeSpanPropagationHeaders()
  * @method static SpanBuilderInterface build(string $name)
  * @method static SpanInterface start(string $name, int $spanKind = SpanKind::KIND_INTERNAL)
  * @method static mixed measure(string $name, \Closure $callback)
@@ -21,9 +25,6 @@ use Symfony\Component\HttpFoundation\Response;
  * @method static SpanInterface recordHttpResponseToSpan(SpanInterface $span, Response $response)
  * @method static SpanInterface recordGrpcExceptionToSpan(SpanInterface $span, GRPCException $exception)
  * @method static SpanInterface recordGrpcSuccessResponseToSpan(SpanInterface $span)
- * @method static SpanInterface activeSpan()
- * @method static string traceId()
- * @method static array activeSpanPropagationHeaders()
  * @method static SpanInterface initFromHttpRequest(Request $request)
  * @method static SpanInterface initFromGrpcRequest(GrpcRequest $request)
  * @method static Context|null extractContextFromHttpRequest(Request $request)

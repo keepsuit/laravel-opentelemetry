@@ -69,3 +69,23 @@ it('can record route exception', function () {
             'http.status_code' => 500,
         ]);
 });
+
+it('continue trace', function () {
+    $response = $this->get('test-ok', [
+        'traceparent' => '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01',
+    ]);
+
+    $response->assertOk();
+
+    $spans = getRecordedSpans();
+
+    expect($spans)
+        ->toHaveCount(1);
+
+    expect($spans[0])
+        ->getName()->toBe('/test-ok')
+        ->getKind()->toBe(SpanKind::KIND_SERVER)
+        ->getStatus()->getCode()->toBe(StatusCode::STATUS_OK)
+        ->getTraceId()->toBe('0af7651916cd43dd8448eb211c80319c')
+        ->getParentSpanId()->toBe('b7ad6b7169203331');
+});
