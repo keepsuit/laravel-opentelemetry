@@ -162,10 +162,6 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
             return;
         }
 
-        if (config('opentelemetry.exporter') === null) {
-            return;
-        }
-
         foreach (config('opentelemetry.watchers') as $key => $options) {
             if ($options === false) {
                 continue;

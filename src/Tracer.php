@@ -15,7 +15,6 @@ use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
 use OpenTelemetry\API\Trace\TracerInterface;
 use OpenTelemetry\Context\Context;
-use OpenTelemetry\Context\ContextStorageScopeInterface;
 use OpenTelemetry\Context\Propagation\TextMapPropagatorInterface;
 use OpenTelemetry\Context\ScopeInterface;
 use OpenTelemetry\SDK\Trace\Span;

@@ -26,6 +26,8 @@ class TestCase extends Orchestra
 
     public function getEnvironmentSetUp($app): void
     {
+        config()->set('database.default', 'sqlite');
+        config()->set('database.connections.sqlite.database', ':memory:');
         config()->set('opentelemetry.exporter', null);
     }
 }
