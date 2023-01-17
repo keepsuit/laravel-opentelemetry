@@ -183,7 +183,6 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
     private function registerMacros(): void
     {
         PendingRequest::macro('withTrace', function () {
-            ray('withTrace', Tracer::activeSpanPropagationHeaders());
             /** @var PendingRequest $this */
             return $this->withHeaders(Tracer::activeSpanPropagationHeaders());
         });

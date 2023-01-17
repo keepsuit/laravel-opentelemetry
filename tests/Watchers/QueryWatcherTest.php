@@ -6,20 +6,23 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\SDK\Common\Time\ClockFactory;
+use OpenTelemetry\SDK\Trace\ImmutableSpan;
 
-it('can watch a query', function () {
+beforeEach(function () {
     Schema::create('users', function (Blueprint $table) {
         $table->id();
         $table->string('name');
+        $table->boolean('admin')->default(false);
     });
+});
 
-    DB::table('users')
-        ->get();
+it('can watch a query', function () {
+    DB::table('users')->get();
 
     flushSpans();
 
     $span = Arr::last(getRecordedSpans());
-    assert($span instanceof \OpenTelemetry\SDK\Trace\ImmutableSpan);
+    assert($span instanceof ImmutableSpan);
 
     expect($span)
         ->getName()->toBe('sqlite :memory:')
@@ -34,4 +37,52 @@ it('can watch a query', function () {
 
     expect($span->getEndEpochNanos() - $span->getStartEpochNanos())
         ->toBeGreaterThan(0);
+});
+
+it('can watch a query with bindings', function () {
+    DB::table('users')
+        ->where('id', 1)
+        ->where('name', 'like', 'John%')
+        ->get();
+
+    flushSpans();
+
+    $span = Arr::last(getRecordedSpans());
+    assert($span instanceof ImmutableSpan);
+
+    expect($span)
+        ->getName()->toBe('sqlite :memory:')
+        ->getKind()->toBe(SpanKind::KIND_CLIENT)
+        ->getAttributes()->toArray()->toMatchArray([
+            'db.system' => 'sqlite',
+            'db.name' => ':memory:',
+            'db.statement' => 'select * from "users" where "id" = 1 and "name" like \'John%\'',
+        ]);
+});
+
+it('can watch a query with named bindings', function () {
+    DB::table('users')->insert([
+        'name' => 'John Doe',
+        'admin' => true,
+    ]);
+
+    DB::statement(<<<'SQL'
+    update "users" set "name" = :name where admin = true
+    SQL, [
+        'name' => 'Admin',
+    ]);
+
+    flushSpans();
+
+    $span = Arr::last(getRecordedSpans());
+    assert($span instanceof ImmutableSpan);
+
+    expect($span)
+        ->getName()->toBe('sqlite :memory:')
+        ->getKind()->toBe(SpanKind::KIND_CLIENT)
+        ->getAttributes()->toArray()->toMatchArray([
+            'db.system' => 'sqlite',
+            'db.name' => ':memory:',
+            'db.statement' => 'update "users" set "name" = \'Admin\' where admin = true',
+        ]);
 });
