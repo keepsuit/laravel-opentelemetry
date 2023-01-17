@@ -15,6 +15,7 @@ use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
 use OpenTelemetry\API\Trace\TracerInterface;
 use OpenTelemetry\Context\Context;
+use OpenTelemetry\Context\ContextInterface;
 use OpenTelemetry\Context\Propagation\TextMapPropagatorInterface;
 use OpenTelemetry\Context\ScopeInterface;
 use OpenTelemetry\SDK\Trace\Span;
@@ -168,6 +169,11 @@ class Tracer
         $this->propagator->inject($headers);
 
         return $headers;
+    }
+
+    public function extractContextFromPropagationHeaders(array $headers): ContextInterface
+    {
+        return $this->propagator->extract($headers);
     }
 
     public function initFromHttpRequest(Request $request): SpanInterface

@@ -31,7 +31,7 @@ use Symfony\Component\HttpFoundation\Response;
  * @method static SpanInterface initFromGrpcRequest(GrpcRequest $request)
  * @method static Context|null extractContextFromHttpRequest(Request $request)
  * @method static Context|null extractContextFromGrpcRequest(GrpcRequest $request)
- * @method static Context|null extractContextFromB3Headers(array $headers)
+ * @method static Context|null extractContextFromPropagationHeaders(array $headers)
  * @method static SpanInterface startGrpcClientTracing(string $grpcFullName)
  */
 class Tracer extends Facade

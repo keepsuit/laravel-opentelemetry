@@ -8,8 +8,6 @@ use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Queue\QueueManager;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use OpenTelemetry\API\Trace\SpanKind;
-use OpenTelemetry\Context\ContextInterface;
-use OpenTelemetry\Context\Propagation\TextMapPropagatorInterface;
 
 class QueueWatcher extends Watcher
 {
@@ -32,8 +30,7 @@ class QueueWatcher extends Watcher
     protected function recordJobStart(): void
     {
         app('events')->listen(JobProcessing::class, function (JobProcessing $event) {
-            /** @var ContextInterface $context */
-            $context = app(TextMapPropagatorInterface::class)->extract($event->job->payload());
+            $context = Tracer::extractContextFromPropagationHeaders($event->job->payload());
 
             $span = Tracer::build($event->job->resolveName())
                 ->setSpanKind(SpanKind::KIND_CONSUMER)
