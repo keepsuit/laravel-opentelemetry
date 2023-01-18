@@ -185,7 +185,6 @@ it('can record exceptions thrown in the callback', function () {
     expect($callbackSpan->toSpanData())
         ->hasEnded()->toBeTrue()
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_ERROR)
-        ->getAttributes()->get('error')->toBeTrue()
         ->getEvents()->toHaveCount(1);
 
     expect($callbackSpan->toSpanData()->getEvents()[0])
@@ -200,7 +199,7 @@ it('provides headers for propagation', function () {
     $span = Tracer::start('test span');
     $scope = $span->activate();
 
-    expect(Tracer::activeSpanPropagationHeaders())
+    expect(Tracer::propagationHeaders())
         ->toMatchArray([
             'traceparent' => sprintf('00-%s-%s-01', $span->getContext()->getTraceId(), $span->getContext()->getSpanId()),
         ]);

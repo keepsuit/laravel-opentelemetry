@@ -12,7 +12,7 @@ it('injects propagation headers to Http client request', function () {
     $traceParent = Tracer::measure('parent', function () {
         Http::withTrace()->post('https://example.com/test');
 
-        return Tracer::activeSpanPropagationHeaders()['traceparent'];
+        return Tracer::propagationHeaders()['traceparent'];
     });
 
     Http::assertSent(function (Request $request) use ($traceParent) {

@@ -57,6 +57,6 @@ class QueueWatcher extends Watcher
 
     protected function registerQueueInterceptor(QueueManager $queue): void
     {
-        $queue->createPayloadUsing(fn () => Tracer::activeSpanPropagationHeaders());
+        $queue->createPayloadUsing(fn () => Tracer::propagationHeaders());
     }
 }

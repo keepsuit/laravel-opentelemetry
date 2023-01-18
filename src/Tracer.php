@@ -5,10 +5,7 @@ namespace Keepsuit\LaravelOpenTelemetry;
 use Closure;
 use Exception;
 use Illuminate\Foundation\Bus\PendingDispatch;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Route;
-use Keepsuit\LaravelGrpc\GrpcRequest;
 use OpenTelemetry\API\Trace\SpanBuilderInterface;
 use OpenTelemetry\API\Trace\SpanInterface;
 use OpenTelemetry\API\Trace\SpanKind;
@@ -19,8 +16,6 @@ use OpenTelemetry\Context\ContextInterface;
 use OpenTelemetry\Context\Propagation\TextMapPropagatorInterface;
 use OpenTelemetry\Context\ScopeInterface;
 use OpenTelemetry\SDK\Trace\Span;
-use Spiral\RoadRunner\GRPC\Exception\GRPCException;
-use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
 class Tracer
@@ -112,39 +107,7 @@ class Tracer
     public function recordExceptionToSpan(SpanInterface $span, Throwable $exception): SpanInterface
     {
         return $span->recordException($exception)
-            ->setStatus(StatusCode::STATUS_ERROR)
-            ->setAttribute('error', true);
-    }
-
-    public function recordHttpResponseToSpan(SpanInterface $span, Response $response): SpanInterface
-    {
-        $span->setAttribute('http.status_code', $response->getStatusCode())
-            ->setAttribute('http.response_content_length', strlen($response->getContent()));
-
-        if ($response->isSuccessful()) {
-            $span->setStatus(StatusCode::STATUS_OK);
-        }
-
-        if ($response->isServerError() || $response->isClientError()) {
-            $span->setStatus(StatusCode::STATUS_ERROR);
-            $span->setAttribute('error', true);
-        }
-
-        return $span;
-    }
-
-    public function recordGrpcExceptionToSpan(SpanInterface $span, GRPCException $exception): SpanInterface
-    {
-        return $span->recordException($exception)
-            ->setAttribute('rpc.grpc.status_code', $exception->getCode())
-            ->setStatus(StatusCode::STATUS_ERROR)
-            ->setAttribute('error', true);
-    }
-
-    public function recordGrpcSuccessResponseToSpan(SpanInterface $span): SpanInterface
-    {
-        return $span->setAttribute('rpc.grpc.status_code', \Spiral\RoadRunner\GRPC\StatusCode::OK)
-            ->setStatus(StatusCode::STATUS_OK);
+            ->setStatus(StatusCode::STATUS_ERROR);
     }
 
     public function activeScope(): ?ScopeInterface
@@ -162,7 +125,7 @@ class Tracer
         return $this->activeSpan()->getContext()->getTraceId();
     }
 
-    public function activeSpanPropagationHeaders(): array
+    public function propagationHeaders(): array
     {
         $headers = [];
 
@@ -176,54 +139,9 @@ class Tracer
         return $this->propagator->extract($headers);
     }
 
-    public function initFromHttpRequest(Request $request): SpanInterface
+    public function setRootSpan(SpanInterface $span): void
     {
-        $context = $this->propagator->extract($request->headers->all());
-
-        /** @var non-empty-string $route */
-        $route = rescue(fn () => Route::getRoutes()->match($request)->uri(), $request->path(), false);
-        $route = str_starts_with($route, '/') ? $route : '/'.$route;
-
-        $span = $this->build(name: $route)
-            ->setSpanKind(SpanKind::KIND_SERVER)
-            ->setParent($context)
-            ->startSpan();
-
         $this->setTraceIdForLogs($span);
-
-        $span->setAttribute('http.method', $request->method())
-            ->setAttribute('http.url', $request->getUri())
-            ->setAttribute('http.target', $request->getRequestUri())
-            ->setAttribute('http.route', $route)
-            ->setAttribute('http.host', $request->getHttpHost())
-            ->setAttribute('http.scheme', $request->getScheme())
-            ->setAttribute('http.user_agent', $request->userAgent())
-            ->setAttribute('http.request_content_length', $request->header('Content-Length'));
-
-        return $span;
-    }
-
-    public function initFromGrpcRequest(GrpcRequest $request): SpanInterface
-    {
-        $context = $this->propagator->extract($request->context->getValues());
-
-        $traceName = sprintf('%s/%s', $request->getServiceName() ?? 'Unknown', $request->getMethodName());
-
-        $span = $this->build(name: $traceName)
-            ->setSpanKind(SpanKind::KIND_SERVER)
-            ->setParent($context)
-            ->startSpan();
-
-        $this->setTraceIdForLogs($span);
-
-        $span->setAttribute('rpc.system', 'grpc')
-            ->setAttribute('rpc.service', $request->getServiceName())
-            ->setAttribute('rpc.method', $request->getMethodName())
-            ->setAttribute('grpc.service', $request->getServiceName())
-            ->setAttribute('grpc.method', $request->method->getName())
-            ->setAttribute('net.peer.name', $request->context->getValue(':authority'));
-
-        return $span;
     }
 
     public function isRecording(): bool

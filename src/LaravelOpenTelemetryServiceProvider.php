@@ -184,7 +184,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
     {
         PendingRequest::macro('withTrace', function () {
             /** @var PendingRequest $this */
-            return $this->withHeaders(Tracer::activeSpanPropagationHeaders());
+            return $this->withHeaders(Tracer::propagationHeaders());
         });
     }
 
