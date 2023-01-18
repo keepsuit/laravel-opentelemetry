@@ -176,6 +176,21 @@ class Tracer
             ->startSpan();
     }
 
+    /**
+     * @phpstan-param  non-empty-string $method GET, POST, PUT, DELETE, etc.
+     * @phpstan-param  non-empty-string $url
+     */
+    public function startHttpClientTracing(string $method, string $url): SpanInterface
+    {
+        $method = strtoupper($method);
+
+        return $this->build(sprintf('HTTP %s', $method))
+            ->setSpanKind(SpanKind::KIND_CLIENT)
+            ->setAttribute('http.method', $method)
+            ->setAttribute('http.url', $url)
+            ->startSpan();
+    }
+
     protected function setTraceIdForLogs(SpanInterface $span): void
     {
         if (config('opentelemetry.logs.inject_trace_id', true)) {

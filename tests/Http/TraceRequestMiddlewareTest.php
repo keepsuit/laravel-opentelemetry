@@ -9,6 +9,7 @@ use OpenTelemetry\API\Trace\StatusCode;
 beforeEach(function () {
     Route::any('test-ok', fn () => Tracer::traceId())->middleware(TraceRequest::class);
     Route::any('test-exception', fn () => throw new Exception('test exception'))->middleware(TraceRequest::class);
+    Route::any('test/{parameter}', fn () => Tracer::traceId())->middleware(TraceRequest::class);
 });
 
 it('can trace a request', function () {
@@ -67,6 +68,28 @@ it('can record route exception', function () {
             'http.scheme' => 'http',
             'http.user_agent' => 'Symfony',
             'http.status_code' => 500,
+        ]);
+});
+
+it('set generic span name when route has parameters', function () {
+    $response = $this->get('test/user1');
+
+    $response->assertOk();
+
+    expect($response->content())
+        ->not->toBeEmpty();
+
+    $spans = getRecordedSpans();
+
+    expect($spans[0])
+        ->getName()->toBe('/test/{parameter}')
+        ->getKind()->toBe(SpanKind::KIND_SERVER)
+        ->getStatus()->getCode()->toBe(StatusCode::STATUS_OK)
+        ->getAttributes()->toMatchArray([
+            'http.method' => 'GET',
+            'http.url' => 'http://localhost/test/user1',
+            'http.target' => '/test/user1',
+            'http.route' => '/test/{parameter}',
         ]);
 });
 

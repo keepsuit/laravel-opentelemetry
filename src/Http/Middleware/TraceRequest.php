@@ -62,6 +62,7 @@ class TraceRequest
             ->setAttribute('http.host', $request->getHttpHost())
             ->setAttribute('http.scheme', $request->getScheme())
             ->setAttribute('http.user_agent', $request->userAgent())
+            ->setAttribute('http.client_ip', $request->ip())
             ->setAttribute('http.request_content_length', $request->header('Content-Length'));
 
         return $span;
