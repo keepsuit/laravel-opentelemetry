@@ -159,23 +159,6 @@ class Tracer
         return false;
     }
 
-    /**
-     * @phpstan-param  non-empty-string $grpcFullName Format <package>.<serviceName>/<methodName>
-     */
-    public function startGrpcClientTracing(string $grpcFullName): SpanInterface
-    {
-        [$serviceName, $methodName] = explode('/', $grpcFullName, 2);
-
-        return $this->build($grpcFullName)
-            ->setSpanKind(SpanKind::KIND_CLIENT)
-            ->setAttribute('rpc.system', 'grpc')
-            ->setAttribute('rpc.service', $serviceName)
-            ->setAttribute('rpc.method', $methodName)
-            ->setAttribute('grpc.service', $serviceName)
-            ->setAttribute('grpc.method', $methodName)
-            ->startSpan();
-    }
-
     protected function setTraceIdForLogs(SpanInterface $span): void
     {
         if (config('opentelemetry.logs.inject_trace_id', true)) {

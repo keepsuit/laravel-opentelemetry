@@ -21,7 +21,6 @@ use OpenTelemetry\Context\ScopeInterface;
  * @method static mixed measureAsync(string $name, \Closure $callback)
  * @method static SpanInterface recordExceptionToSpan(SpanInterface $span, \Throwable $exception)
  * @method static Context|null extractContextFromPropagationHeaders(array $headers)
- * @method static SpanInterface startGrpcClientTracing(string $grpcFullName)
  * @method static void setRootSpan(SpanInterface $span)
  */
 class Tracer extends Facade
