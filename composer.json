@@ -31,7 +31,6 @@
         "laravel/pint": "^1.2",
         "nunomaduro/collision": "^6.0",
         "nunomaduro/larastan": "^2.0",
-        "nuwave/lighthouse": "^5.38",
         "open-telemetry/extension-propagator-b3": "^1.0.0",
         "orchestra/testbench": "^7.0",
         "pestphp/pest": "^1.22.3",

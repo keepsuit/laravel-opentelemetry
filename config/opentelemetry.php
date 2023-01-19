@@ -45,8 +45,6 @@ return [
         Watchers\RedisWatcher::class => env('OT_WATCHER_REDIS', true),
 
         Watchers\QueueWatcher::class => env('OT_WATCHER_QUEUE', true),
-
-        Watchers\LighthouseWatcher::class => env('OT_WATCHER_LIGHTHOUSE', true),
     ],
 
     /**
