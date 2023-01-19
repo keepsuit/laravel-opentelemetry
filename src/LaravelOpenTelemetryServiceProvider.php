@@ -6,7 +6,7 @@ use Composer\InstalledVersions;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Env;
 use Illuminate\Support\Str;
-use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
+use Keepsuit\LaravelOpenTelemetry\Http\Client\GuzzleTraceMiddleware;
 use Keepsuit\LaravelOpenTelemetry\Support\CarbonClock;
 use Keepsuit\LaravelOpenTelemetry\Watchers\Watcher;
 use OpenTelemetry\API\Common\Instrumentation\CachedInstrumentation;
@@ -184,7 +184,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
     {
         PendingRequest::macro('withTrace', function () {
             /** @var PendingRequest $this */
-            return $this->withHeaders(Tracer::propagationHeaders());
+            return $this->withMiddleware(GuzzleTraceMiddleware::make());
         });
     }
 

@@ -26,6 +26,7 @@
     "require-dev": {
         "grpc/grpc": "^1.42",
         "guzzlehttp/guzzle": "^7.3",
+        "guzzlehttp/test-server": "^0.1.0",
         "keepsuit/laravel-grpc": "^0.2.0",
         "laravel/pint": "^1.2",
         "nunomaduro/collision": "^6.0",
