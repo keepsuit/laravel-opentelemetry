@@ -37,7 +37,7 @@ php artisan vendor:publish --provider="Keepsuit\LaravelOpentelemetry\LaravelOpen
 This is the contents of the published config file:
 
 ```php
-use Keepsuit\LaravelOpenTelemetry\Watchers;
+use Keepsuit\LaravelOpenTelemetry\Instrumentation;
 
 return [
     /**
@@ -77,11 +77,11 @@ return [
      * List of watcher used for application tracing
      */
     'watchers' => [
-        Watchers\QueryWatcher::class => env('OT_WATCHER_QUERY', true),
+        Instrumentation\QueryInstrumentation::class => env('OT_WATCHER_QUERY', true),
 
-        Watchers\RedisWatcher::class => env('OT_WATCHER_REDIS', true),
+        Instrumentation\RedisInstrumentation::class => env('OT_WATCHER_REDIS', true),
 
-        Watchers\QueueWatcher::class => env('OT_WATCHER_QUEUE', true),
+        Instrumentation\QueueInstrumentation::class => env('OT_WATCHER_QUEUE', true),
     ],
 
     /**

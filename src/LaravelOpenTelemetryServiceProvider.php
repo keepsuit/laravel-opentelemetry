@@ -7,8 +7,8 @@ use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Env;
 use Illuminate\Support\Str;
 use Keepsuit\LaravelOpenTelemetry\Http\Client\GuzzleTraceMiddleware;
+use Keepsuit\LaravelOpenTelemetry\Instrumentation\Instrumentation;
 use Keepsuit\LaravelOpenTelemetry\Support\CarbonClock;
-use Keepsuit\LaravelOpenTelemetry\Watchers\Watcher;
 use OpenTelemetry\API\Common\Instrumentation\CachedInstrumentation;
 use OpenTelemetry\API\Common\Signal\Signals;
 use OpenTelemetry\API\Trace\Propagation\TraceContextPropagator;
@@ -48,7 +48,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         $this->configureEnvironmentVariables();
         $this->initTracer();
         $this->registerMacros();
-        $this->registerWatchers();
+        $this->registerInstrumentation();
     }
 
     public function configurePackage(Package $package): void
@@ -128,13 +128,13 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         $this->app->terminating(fn () => $tracerProvider->forceFlush());
     }
 
-    protected function registerWatchers(): void
+    protected function registerInstrumentation(): void
     {
         if (config('opentelemetry.enabled') === false) {
             return;
         }
 
-        foreach (config('opentelemetry.watchers') as $key => $options) {
+        foreach (config('opentelemetry.instrumentation') as $key => $options) {
             if ($options === false) {
                 continue;
             }
@@ -143,12 +143,11 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
                 continue;
             }
 
-            /** @var Watcher $watcher */
-            $watcher = $this->app->make($key, [
-                'options' => is_array($options) ? $options : [],
-            ]);
+            $watcher = $this->app->make($key);
 
-            $watcher->register($this->app);
+            if ($watcher instanceof Instrumentation) {
+                $watcher->register(is_array($options) ? $options : []);
+            }
         }
     }
 

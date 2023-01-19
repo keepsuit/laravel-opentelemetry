@@ -1,19 +1,19 @@
 <?php
 
-namespace Keepsuit\LaravelOpenTelemetry\Watchers;
+namespace Keepsuit\LaravelOpenTelemetry\Instrumentation;
 
-use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Support\Facades\Event;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use OpenTelemetry\API\Trace\SpanKind;
 
-class QueryWatcher extends Watcher
+class QueryInstrumentation implements Instrumentation
 {
     use SpanTimeAdapter;
 
-    public function register(Application $app): void
+    public function register(array $options): void
     {
-        $app['events']->listen(QueryExecuted::class, [$this, 'recordQuery']);
+        Event::listen(QueryExecuted::class, [$this, 'recordQuery']);
     }
 
     public function recordQuery(QueryExecuted $event): void

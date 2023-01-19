@@ -1,6 +1,6 @@
 <?php
 
-use Keepsuit\LaravelOpenTelemetry\Watchers;
+use Keepsuit\LaravelOpenTelemetry\Instrumentation;
 
 return [
     /**
@@ -32,19 +32,14 @@ return [
     'excluded_paths' => [],
 
     /**
-     * Grpc services not to trace
+     * List of instrumentation used for application tracing
      */
-    'excluded_services' => [],
+    'instrumentation' => [
+        Instrumentation\QueryInstrumentation::class => env('OT_INSTRUMENTATION_QUERY', true),
 
-    /**
-     * List of watcher used for application tracing
-     */
-    'watchers' => [
-        Watchers\QueryWatcher::class => env('OT_WATCHER_QUERY', true),
+        Instrumentation\RedisInstrumentation::class => env('OT_INSTRUMENTATION_REDIS', true),
 
-        Watchers\RedisWatcher::class => env('OT_WATCHER_REDIS', true),
-
-        Watchers\QueueWatcher::class => env('OT_WATCHER_QUEUE', true),
+        Instrumentation\QueueInstrumentation::class => env('OT_INSTRUMENTATION_QUEUE', true),
     ],
 
     /**

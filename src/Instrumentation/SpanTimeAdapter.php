@@ -1,6 +1,6 @@
 <?php
 
-namespace Keepsuit\LaravelOpenTelemetry\Watchers;
+namespace Keepsuit\LaravelOpenTelemetry\Instrumentation;
 
 use OpenTelemetry\SDK\Common\Time\ClockFactory;
 use OpenTelemetry\SDK\Common\Time\ClockInterface;

@@ -1,26 +1,25 @@
 <?php
 
-namespace Keepsuit\LaravelOpenTelemetry\Watchers;
+namespace Keepsuit\LaravelOpenTelemetry\Instrumentation;
 
-use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Queue\QueueManager;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use OpenTelemetry\API\Trace\SpanKind;
 
-class QueueWatcher extends Watcher
+class QueueInstrumentation implements Instrumentation
 {
     use SpanTimeAdapter;
 
     protected array $startedSpans = [];
 
-    public function register(Application $app): void
+    public function register(array $options): void
     {
-        if ($app->resolved('queue')) {
-            $this->registerQueueInterceptor($app['queue']);
+        if (app()->resolved('queue')) {
+            $this->registerQueueInterceptor(app('queue'));
         } else {
-            $app->afterResolving('queue', fn ($queue) => $this->registerQueueInterceptor($queue));
+            app()->afterResolving('queue', fn ($queue) => $this->registerQueueInterceptor($queue));
         }
 
         $this->recordJobStart();
