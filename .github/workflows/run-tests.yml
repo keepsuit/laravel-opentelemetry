@@ -9,6 +9,14 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+
+    services:
+      redis:
+        image: redis:5.0
+        ports:
+          - 6379:6379
+        options: --entrypoint redis-server
+
     strategy:
       fail-fast: true
       matrix:
@@ -31,7 +39,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
-          extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, bcmath, soap, intl, gd, exif, iconv, imagick, fileinfo
+          extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, bcmath, soap, intl, gd, exif, iconv, imagick, fileinfo, redis
           coverage: none
 
       - name: Setup problem matchers
