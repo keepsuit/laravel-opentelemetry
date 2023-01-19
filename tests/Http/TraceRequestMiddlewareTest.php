@@ -2,14 +2,14 @@
 
 use Illuminate\Support\Facades\Route;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
-use Keepsuit\LaravelOpenTelemetry\Http\Middleware\TraceRequest;
+use Keepsuit\LaravelOpenTelemetry\Http\Server\TraceRequestMiddleware;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
 
 beforeEach(function () {
-    Route::any('test-ok', fn () => Tracer::traceId())->middleware(TraceRequest::class);
-    Route::any('test-exception', fn () => throw new Exception('test exception'))->middleware(TraceRequest::class);
-    Route::any('test/{parameter}', fn () => Tracer::traceId())->middleware(TraceRequest::class);
+    Route::any('test-ok', fn () => Tracer::traceId())->middleware(TraceRequestMiddleware::class);
+    Route::any('test-exception', fn () => throw new Exception('test exception'))->middleware(TraceRequestMiddleware::class);
+    Route::any('test/{parameter}', fn () => Tracer::traceId())->middleware(TraceRequestMiddleware::class);
 });
 
 it('can trace a request', function () {

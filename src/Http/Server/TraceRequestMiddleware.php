@@ -1,6 +1,6 @@
 <?php
 
-namespace Keepsuit\LaravelOpenTelemetry\Http\Middleware;
+namespace Keepsuit\LaravelOpenTelemetry\Http\Server;
 
 use Closure;
 use Illuminate\Http\Request;
@@ -11,7 +11,7 @@ use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
 use Symfony\Component\HttpFoundation\Response;
 
-class TraceRequest
+class TraceRequestMiddleware
 {
     public function handle(Request $request, Closure $next): mixed
     {
