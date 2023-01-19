@@ -1,11 +1,12 @@
 <?php
 
-namespace Keepsuit\LaravelOpenTelemetry\Http\Server;
+namespace Keepsuit\LaravelOpenTelemetry\Support\HttpServer;
 
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
+use Keepsuit\LaravelOpenTelemetry\Instrumentation\HttpServerInstrumentation;
 use OpenTelemetry\API\Trace\SpanInterface;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
@@ -15,7 +16,7 @@ class TraceRequestMiddleware
 {
     public function handle(Request $request, Closure $next): mixed
     {
-        if ($request->is(config('opentelemetry.excluded_paths', []))) {
+        if ($request->is(HttpServerInstrumentation::getExcludedPaths())) {
             return $next($request);
         }
 

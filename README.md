@@ -64,24 +64,21 @@ return [
     'propagator' => env('OT_PROPAGATOR', 'tracecontext'),
 
     /**
-     * Http paths not to trace
+     * List of instrumentation used for application tracing
      */
-    'excluded_paths' => [],
+    'instrumentation' => [
+        Instrumentation\HttpServerInstrumentation::class => [
+            'enabled' => env('OT_INSTRUMENTATION_HTTP_SERVER', true),
+            'excluded_paths' => [],
+        ],
 
-    /**
-     * Grpc services not to trace
-     */
-    'excluded_services' => [],
+        Instrumentation\HttpClientInstrumentation::class => env('OT_INSTRUMENTATION_HTTP_CLIENT', true),
+        
+        Instrumentation\QueryInstrumentation::class => env('OT_INSTRUMENTATION_QUERY', true),
 
-    /**
-     * List of watcher used for application tracing
-     */
-    'watchers' => [
-        Instrumentation\QueryInstrumentation::class => env('OT_WATCHER_QUERY', true),
+        Instrumentation\RedisInstrumentation::class => env('OT_INSTRUMENTATION_REDIS', true),
 
-        Instrumentation\RedisInstrumentation::class => env('OT_WATCHER_REDIS', true),
-
-        Instrumentation\QueueInstrumentation::class => env('OT_WATCHER_QUEUE', true),
+        Instrumentation\QueueInstrumentation::class => env('OT_INSTRUMENTATION_QUEUE', true),
     ],
 
     /**
@@ -119,16 +116,12 @@ return [
 
 ### Http server requests
 
-To trace http requests add the `\Keepsuit\LaravelOpenTelemetry\Http\Server\TraceRequestMiddleware::class` middleware.
-You can add it to the global middleware stack in `app/Http/Kernel.php` or only to specific routes.
-It is recommended to set it as the first middleware in the stack.
+Http server requests are automatically traced by injecting `\Keepsuit\LaravelOpenTelemetry\Support\HttpServer\TraceRequestMiddleware::class` to the global middlewares.
+You can disable it by setting `OT_INSTRUMENTATION_HTTP_SERVER` to `false` or removing the `HttpServerInstrumentation::class` from the config file.
 
-```php
-protected $middleware = [
-    \Keepsuit\LaravelOpenTelemetry\Http\Server\TraceRequestMiddleware::class,
-    // ...
-];
-```
+Configuration options:
+
+- `excluded_paths`: list of paths to exclude from tracing
 
 ### Http client
 
@@ -141,24 +134,24 @@ Http::withTrace()->get('https://example.com');
 ### Database
 
 Database queries are automatically traced.
-You can disable it by setting `OT_WATCHER_QUERY` to `false` or removing the `QueryWatcher::class` from the config file.
+You can disable it by setting `OT_INSTRUMENTATION_QUERY` to `false` or removing the `QueryInstrumentation::class` from the config file.
 
 ### Redis
 
 Redis commands are automatically traced.
-You can disable it by setting `OT_WATCHER_REDIS` to `false` or removing the `RedisWatcher::class` from the config file.
+You can disable it by setting `OT_INSTRUMENTATION_REDIS` to `false` or removing the `RedisInstrumentation::class` from the config file.
 
 ### Queue jobs
 
 Queue jobs are automatically traced.
-You can disable it by setting `OT_WATCHER_QUEUE` to `false` or removing the `QueueWatcher::class` from the config file.
+You can disable it by setting `OT_INSTRUMENTATION_QUEUE` to `false` or removing the `QueueInstrumentation::class` from the config file.
 
 ### Logs context
 
 When starting a trace with provided instrumentation, the trace id is automatically injected in the log context.
 This allows to correlate logs with traces.
 
-If you are starting the root trace manually, 
+If you are starting the root trace manually,
 you should call `Tracer::setRootSpan($span)` to inject the trace id in the log context.
 
 ### Manual traces
@@ -211,7 +204,6 @@ Tracer::activeScope(); // get the active scope
 Tracer::traceId(); // get the active trace id
 Tracer::propagationHeaders(); // get the propagation headers required to propagate the trace to other services
 ```
-
 
 ## Testing
 

@@ -27,14 +27,16 @@ return [
     'propagator' => env('OT_PROPAGATOR', 'tracecontext'),
 
     /**
-     * Http paths not to trace
-     */
-    'excluded_paths' => [],
-
-    /**
      * List of instrumentation used for application tracing
      */
     'instrumentation' => [
+        Instrumentation\HttpServerInstrumentation::class => [
+            'enabled' => env('OT_INSTRUMENTATION_HTTP_SERVER', true),
+            'excluded_paths' => [],
+        ],
+
+        Instrumentation\HttpClientInstrumentation::class => env('OT_INSTRUMENTATION_HTTP_CLIENT', true),
+
         Instrumentation\QueryInstrumentation::class => env('OT_INSTRUMENTATION_QUERY', true),
 
         Instrumentation\RedisInstrumentation::class => env('OT_INSTRUMENTATION_REDIS', true),

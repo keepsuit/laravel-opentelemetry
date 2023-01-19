@@ -3,10 +3,8 @@
 namespace Keepsuit\LaravelOpenTelemetry;
 
 use Composer\InstalledVersions;
-use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Env;
 use Illuminate\Support\Str;
-use Keepsuit\LaravelOpenTelemetry\Http\Client\GuzzleTraceMiddleware;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\Instrumentation;
 use Keepsuit\LaravelOpenTelemetry\Support\CarbonClock;
 use OpenTelemetry\API\Common\Instrumentation\CachedInstrumentation;
@@ -47,7 +45,6 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
     {
         $this->configureEnvironmentVariables();
         $this->initTracer();
-        $this->registerMacros();
         $this->registerInstrumentation();
     }
 
@@ -149,14 +146,6 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
                 $watcher->register(is_array($options) ? $options : []);
             }
         }
-    }
-
-    private function registerMacros(): void
-    {
-        PendingRequest::macro('withTrace', function () {
-            /** @var PendingRequest $this */
-            return $this->withMiddleware(GuzzleTraceMiddleware::make());
-        });
     }
 
     private function configureEnvironmentVariables(): void

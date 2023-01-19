@@ -2,14 +2,14 @@
 
 use Illuminate\Support\Facades\Route;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
-use Keepsuit\LaravelOpenTelemetry\Http\Server\TraceRequestMiddleware;
+use Keepsuit\LaravelOpenTelemetry\Instrumentation\HttpServerInstrumentation;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
 
 beforeEach(function () {
-    Route::any('test-ok', fn () => Tracer::traceId())->middleware(TraceRequestMiddleware::class);
-    Route::any('test-exception', fn () => throw new Exception('test exception'))->middleware(TraceRequestMiddleware::class);
-    Route::any('test/{parameter}', fn () => Tracer::traceId())->middleware(TraceRequestMiddleware::class);
+    Route::any('test-ok', fn () => Tracer::traceId());
+    Route::any('test-exception', fn () => throw new Exception('test exception'));
+    Route::any('test/{parameter}', fn () => Tracer::traceId());
 });
 
 it('can trace a request', function () {
@@ -111,4 +111,21 @@ it('continue trace', function () {
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_OK)
         ->getTraceId()->toBe('0af7651916cd43dd8448eb211c80319c')
         ->getParentSpanId()->toBe('b7ad6b7169203331');
+});
+
+it('skip tracing for excluded paths', function () {
+    app()->make(HttpServerInstrumentation::class)->register([
+        'excluded_paths' => [
+            'test-ok',
+        ],
+    ]);
+
+    $response = $this->get('test-ok');
+
+    $response->assertOk();
+
+    $spans = getRecordedSpans();
+
+    expect($spans)
+        ->toHaveCount(0);
 });
