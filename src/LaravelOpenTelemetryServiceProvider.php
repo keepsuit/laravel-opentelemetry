@@ -11,12 +11,10 @@ use Keepsuit\LaravelOpenTelemetry\Support\CarbonClock;
 use Keepsuit\LaravelOpenTelemetry\Watchers\Watcher;
 use OpenTelemetry\API\Common\Instrumentation\CachedInstrumentation;
 use OpenTelemetry\API\Common\Signal\Signals;
-use OpenTelemetry\API\Metrics\MeterInterface;
 use OpenTelemetry\API\Trace\Propagation\TraceContextPropagator;
 use OpenTelemetry\API\Trace\TracerInterface;
 use OpenTelemetry\Context\Propagation\TextMapPropagatorInterface;
 use OpenTelemetry\Contrib\Grpc\GrpcTransportFactory;
-use OpenTelemetry\Contrib\Otlp\MetricExporter;
 use OpenTelemetry\Contrib\Otlp\OtlpHttpTransportFactory;
 use OpenTelemetry\Contrib\Otlp\OtlpUtil;
 use OpenTelemetry\Contrib\Otlp\SpanExporter as OtlpSpanExporter;
@@ -28,9 +26,6 @@ use OpenTelemetry\SDK\Common\Configuration\Variables as OTELVariables;
 use OpenTelemetry\SDK\Common\Export\Http\PsrTransportFactory;
 use OpenTelemetry\SDK\Common\Otlp\HttpEndpointResolver;
 use OpenTelemetry\SDK\Common\Time\ClockFactory;
-use OpenTelemetry\SDK\Metrics\MeterProvider;
-use OpenTelemetry\SDK\Metrics\MetricExporter\InMemoryExporterFactory;
-use OpenTelemetry\SDK\Metrics\MetricReader\ExportingReader;
 use OpenTelemetry\SDK\Resource\ResourceInfo;
 use OpenTelemetry\SDK\Resource\ResourceInfoFactory;
 use OpenTelemetry\SDK\Sdk;
@@ -74,26 +69,6 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
             ]))
         );
 
-        $metricExporter = match (config('opentelemetry.exporter')) {
-            'http' => new MetricExporter(
-                (new OtlpHttpTransportFactory())->create(
-                    (new HttpEndpointResolver())->resolveToString(config('opentelemetry.exporters.http.endpoint'), Signals::METRICS),
-                    'application/x-protobuf'
-                )
-            ),
-            'grpc' => new MetricExporter(
-                (new GrpcTransportFactory())->create(config('opentelemetry.exporters.grpc.endpoint').OtlpUtil::method(Signals::METRICS))
-            ),
-            default => (new InMemoryExporterFactory())->create(),
-        };
-
-        $metricReader = new ExportingReader($metricExporter, ClockFactory::getDefault());
-
-        $meterProvider = MeterProvider::builder()
-            ->setResource($resource)
-            ->addReader($metricReader)
-            ->build();
-
         $spanExporter = match (config('opentelemetry.exporter')) {
             'zipkin' => new ZipkinExporter(
                 PsrTransportFactory::discover()->create(
@@ -115,7 +90,6 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         };
 
         $spanProcessor = (new BatchSpanProcessorBuilder($spanExporter))
-            ->setMeterProvider($meterProvider)
             ->build();
 
         $sampler = match (config('opentelemetry.enabled', true)) {
@@ -137,7 +111,6 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         };
 
         Sdk::builder()
-            ->setMeterProvider($meterProvider)
             ->setTracerProvider($tracerProvider)
             ->setPropagator($propagator)
             ->setAutoShutdown(true)
@@ -149,7 +122,6 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         );
 
         $this->app->bind(TracerInterface::class, fn () => $instrumentation->tracer());
-        $this->app->bind(MeterInterface::class, fn () => $instrumentation->meter());
         $this->app->bind(TextMapPropagatorInterface::class, fn () => $propagator);
         $this->app->bind(SpanExporterInterface::class, fn () => $spanExporter);
 

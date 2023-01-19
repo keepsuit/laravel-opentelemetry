@@ -2,7 +2,6 @@
 
 namespace Keepsuit\LaravelOpenTelemetry\Tests;
 
-use Illuminate\Database\Eloquent\Factories\Factory;
 use Keepsuit\LaravelOpenTelemetry\LaravelOpenTelemetryServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
 
