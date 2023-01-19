@@ -16,8 +16,6 @@ class GuzzleTraceMiddleware
     {
         return static function (callable $handler): callable {
             return static function (RequestInterface $request, array $options) use ($handler) {
-                ray($request);
-
                 $span = Tracer::build(sprintf('HTTP %s', $request->getMethod()))
                     ->setSpanKind(SpanKind::KIND_CLIENT)
                     ->setAttribute('http.method', $request->getMethod())
@@ -30,8 +28,6 @@ class GuzzleTraceMiddleware
                 foreach (Tracer::propagationHeaders() as $key => $value) {
                     $request = $request->withHeader($key, $value);
                 }
-
-                ray($request);
 
                 $promise = $handler($request, $options);
                 assert($promise instanceof PromiseInterface);

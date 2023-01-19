@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Facades\Log;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
@@ -223,6 +224,21 @@ it('provides active span', function () {
     $scope = $span->activate();
 
     expect(Tracer::activeSpan())->toBe($span);
+
+    $scope->detach();
+    $span->end();
+});
+
+it('set traceId to log context', function () {
+    $span = Tracer::start('test span');
+    $scope = $span->activate();
+
+    Tracer::setRootSpan($span);
+
+    expect(Log::sharedContext())
+        ->toMatchArray([
+            'traceId' => $span->getContext()->getTraceId(),
+        ]);
 
     $scope->detach();
     $span->end();
