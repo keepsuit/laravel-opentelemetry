@@ -3,7 +3,6 @@
 namespace Keepsuit\LaravelOpenTelemetry\Instrumentation;
 
 use Illuminate\Database\Events\QueryExecuted;
-use Illuminate\Support\Facades\Event;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use OpenTelemetry\API\Trace\SpanKind;
 
@@ -13,7 +12,7 @@ class QueryInstrumentation implements Instrumentation
 
     public function register(array $options): void
     {
-        Event::listen(QueryExecuted::class, [$this, 'recordQuery']);
+        app('events')->listen(QueryExecuted::class, [$this, 'recordQuery']);
     }
 
     public function recordQuery(QueryExecuted $event): void

@@ -4,7 +4,6 @@ namespace Keepsuit\LaravelOpenTelemetry\Instrumentation;
 
 use Illuminate\Redis\Events\CommandExecuted;
 use Illuminate\Redis\RedisManager;
-use Illuminate\Support\Facades\Event;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use OpenTelemetry\API\Trace\SpanKind;
 
@@ -14,7 +13,7 @@ class RedisInstrumentation implements Instrumentation
 
     public function register(array $options): void
     {
-        Event::listen(CommandExecuted::class, [$this, 'recordCommand']);
+        app('events')->listen(CommandExecuted::class, [$this, 'recordCommand']);
 
         if (app()->resolved('redis')) {
             $this->registerRedisEvents(app()->make('redis'));
