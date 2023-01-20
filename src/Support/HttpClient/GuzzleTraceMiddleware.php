@@ -8,6 +8,7 @@ use GuzzleHttp\Psr7\Response;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
+use OpenTelemetry\SemConv\TraceAttributes;
 use Psr\Http\Message\RequestInterface;
 
 class GuzzleTraceMiddleware
@@ -18,10 +19,10 @@ class GuzzleTraceMiddleware
             return static function (RequestInterface $request, array $options) use ($handler) {
                 $span = Tracer::build(sprintf('HTTP %s', $request->getMethod()))
                     ->setSpanKind(SpanKind::KIND_CLIENT)
-                    ->setAttribute('http.method', $request->getMethod())
-                    ->setAttribute('http.flavor', $request->getProtocolVersion())
-                    ->setAttribute('http.url', (string) $request->getUri())
-                    ->setAttribute('http.request_content_length', $request->getBody()->getSize())
+                    ->setAttribute(TraceAttributes::HTTP_METHOD, $request->getMethod())
+                    ->setAttribute(TraceAttributes::HTTP_FLAVOR, $request->getProtocolVersion())
+                    ->setAttribute(TraceAttributes::HTTP_URL, (string) $request->getUri())
+                    ->setAttribute(TraceAttributes::HTTP_REQUEST_CONTENT_LENGTH, $request->getBody()->getSize())
                     ->startSpan();
                 $scope = $span->activate();
 
@@ -33,7 +34,7 @@ class GuzzleTraceMiddleware
                 assert($promise instanceof PromiseInterface);
 
                 return $promise->then(function (Response $response) use ($scope, $span) {
-                    $span->setAttribute('http.status_code', $response->getStatusCode());
+                    $span->setAttribute(TraceAttributes::HTTP_STATUS_CODE, $response->getStatusCode());
 
                     if ($response->getStatusCode() >= 400) {
                         $span->setStatus(StatusCode::STATUS_ERROR);

@@ -10,6 +10,7 @@ use Keepsuit\LaravelOpenTelemetry\Instrumentation\HttpServerInstrumentation;
 use OpenTelemetry\API\Trace\SpanInterface;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
+use OpenTelemetry\SemConv\TraceAttributes;
 use Symfony\Component\HttpFoundation\Response;
 
 class TraceRequestMiddleware
@@ -56,23 +57,23 @@ class TraceRequestMiddleware
 
         Tracer::setRootSpan($span);
 
-        $span->setAttribute('http.method', $request->method())
-            ->setAttribute('http.url', $request->getUri())
-            ->setAttribute('http.target', $request->getRequestUri())
-            ->setAttribute('http.route', $route)
-            ->setAttribute('http.host', $request->getHttpHost())
-            ->setAttribute('http.scheme', $request->getScheme())
-            ->setAttribute('http.user_agent', $request->userAgent())
-            ->setAttribute('http.client_ip', $request->ip())
-            ->setAttribute('http.request_content_length', $request->header('Content-Length'));
+        $span->setAttribute(TraceAttributes::HTTP_METHOD, $request->method())
+            ->setAttribute(TraceAttributes::HTTP_URL, $request->getUri())
+            ->setAttribute(TraceAttributes::HTTP_TARGET, $request->getRequestUri())
+            ->setAttribute(TraceAttributes::HTTP_ROUTE, $route)
+            ->setAttribute(TraceAttributes::HTTP_HOST, $request->getHttpHost())
+            ->setAttribute(TraceAttributes::HTTP_SCHEME, $request->getScheme())
+            ->setAttribute(TraceAttributes::HTTP_USER_AGENT, $request->userAgent())
+            ->setAttribute(TraceAttributes::HTTP_CLIENT_IP, $request->ip())
+            ->setAttribute(TraceAttributes::HTTP_REQUEST_CONTENT_LENGTH, $request->header('Content-Length'));
 
         return $span;
     }
 
     protected function recordHttpResponseToSpan(SpanInterface $span, Response $response): void
     {
-        $span->setAttribute('http.status_code', $response->getStatusCode())
-            ->setAttribute('http.response_content_length', strlen($response->getContent()));
+        $span->setAttribute(TraceAttributes::HTTP_STATUS_CODE, $response->getStatusCode())
+            ->setAttribute(TraceAttributes::HTTP_RESPONSE_CONTENT_LENGTH, strlen($response->getContent()));
 
         if ($response->isSuccessful()) {
             $span->setStatus(StatusCode::STATUS_OK);

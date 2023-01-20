@@ -6,6 +6,7 @@ use Illuminate\Redis\Events\CommandExecuted;
 use Illuminate\Redis\RedisManager;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use OpenTelemetry\API\Trace\SpanKind;
+use OpenTelemetry\SemConv\TraceAttributes;
 
 class RedisInstrumentation implements Instrumentation
 {
@@ -32,9 +33,9 @@ class RedisInstrumentation implements Instrumentation
             ->startSpan();
 
         if ($span->isRecording()) {
-            $span->setAttribute('db.system', 'redis')
-                ->setAttribute('db.statement', $this->formatCommand($event->command, $event->parameters))
-                ->setAttribute('net.peer.name', $event->connection->client()->getHost());
+            $span->setAttribute(TraceAttributes::DB_SYSTEM, 'redis')
+                ->setAttribute(TraceAttributes::DB_STATEMENT, $this->formatCommand($event->command, $event->parameters))
+                ->setAttribute(TraceAttributes::NET_PEER_NAME, $event->connection->client()->getHost());
         }
 
         $span->end();

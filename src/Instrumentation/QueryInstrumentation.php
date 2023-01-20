@@ -5,6 +5,7 @@ namespace Keepsuit\LaravelOpenTelemetry\Instrumentation;
 use Illuminate\Database\Events\QueryExecuted;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use OpenTelemetry\API\Trace\SpanKind;
+use OpenTelemetry\SemConv\TraceAttributes;
 
 class QueryInstrumentation implements Instrumentation
 {
@@ -25,11 +26,11 @@ class QueryInstrumentation implements Instrumentation
             ->startSpan();
 
         if ($span->isRecording()) {
-            $span->setAttribute('db.system', $event->connection->getDriverName())
-                ->setAttribute('db.name', $event->connection->getDatabaseName())
-                ->setAttribute('db.statement', $this->replaceBindings($event))
-                ->setAttribute('net.peer.name', $event->connection->getConfig('host'))
-                ->setAttribute('net.peer.port', $event->connection->getConfig('port'));
+            $span->setAttribute(TraceAttributes::DB_SYSTEM, $event->connection->getDriverName())
+                ->setAttribute(TraceAttributes::DB_NAME, $event->connection->getDatabaseName())
+                ->setAttribute(TraceAttributes::DB_STATEMENT, $this->replaceBindings($event))
+                ->setAttribute(TraceAttributes::NET_PEER_NAME, $event->connection->getConfig('host'))
+                ->setAttribute(TraceAttributes::NET_PEER_PORT, $event->connection->getConfig('port'));
         }
 
         $span->end();
