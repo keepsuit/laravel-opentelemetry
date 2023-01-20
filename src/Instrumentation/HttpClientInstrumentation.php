@@ -3,7 +3,6 @@
 namespace Keepsuit\LaravelOpenTelemetry\Instrumentation;
 
 use Illuminate\Http\Client\PendingRequest;
-use Illuminate\Support\Facades\Http;
 use Keepsuit\LaravelOpenTelemetry\Support\HttpClient\GuzzleTraceMiddleware;
 
 class HttpClientInstrumentation implements Instrumentation
@@ -15,7 +14,7 @@ class HttpClientInstrumentation implements Instrumentation
 
     protected function registerWithTraceMacro(): void
     {
-        Http::macro('withTrace', function () {
+        PendingRequest::macro('withTrace', function () {
             /** @var PendingRequest $this */
             return $this->withMiddleware(GuzzleTraceMiddleware::make());
         });
