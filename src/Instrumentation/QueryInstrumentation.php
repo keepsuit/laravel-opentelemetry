@@ -1,35 +1,36 @@
 <?php
 
-namespace Keepsuit\LaravelOpenTelemetry\Watchers;
+namespace Keepsuit\LaravelOpenTelemetry\Instrumentation;
 
-use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Database\Events\QueryExecuted;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use OpenTelemetry\API\Trace\SpanKind;
+use OpenTelemetry\SemConv\TraceAttributes;
 
-class QueryWatcher extends Watcher
+class QueryInstrumentation implements Instrumentation
 {
     use SpanTimeAdapter;
 
-    public function register(Application $app): void
+    public function register(array $options): void
     {
-        $app['events']->listen(QueryExecuted::class, [$this, 'recordQuery']);
+        app('events')->listen(QueryExecuted::class, [$this, 'recordQuery']);
     }
 
     public function recordQuery(QueryExecuted $event): void
     {
         $traceName = sprintf('%s %s', $event->connection->getDriverName(), $event->connection->getDatabaseName());
 
-        $span = Tracer::build($traceName, SpanKind::KIND_CLIENT)
+        $span = Tracer::build($traceName)
+            ->setSpanKind(SpanKind::KIND_CLIENT)
             ->setStartTimestamp($this->getEventStartTimestampNs($event->time))
             ->startSpan();
 
         if ($span->isRecording()) {
-            $span->setAttribute('db.system', $event->connection->getDriverName())
-                ->setAttribute('db.name', $event->connection->getDatabaseName())
-                ->setAttribute('db.statement', $this->replaceBindings($event))
-                ->setAttribute('net.peer.name', $event->connection->getConfig('host'))
-                ->setAttribute('net.peer.port', $event->connection->getConfig('port'));
+            $span->setAttribute(TraceAttributes::DB_SYSTEM, $event->connection->getDriverName())
+                ->setAttribute(TraceAttributes::DB_NAME, $event->connection->getDatabaseName())
+                ->setAttribute(TraceAttributes::DB_STATEMENT, $this->replaceBindings($event))
+                ->setAttribute(TraceAttributes::NET_PEER_NAME, $event->connection->getConfig('host'))
+                ->setAttribute(TraceAttributes::NET_PEER_PORT, $event->connection->getConfig('port'));
         }
 
         $span->end();

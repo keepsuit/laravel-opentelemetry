@@ -5,25 +5,20 @@
 [![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/keepsuit/laravel-opentelemetry/fix-php-code-style-issues.yml?branch=main&label=code%20style&style=flat-square)](https://github.com/keepsuit/laravel-opentelemetry/actions?query=workflow%3A"Fix+PHP+code+style+issues"+branch%3Amain)
 [![Total Downloads](https://img.shields.io/packagist/dt/keepsuit/laravel-opentelemetry.svg?style=flat-square)](https://packagist.org/packages/keepsuit/laravel-opentelemetry)
 
----
-This repo can be used to scaffold a Laravel package. Follow these steps to get started:
+_OpenTelemetry is a collection of tools, APIs, and SDKs. Use it to instrument, generate, collect, and export telemetry data (metrics, logs, and traces) to help you analyze your software’s performance and behavior._
 
-1. Press the "Use template" button at the top of this repo to create a new repo with the contents of this laravel-opentelemetry
-2. Run "./configure-laravel-opentelemetry.sh" to run a script that will replace all placeholders throughout all the files
-3. Remove this block of text.
-4. Have fun creating your package.
-5. If you need help creating a package, consider picking up our <a href="https://laravelpackage.training">Laravel Package Training</a> video course.
----
+This package allow to integrate OpenTelemetry in a Laravel application.
+Right now only tracing is available.
 
-This is where your description should go. Limit it to a paragraph or two. Consider adding a small example.
+## Provided tracing integrations
 
-## Support us
-
-[<img src="https://github-ads.s3.eu-central-1.amazonaws.com/laravel-opentelemetry.jpg?t=1" width="419px" />](https://spatie.be/github-ad-click/laravel-opentelemetry)
-
-We invest a lot of resources into creating [best in class open source packages](https://spatie.be/open-source). You can support us by [buying one of our paid products](https://spatie.be/open-source/support-us).
-
-We highly appreciate you sending us a postcard from your hometown, mentioning which of our package(s) you are using. You'll find our address on [our contact page](https://spatie.be/about-us). We publish all received postcards on [our virtual postcard wall](https://spatie.be/open-source/postcards).
+- [Http server requests](#http-server-requests)
+- [Http client](#http-client)
+- [Database](#database)
+- [Redis](#redis)
+- [Queue jobs](#redis)
+- [Logs context](#logs-context)
+- [Manual traces](#manual-traces)
 
 ## Installation
 
@@ -33,30 +28,181 @@ You can install the package via composer:
 composer require keepsuit/laravel-opentelemetry
 ```
 
-You can publish and run the migrations with:
-
-```bash
-php artisan vendor:publish --provider="Keepsuit\LaravelOpentelemetry\LaravelOpentelemetryServiceProvider" --tag="laravel-opentelemetry-migrations"
-php artisan migrate
-```
-
 You can publish the config file with:
+
 ```bash
-php artisan vendor:publish --provider="Keepsuit\LaravelOpentelemetry\LaravelOpentelemetryServiceProvider" --tag="laravel-opentelemetry-config"
+php artisan vendor:publish --provider="Keepsuit\LaravelOpentelemetry\LaravelOpentelemetryServiceProvider" --tag="opentelemetry-config"
 ```
 
 This is the contents of the published config file:
 
 ```php
+use Keepsuit\LaravelOpenTelemetry\Instrumentation;
+
 return [
+    /**
+     * Service name
+     */
+    'service_name' => \Illuminate\Support\Str::slug(env('APP_NAME', 'laravel-app')),
+
+    /**
+     * Enable tracing
+     * Valid values: 'true', 'false', 'parent'
+     */
+    'enabled' => env('OT_ENABLED', true),
+
+    /**
+     * Exporter to use
+     * Supported: 'zipkin', 'http', 'grpc', 'console', 'null'
+     */
+    'exporter' => env('OT_EXPORTER', 'http'),
+
+    /**
+     * Propagator to use
+     * Supported: 'b3', 'b3multi', 'tracecontext',
+     */
+    'propagator' => env('OT_PROPAGATOR', 'tracecontext'),
+
+    /**
+     * List of instrumentation used for application tracing
+     */
+    'instrumentation' => [
+        Instrumentation\HttpServerInstrumentation::class => [
+            'enabled' => env('OT_INSTRUMENTATION_HTTP_SERVER', true),
+            'excluded_paths' => [],
+        ],
+
+        Instrumentation\HttpClientInstrumentation::class => env('OT_INSTRUMENTATION_HTTP_CLIENT', true),
+        
+        Instrumentation\QueryInstrumentation::class => env('OT_INSTRUMENTATION_QUERY', true),
+
+        Instrumentation\RedisInstrumentation::class => env('OT_INSTRUMENTATION_REDIS', true),
+
+        Instrumentation\QueueInstrumentation::class => env('OT_INSTRUMENTATION_QUEUE', true),
+    ],
+
+    /**
+     * Exporters config
+     */
+    'exporters' => [
+        'zipkin' => [
+            'endpoint' => env('OT_ZIPKIN_HTTP_ENDPOINT', 'http://localhost:9411'),
+        ],
+
+        'http' => [
+            'endpoint' => env('OT_OTLP_HTTP_ENDPOINT', 'http://localhost:4318'),
+        ],
+
+        'grpc' => [
+            'endpoint' => env('OT_OTLP_GRPC_ENDPOINT', 'http://localhost:4317'),
+        ],
+    ],
+
+    'logs' => [
+        /**
+         * Inject active trace id in log context
+         */
+        'inject_trace_id' => true,
+
+        /**
+         * Context field name for trace id
+         */
+        'trace_id_field' => 'traceId',
+    ],
 ];
 ```
 
 ## Usage
 
+### Http server requests
+
+Http server requests are automatically traced by injecting `\Keepsuit\LaravelOpenTelemetry\Support\HttpServer\TraceRequestMiddleware::class` to the global middlewares.
+You can disable it by setting `OT_INSTRUMENTATION_HTTP_SERVER` to `false` or removing the `HttpServerInstrumentation::class` from the config file.
+
+Configuration options:
+
+- `excluded_paths`: list of paths to exclude from tracing
+
+### Http client
+
+To trace an outgoing http request call the `withTrace` method on the request builder.
+
 ```php
-$laravel-opentelemetry = new Keepsuit\LaravelOpentelemetry();
-echo $laravel-opentelemetry->echoPhrase('Hello, Spatie!');
+Http::withTrace()->get('https://example.com');
+```
+
+### Database
+
+Database queries are automatically traced.
+You can disable it by setting `OT_INSTRUMENTATION_QUERY` to `false` or removing the `QueryInstrumentation::class` from the config file.
+
+### Redis
+
+Redis commands are automatically traced.
+You can disable it by setting `OT_INSTRUMENTATION_REDIS` to `false` or removing the `RedisInstrumentation::class` from the config file.
+
+### Queue jobs
+
+Queue jobs are automatically traced.
+You can disable it by setting `OT_INSTRUMENTATION_QUEUE` to `false` or removing the `QueueInstrumentation::class` from the config file.
+
+### Logs context
+
+When starting a trace with provided instrumentation, the trace id is automatically injected in the log context.
+This allows to correlate logs with traces.
+
+If you are starting the root trace manually,
+you should call `Tracer::setRootSpan($span)` to inject the trace id in the log context.
+
+### Manual traces
+
+The simplest way to create a custom trace is with `measure` method:
+
+```php
+use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
+
+Tracer::measure('my custom trace', function () {
+    // do something
+});
+```
+
+Alternatively you can manage the span manually:
+
+```php
+use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
+
+$span = Tracer::start('my custom trace');
+
+// do something
+
+$span->end();
+```
+
+With `measure` the span is automatically set to active (so it will be used as parent for new spans).
+With `start` you have to manually set the span as active:
+
+```php
+use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
+
+$span = Tracer::start('my custom trace');
+$scope = $span->activate()
+
+// do something
+
+$span->end();
+$scope->detach();
+```
+
+Other utility methods are available on the `Tracer` facade:
+
+```php
+use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
+
+Tracer::isRecording(); // check if tracing is enabled
+Tracer::activeSpan(); // get the active span
+Tracer::activeScope(); // get the active scope
+Tracer::traceId(); // get the active trace id
+Tracer::propagationHeaders(); // get the propagation headers required to propagate the trace to other services
 ```
 
 ## Testing
@@ -68,14 +214,6 @@ composer test
 ## Changelog
 
 Please see [CHANGELOG](CHANGELOG.md) for more information on what has changed recently.
-
-## Contributing
-
-Please see [CONTRIBUTING](.github/CONTRIBUTING.md) for details.
-
-## Security Vulnerabilities
-
-Please review [our security policy](../../security/policy) on how to report security vulnerabilities.
 
 ## Credits
 

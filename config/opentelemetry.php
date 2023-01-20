@@ -1,6 +1,6 @@
 <?php
 
-use Keepsuit\LaravelOpenTelemetry\Watchers;
+use Keepsuit\LaravelOpenTelemetry\Instrumentation;
 
 return [
     /**
@@ -27,26 +27,21 @@ return [
     'propagator' => env('OT_PROPAGATOR', 'tracecontext'),
 
     /**
-     * Http paths not to trace
+     * List of instrumentation used for application tracing
      */
-    'excluded_paths' => [],
+    'instrumentation' => [
+        Instrumentation\HttpServerInstrumentation::class => [
+            'enabled' => env('OT_INSTRUMENTATION_HTTP_SERVER', true),
+            'excluded_paths' => [],
+        ],
 
-    /**
-     * Grpc services not to trace
-     */
-    'excluded_services' => [],
+        Instrumentation\HttpClientInstrumentation::class => env('OT_INSTRUMENTATION_HTTP_CLIENT', true),
 
-    /**
-     * List of watcher used for application tracing
-     */
-    'watchers' => [
-        Watchers\QueryWatcher::class => env('OT_WATCHER_QUERY', true),
+        Instrumentation\QueryInstrumentation::class => env('OT_INSTRUMENTATION_QUERY', true),
 
-        Watchers\RedisWatcher::class => env('OT_WATCHER_REDIS', true),
+        Instrumentation\RedisInstrumentation::class => env('OT_INSTRUMENTATION_REDIS', true),
 
-        Watchers\QueueWatcher::class => env('OT_WATCHER_QUEUE', true),
-
-        Watchers\LighthouseWatcher::class => env('OT_WATCHER_LIGHTHOUSE', true),
+        Instrumentation\QueueInstrumentation::class => env('OT_INSTRUMENTATION_QUEUE', true),
     ],
 
     /**

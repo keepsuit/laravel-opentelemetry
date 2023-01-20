@@ -1,28 +1,26 @@
 <?php
 
-namespace Keepsuit\LaravelOpenTelemetry\Watchers;
+namespace Keepsuit\LaravelOpenTelemetry\Instrumentation;
 
-use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Queue\QueueManager;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use OpenTelemetry\API\Trace\SpanKind;
-use OpenTelemetry\Context\ContextInterface;
-use OpenTelemetry\Context\Propagation\TextMapPropagatorInterface;
 
-class QueueWatcher extends Watcher
+class QueueInstrumentation implements Instrumentation
 {
     use SpanTimeAdapter;
 
     protected array $startedSpans = [];
 
-    public function register(Application $app): void
+    public function register(array $options): void
     {
-        if ($app->resolved('queue')) {
-            $this->registerQueueInterceptor($app['queue']);
+        if (app()->resolved('queue')) {
+            $this->registerQueueInterceptor(app('queue'));
         } else {
-            $app->afterResolving('queue', fn ($queue) => $this->registerQueueInterceptor($queue));
+            app()->afterResolving('queue', fn ($queue) => $this->registerQueueInterceptor($queue));
         }
 
         $this->recordJobStart();
@@ -32,12 +30,14 @@ class QueueWatcher extends Watcher
     protected function recordJobStart(): void
     {
         app('events')->listen(JobProcessing::class, function (JobProcessing $event) {
-            /** @var ContextInterface $context */
-            $context = app(TextMapPropagatorInterface::class)->extract($event->job->payload());
+            $context = Tracer::extractContextFromPropagationHeaders($event->job->payload());
 
-            $span = Tracer::build($event->job->resolveName(), SpanKind::KIND_CONSUMER)
+            $span = Tracer::build($event->job->resolveName())
+                ->setSpanKind(SpanKind::KIND_CONSUMER)
                 ->setParent($context)
                 ->startSpan();
+
+            Tracer::setRootSpan($span);
 
             $scope = $span->activate();
 
@@ -50,6 +50,15 @@ class QueueWatcher extends Watcher
         app('events')->listen(JobProcessed::class, function (JobProcessed $event) {
             [$span, $scope] = $this->startedSpans[$event->job->getJobId()] ?? [null, null];
 
+            $scope?->detach();
+            $span?->end();
+
+            unset($this->startedSpans[$event->job->getJobId()]);
+        });
+
+        app('events')->listen(JobFailed::class, function (JobFailed $event) {
+            [$span, $scope] = $this->startedSpans[$event->job->getJobId()] ?? [null, null];
+
             $span?->end();
             $scope?->detach();
 
@@ -59,6 +68,6 @@ class QueueWatcher extends Watcher
 
     protected function registerQueueInterceptor(QueueManager $queue): void
     {
-        $queue->createPayloadUsing(fn () => Tracer::activeSpanPropagationHeaders());
+        $queue->createPayloadUsing(fn () => Tracer::propagationHeaders());
     }
 }

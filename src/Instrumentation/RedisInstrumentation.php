@@ -1,25 +1,25 @@
 <?php
 
-namespace Keepsuit\LaravelOpenTelemetry\Watchers;
+namespace Keepsuit\LaravelOpenTelemetry\Instrumentation;
 
-use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Redis\Events\CommandExecuted;
 use Illuminate\Redis\RedisManager;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use OpenTelemetry\API\Trace\SpanKind;
+use OpenTelemetry\SemConv\TraceAttributes;
 
-class RedisWatcher extends Watcher
+class RedisInstrumentation implements Instrumentation
 {
     use SpanTimeAdapter;
 
-    public function register(Application $app): void
+    public function register(array $options): void
     {
-        $app['events']->listen(CommandExecuted::class, [$this, 'recordCommand']);
+        app('events')->listen(CommandExecuted::class, [$this, 'recordCommand']);
 
-        if ($app->resolved('redis')) {
-            $this->registerRedisEvents($app->make('redis'), $app);
+        if (app()->resolved('redis')) {
+            $this->registerRedisEvents(app()->make('redis'));
         } else {
-            $app->afterResolving('redis', fn ($redis) => $this->registerRedisEvents($redis, $app));
+            app()->afterResolving('redis', fn ($redis) => $this->registerRedisEvents($redis));
         }
     }
 
@@ -27,14 +27,15 @@ class RedisWatcher extends Watcher
     {
         $traceName = sprintf('redis %s %s', $event->connection->getName(), $event->command);
 
-        $span = Tracer::build($traceName, SpanKind::KIND_CLIENT)
+        $span = Tracer::build($traceName)
+            ->setSpanKind(SpanKind::KIND_CLIENT)
             ->setStartTimestamp($this->getEventStartTimestampNs($event->time))
             ->startSpan();
 
         if ($span->isRecording()) {
-            $span->setAttribute('db.system', 'redis')
-                ->setAttribute('db.statement', $this->formatCommand($event->command, $event->parameters))
-                ->setAttribute('net.peer.name', $event->connection->client()->getHost());
+            $span->setAttribute(TraceAttributes::DB_SYSTEM, 'redis')
+                ->setAttribute(TraceAttributes::DB_STATEMENT, $this->formatCommand($event->command, $event->parameters))
+                ->setAttribute(TraceAttributes::NET_PEER_NAME, $event->connection->client()->getHost());
         }
 
         $span->end();
@@ -62,11 +63,11 @@ class RedisWatcher extends Watcher
         return sprintf('%s %s', $command, $parameters);
     }
 
-    private function registerRedisEvents(mixed $redis, Application $app): void
+    private function registerRedisEvents(mixed $redis): void
     {
         if ($redis instanceof RedisManager) {
             foreach ((array) $redis->connections() as $connection) {
-                $connection->setEventDispatcher($app['events']);
+                $connection->setEventDispatcher(app('events'));
             }
 
             $redis->enableEvents();

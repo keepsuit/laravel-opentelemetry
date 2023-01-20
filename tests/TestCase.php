@@ -2,35 +2,28 @@
 
 namespace Keepsuit\LaravelOpenTelemetry\Tests;
 
-use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 use Keepsuit\LaravelOpenTelemetry\LaravelOpenTelemetryServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
 
 class TestCase extends Orchestra
 {
-    public function setUp(): void
-    {
-        parent::setUp();
-
-        Factory::guessFactoryNamesUsing(
-            fn (string $modelName) => 'Keepsuit\\LaravelOpentelemetry\\Database\\Factories\\'.class_basename($modelName).'Factory'
-        );
-    }
-
-    protected function getPackageProviders($app)
+    protected function getPackageProviders($app): array
     {
         return [
             LaravelOpenTelemetryServiceProvider::class,
         ];
     }
 
-    public function getEnvironmentSetUp($app)
+    public function getEnvironmentSetUp($app): void
     {
-        config()->set('database.default', 'testing');
+        config()->set('opentelemetry.exporter', null);
 
-        /*
-        include_once __DIR__.'/../database/migrations/create_laravel-opentelemetry_table.php.stub';
-        (new \CreatePackageTable())->up();
-        */
+        config()->set('database.default', 'sqlite');
+        config()->set('database.connections.sqlite.database', ':memory:');
+
+        config()->set('queue.default', 'redis');
+        config()->set('queue.failed.driver', null);
+        config()->set('database.redis.options.prefix', sprintf('%s_', Str::uuid()));
     }
 }

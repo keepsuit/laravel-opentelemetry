@@ -2,38 +2,30 @@
 
 namespace Keepsuit\LaravelOpenTelemetry\Facades;
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Facade;
-use Keepsuit\LaravelGrpc\GrpcRequest;
 use OpenTelemetry\API\Trace\SpanBuilderInterface;
 use OpenTelemetry\API\Trace\SpanInterface;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\Context\Context;
-use Spiral\RoadRunner\GRPC\Exception\GRPCException;
-use Symfony\Component\HttpFoundation\Response;
+use OpenTelemetry\Context\ScopeInterface;
 
 /**
- * @method static SpanBuilderInterface build(string $name, int $spanKind = SpanKind::KIND_INTERNAL)
+ * @method static bool isRecording()
+ * @method static string traceId()
+ * @method static SpanInterface activeSpan()
+ * @method static ScopeInterface activeScope()
+ * @method static array propagationHeaders()
+ * @method static SpanBuilderInterface build(string $name)
  * @method static SpanInterface start(string $name, int $spanKind = SpanKind::KIND_INTERNAL)
  * @method static mixed measure(string $name, \Closure $callback)
  * @method static mixed measureAsync(string $name, \Closure $callback)
- * @method static SpanInterface recordExceptionToSpan(SpanInterface $span, \Exception $exception)
- * @method static SpanInterface recordHttpResponseToSpan(SpanInterface $span, Response $response)
- * @method static SpanInterface recordGrpcExceptionToSpan(SpanInterface $span, GRPCException $exception)
- * @method static SpanInterface recordGrpcSuccessResponseToSpan(SpanInterface $span)
- * @method static SpanInterface activeSpan()
- * @method static string traceId()
- * @method static array activeSpanPropagationHeaders()
- * @method static SpanInterface initFromHttpRequest(Request $request)
- * @method static SpanInterface initFromGrpcRequest(GrpcRequest $request)
- * @method static Context|null extractContextFromHttpRequest(Request $request)
- * @method static Context|null extractContextFromGrpcRequest(GrpcRequest $request)
- * @method static Context|null extractContextFromB3Headers(array $headers)
- * @method static SpanInterface startGrpcClientTracing(string $grpcFullName)
+ * @method static SpanInterface recordExceptionToSpan(SpanInterface $span, \Throwable $exception)
+ * @method static Context|null extractContextFromPropagationHeaders(array $headers)
+ * @method static void setRootSpan(SpanInterface $span)
  */
 class Tracer extends Facade
 {
-    protected static function getFacadeAccessor()
+    protected static function getFacadeAccessor(): string
     {
         return \Keepsuit\LaravelOpenTelemetry\Tracer::class;
     }
