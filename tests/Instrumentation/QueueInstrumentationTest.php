@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Facades\Artisan;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Tests\Support\TestJob;
 use OpenTelemetry\SDK\Trace\Span;
@@ -31,6 +32,10 @@ it('can trace queue jobs', function () {
     expect($spanId)
         ->not->toBeEmpty()
         ->not->toBe('0000000000000000');
+
+    Artisan::call('queue:work', [
+        '--once' => true,
+    ]);
 
     expect($this->valuestore)
         ->get('traceparentInJob')->toBe(sprintf('00-%s-%s-01', $traceId, $spanId))
