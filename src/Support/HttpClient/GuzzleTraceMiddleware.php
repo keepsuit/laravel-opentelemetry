@@ -24,6 +24,7 @@ class GuzzleTraceMiddleware
                     ->setAttribute(TraceAttributes::HTTP_URL, (string) $request->getUri())
                     ->setAttribute(TraceAttributes::HTTP_REQUEST_CONTENT_LENGTH, $request->getBody()->getSize())
                     ->startSpan();
+
                 $scope = $span->activate();
 
                 foreach (Tracer::propagationHeaders() as $key => $value) {
@@ -40,8 +41,8 @@ class GuzzleTraceMiddleware
                         $span->setStatus(StatusCode::STATUS_ERROR);
                     }
 
-                    $span->end();
                     $scope->detach();
+                    $span->end();
 
                     return $response;
                 });

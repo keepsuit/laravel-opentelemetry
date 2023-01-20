@@ -23,6 +23,7 @@ class TestCase extends Orchestra
         config()->set('database.connections.sqlite.database', ':memory:');
 
         config()->set('queue.default', 'redis');
+        config()->set('queue.failed.driver', null);
         config()->set('database.redis.options.prefix', sprintf('%s_', Str::uuid()));
     }
 }

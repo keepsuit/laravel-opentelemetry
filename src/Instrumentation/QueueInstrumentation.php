@@ -2,6 +2,7 @@
 
 namespace Keepsuit\LaravelOpenTelemetry\Instrumentation;
 
+use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Queue\QueueManager;
@@ -36,6 +37,8 @@ class QueueInstrumentation implements Instrumentation
                 ->setParent($context)
                 ->startSpan();
 
+            Tracer::setRootSpan($span);
+
             $scope = $span->activate();
 
             $this->startedSpans[$event->job->getJobId()] = [$span, $scope];
@@ -45,6 +48,15 @@ class QueueInstrumentation implements Instrumentation
     protected function recordJobEnd(): void
     {
         app('events')->listen(JobProcessed::class, function (JobProcessed $event) {
+            [$span, $scope] = $this->startedSpans[$event->job->getJobId()] ?? [null, null];
+
+            $scope?->detach();
+            $span?->end();
+
+            unset($this->startedSpans[$event->job->getJobId()]);
+        });
+
+        app('events')->listen(JobFailed::class, function (JobFailed $event) {
             [$span, $scope] = $this->startedSpans[$event->job->getJobId()] ?? [null, null];
 
             $span?->end();

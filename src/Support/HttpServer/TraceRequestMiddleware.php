@@ -37,8 +37,8 @@ class TraceRequestMiddleware
 
             throw $exception;
         } finally {
-            $span->end();
             $scope->detach();
+            $span->end();
         }
     }
 
