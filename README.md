@@ -146,6 +146,19 @@ You can disable it by setting `OT_INSTRUMENTATION_REDIS` to `false` or removing 
 Queue jobs are automatically traced.
 You can disable it by setting `OT_INSTRUMENTATION_QUEUE` to `false` or removing the `QueueInstrumentation::class` from the config file.
 
+To correctly trace queue jobs, you should wrap the job dispatch call in a `measureAsync` call:
+
+```php
+use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
+
+Tracer::measureAsync('dispatch job', function () {
+    dispatch(new MyJob());
+});
+```
+
+This will create a parent span of kind `PRODUCER` and a child span of kind `CONSUMER` for the job.
+
+
 ### Logs context
 
 When starting a trace with provided instrumentation, the trace id is automatically injected in the log context.
