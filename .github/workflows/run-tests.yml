@@ -48,22 +48,9 @@ jobs:
           echo "::add-matcher::${{ runner.tool_cache }}/phpunit.json"
 
       - name: Install dependencies
-        env:
-          COMPOSER_GITHUB: ${{ secrets.COMPOSER_GITHUB }}
         run: |
-          composer config --global github-oauth.github.com "$COMPOSER_GITHUB"
           composer require "illuminate/contracts:${{ matrix.laravel }}" --no-interaction --no-update
           composer update --prefer-dist --no-interaction
 
       - name: Execute tests
         run: vendor/bin/pest
-
-  deploy:
-    needs: [ test ]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy
-        env:
-          TOKEN: ${{ secrets.SATIS_WEBHOOK_TOKEN }}
-        run: |
-          curl --request POST -H "Authorization: Bearer $TOKEN" --form "repository=https://github.com/${{github.repository}}" https://composer.20web.it/update
