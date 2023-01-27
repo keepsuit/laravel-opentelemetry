@@ -40,6 +40,7 @@
         "spatie/valuestore": "^1.3"
     },
     "suggest": {
+        "ext-otel_instrumentation": "Required to enabled some instrumentations",
         "open-telemetry/extension-propagator-b3": "Required to use B3 propagator",
         "open-telemetry/exporter-zipkin": "Required to Zipkin exporter",
         "open-telemetry/transport-grpc": "Required to use OTLP gRPC exporter"

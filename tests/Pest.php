@@ -28,6 +28,13 @@ function getRecordedSpans(): array
     return $exporter->getSpans();
 }
 
+function skipTestIfOtelExtensionNotLoaded()
+{
+    if (! extension_loaded('otel_instrumentation')) {
+        test()->markTestSkipped('The otel_instrumentation extension is not loaded.');
+    }
+}
+
 function withRootSpan(Closure $callback): mixed
 {
     $rootSpan = \Keepsuit\LaravelOpenTelemetry\Facades\Tracer::build('root')->startSpan();

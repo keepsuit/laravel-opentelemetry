@@ -1,9 +1,10 @@
 <?php
 
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Artisan;
-use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Tests\Support\TestJob;
-use OpenTelemetry\SDK\Trace\Span;
+use OpenTelemetry\API\Trace\SpanKind;
+use OpenTelemetry\SDK\Trace\ImmutableSpan;
 use Spatie\Valuestore\Valuestore;
 
 beforeEach(function () {
@@ -15,29 +16,50 @@ afterEach(function () {
 });
 
 it('can trace queue jobs', function () {
-    $spanId = '';
-    $traceId = '';
+    skipTestIfOtelExtensionNotLoaded();
 
-    Tracer::measureAsync('dispatcher', function (Span $span) use (&$traceId, &$spanId) {
-        $spanId = $span->getContext()->getSpanId();
-        $traceId = $span->getContext()->getTraceId();
+    dispatch(new TestJob($this->valuestore));
 
-        dispatch(new TestJob($this->valuestore));
-    });
+    $publishSpan = Arr::first(
+        getRecordedSpans(),
+        fn (ImmutableSpan $span) => $span->getName() === sprintf('%s publish', TestJob::class)
+    );
+    assert($publishSpan instanceof ImmutableSpan);
 
-    expect($traceId)
-        ->not->toBeEmpty()
-        ->not->toBe('00000000000000000000000000000000');
-
-    expect($spanId)
-        ->not->toBeEmpty()
-        ->not->toBe('0000000000000000');
+    expect($publishSpan)
+        ->getKind()->toBe(SpanKind::KIND_PRODUCER)
+        ->getTraceId()->not->toBe('00000000000000000000000000000000')
+        ->getSpanId()->not->toBe('0000000000000000')
+        ->getAttributes()->toMatchArray([
+            'messaging.system' => 'redis',
+            'messaging.operation' => 'publish',
+            'messaging.destination.kind' => 'queue',
+            'messaging.destination.name' => 'default',
+            'messaging.destination.template' => TestJob::class,
+        ]);
 
     Artisan::call('queue:work', [
         '--once' => true,
     ]);
 
     expect($this->valuestore)
-        ->get('traceparentInJob')->toBe(sprintf('00-%s-%s-01', $traceId, $spanId))
-        ->get('traceIdInJob')->toBe($traceId);
+        ->get('traceparentInJob')->toBe(sprintf('00-%s-%s-01', $publishSpan->getTraceId(), $publishSpan->getSpanId()))
+        ->get('traceIdInJob')->toBe($publishSpan->getTraceId());
+
+    $processSpan = Arr::first(
+        getRecordedSpans(),
+        fn (ImmutableSpan $span) => $span->getName() === sprintf('%s process', TestJob::class)
+    );
+    assert($processSpan instanceof ImmutableSpan);
+
+    expect($processSpan)
+        ->getTraceId()->toBe($publishSpan->getTraceId())
+        ->getKind()->toBe(SpanKind::KIND_CONSUMER)
+        ->getAttributes()->toMatchArray([
+            'messaging.system' => 'redis',
+            'messaging.operation' => 'process',
+            'messaging.destination.kind' => 'queue',
+            'messaging.destination.name' => 'default',
+            'messaging.destination.template' => TestJob::class,
+        ]);
 });
