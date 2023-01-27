@@ -22,6 +22,7 @@ jobs:
           php-version: '8.1'
           extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, bcmath, soap, intl, gd, exif, iconv, imagick, fileinfo, redis, protobuf, grpc
           coverage: none
+          extensions: otel_instrumentation-open-telemetry/opentelemetry-php-instrumentation@main
 
       - name: Install composer dependencies
         uses: ramsey/composer-install@v2
