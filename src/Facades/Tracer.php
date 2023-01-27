@@ -7,13 +7,15 @@ use OpenTelemetry\API\Trace\SpanBuilderInterface;
 use OpenTelemetry\API\Trace\SpanInterface;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\Context\Context;
+use OpenTelemetry\Context\ContextInterface;
 use OpenTelemetry\Context\ScopeInterface;
 
 /**
  * @method static bool isRecording()
  * @method static string traceId()
  * @method static SpanInterface activeSpan()
- * @method static ScopeInterface activeScope()
+ * @method static ScopeInterface|null activeScope()
+ * @method static ContextInterface currentContext()
  * @method static array propagationHeaders()
  * @method static SpanBuilderInterface build(string $name)
  * @method static SpanInterface start(string $name, int $spanKind = SpanKind::KIND_INTERNAL)

@@ -36,6 +36,7 @@ use OpenTelemetry\SDK\Trace\SpanExporterInterface;
 use OpenTelemetry\SDK\Trace\SpanProcessor\BatchSpanProcessorBuilder;
 use OpenTelemetry\SDK\Trace\TracerProvider;
 use OpenTelemetry\SemConv\ResourceAttributes;
+use OpenTelemetry\SemConv\TraceAttributes;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
@@ -114,8 +115,9 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
             ->buildAndRegisterGlobal();
 
         $instrumentation = new CachedInstrumentation(
-            'laravel-opentelemetry',
-            class_exists(InstalledVersions::class) ? InstalledVersions::getPrettyVersion('keepsuit/laravel-opentelemetry') : null
+            name: 'laravel-opentelemetry',
+            version: class_exists(InstalledVersions::class) ? InstalledVersions::getPrettyVersion('keepsuit/laravel-opentelemetry') : null,
+            schemaUrl: TraceAttributes::SCHEMA_URL,
         );
 
         $this->app->bind(TracerInterface::class, fn () => $instrumentation->tracer());

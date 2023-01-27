@@ -110,6 +110,11 @@ class Tracer
             ->setStatus(StatusCode::STATUS_ERROR);
     }
 
+    public function currentContext(): ContextInterface
+    {
+        return Context::getCurrent();
+    }
+
     public function activeScope(): ?ScopeInterface
     {
         return Context::storage()->scope();
