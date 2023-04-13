@@ -33,7 +33,6 @@ it('can trace queue jobs', function () {
         ->getAttributes()->toMatchArray([
             'messaging.system' => 'redis',
             'messaging.operation' => 'publish',
-            'messaging.destination.kind' => 'queue',
             'messaging.destination.name' => 'default',
             'messaging.destination.template' => TestJob::class,
         ]);

@@ -30,8 +30,8 @@ function getRecordedSpans(): array
 
 function skipTestIfOtelExtensionNotLoaded()
 {
-    if (! extension_loaded('otel_instrumentation')) {
-        test()->markTestSkipped('The otel_instrumentation extension is not loaded.');
+    if (! extension_loaded('opentelemetry')) {
+        test()->markTestSkipped('The opentelemetry extension is not loaded.');
     }
 }
 

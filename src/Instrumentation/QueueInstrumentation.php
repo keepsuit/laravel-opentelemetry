@@ -12,6 +12,7 @@ use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
 use OpenTelemetry\Context\Context;
 use function OpenTelemetry\Instrumentation\hook;
+use OpenTelemetry\SemConv\TraceAttributes;
 
 class QueueInstrumentation implements Instrumentation
 {
@@ -19,7 +20,7 @@ class QueueInstrumentation implements Instrumentation
 
     public function register(array $options): void
     {
-        if (extension_loaded('otel_instrumentation')) {
+        if (extension_loaded('opentelemetry')) {
             $this->traceDispatchCalls();
         }
 
@@ -101,14 +102,12 @@ class QueueInstrumentation implements Instrumentation
                     $connection = property_exists($job, 'connection') && $job->connection != null ? $job->connection : config('queue.default');
                     $queue = property_exists($job, 'queue') && $job->queue != null ? $job->queue : config(sprintf('queue.connections.%s.queue', $connection));
 
-                    $span->setAttribute('messaging.system', config(sprintf('queue.connections.%s.driver', $connection)))
-                        ->setAttribute('messaging.operation', 'publish')
-                        ->setAttribute('messaging.destination.kind', 'queue')
-                        ->setAttribute('messaging.destination.name', $queue);
-
-                    if ($jobClass != null) {
-                        $span->setAttribute('messaging.destination.template', is_object($job) ? get_class($job) : null);
-                    }
+                    $span->setAttributes(array_filter([
+                        TraceAttributes::MESSAGING_SYSTEM => config(sprintf('queue.connections.%s.driver', $connection)),
+                        TraceAttributes::MESSAGING_OPERATION => 'publish',
+                        'messaging.destination.name' => $queue,
+                        'messaging.destination.template' => is_object($job) ? get_class($job) : null,
+                    ]));
                 } catch (\Throwable) {
                 }
 

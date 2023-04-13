@@ -46,6 +46,7 @@
         "open-telemetry/transport-grpc": "Required to use OTLP gRPC exporter"
     },
     "conflict": {
+        "open-telemetry/opentelemetry-auto-laravel": "*",
         "open-telemetry/extension-propagator-b3": "<1.0.0",
         "open-telemetry/exporter-zipkin": "<1.0.0",
         "open-telemetry/transport-grpc": "<1.0.0"
