@@ -44,6 +44,11 @@ return [
         Instrumentation\QueueInstrumentation::class => env('OT_INSTRUMENTATION_QUEUE', true),
 
         Instrumentation\CacheInstrumentation::class => env('OT_INSTRUMENTATION_CACHE', true),
+
+        Instrumentation\EventInstrumentation::class => [
+            'enabled' => env('OT_INSTRUMENTATION_EVENT', true),
+            'ignored' => [],
+        ],
     ],
 
     /**
