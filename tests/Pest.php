@@ -28,7 +28,7 @@ function getRecordedSpans(): array
     return $exporter->getSpans();
 }
 
-function skipTestIfOtelExtensionNotLoaded()
+function skipTestIfOtelExtensionNotLoaded(): void
 {
     if (! extension_loaded('opentelemetry')) {
         test()->markTestSkipped('The opentelemetry extension is not loaded.');
