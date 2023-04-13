@@ -25,11 +25,12 @@ it('can watch a query', function () {
     assert($span instanceof ImmutableSpan);
 
     expect($span)
-        ->getName()->toBe('sqlite :memory:')
+        ->getName()->toBe('sql SELECT')
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
         ->getAttributes()->toArray()->toMatchArray([
             'db.system' => 'sqlite',
             'db.name' => ':memory:',
+            'db.operation' => 'SELECT',
             'db.statement' => 'select * from "users"',
         ])
         ->hasEnded()->toBeTrue()
@@ -51,12 +52,12 @@ it('can watch a query with bindings', function () {
     assert($span instanceof ImmutableSpan);
 
     expect($span)
-        ->getName()->toBe('sqlite :memory:')
+        ->getName()->toBe('sql SELECT')
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
         ->getAttributes()->toArray()->toMatchArray([
             'db.system' => 'sqlite',
             'db.name' => ':memory:',
-            'db.statement' => 'select * from "users" where "id" = 1 and "name" like \'John%\'',
+            'db.statement' => 'select * from "users" where "id" = ? and "name" like ?',
         ]);
 });
 
@@ -78,11 +79,11 @@ it('can watch a query with named bindings', function () {
     assert($span instanceof ImmutableSpan);
 
     expect($span)
-        ->getName()->toBe('sqlite :memory:')
+        ->getName()->toBe('sql UPDATE')
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
         ->getAttributes()->toArray()->toMatchArray([
             'db.system' => 'sqlite',
             'db.name' => ':memory:',
-            'db.statement' => 'update "users" set "name" = \'Admin\' where admin = true',
+            'db.statement' => 'update "users" set "name" = :name where admin = true',
         ]);
 });

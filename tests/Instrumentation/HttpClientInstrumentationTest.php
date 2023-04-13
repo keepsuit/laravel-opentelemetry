@@ -2,6 +2,7 @@
 
 use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\Server\Server;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use OpenTelemetry\API\Trace\SpanKind;
@@ -31,9 +32,8 @@ it('injects propagation headers to Http client request', function () {
     $root->end();
 
     $spans = getRecordedSpans();
-    expect($spans)->toHaveCount(2);
 
-    $httpSpan = $spans[0];
+    $httpSpan = Arr::get($spans, count($spans) - 2);
 
     $request = Server::received()[0];
 
@@ -50,9 +50,8 @@ it('create http client span', function () {
     Http::withTrace()->get(Server::$url);
 
     $spans = getRecordedSpans();
-    expect($spans)->toHaveCount(1);
 
-    $httpSpan = $spans[0];
+    $httpSpan = Arr::last($spans);
 
     expect($httpSpan)
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
@@ -60,9 +59,10 @@ it('create http client span', function () {
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_UNSET)
         ->getAttributes()->toMatchArray([
             'http.method' => 'GET',
-            'http.flavor' => '1.1',
-            'http.url' => Server::$url,
+            'http.url' => 'http://127.0.0.1/',
+            'http.target' => '/',
             'http.request_content_length' => 0,
+            'http.response_content_length' => 0,
             'http.status_code' => 200,
         ]);
 });
@@ -75,9 +75,8 @@ it('set span status to error on 4xx and 5xx status code', function () {
     Http::withTrace()->get(Server::$url);
 
     $spans = getRecordedSpans();
-    expect($spans)->toHaveCount(1);
 
-    $httpSpan = $spans[0];
+    $httpSpan = Arr::last($spans);
 
     expect($httpSpan)
         ->getKind()->toBe(SpanKind::KIND_CLIENT)

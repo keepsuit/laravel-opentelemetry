@@ -3,6 +3,8 @@
 namespace Keepsuit\LaravelOpenTelemetry\Instrumentation;
 
 use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Support\Str;
+use Illuminate\Support\Stringable;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\SemConv\TraceAttributes;
@@ -18,86 +20,30 @@ class QueryInstrumentation implements Instrumentation
 
     public function recordQuery(QueryExecuted $event): void
     {
-        $traceName = sprintf('%s %s', $event->connection->getDriverName(), $event->connection->getDatabaseName());
+        $operationName = Str::of($event->sql)
+            ->before(' ')
+            ->upper()
+            ->when(
+                value: fn (Stringable $operationName) => in_array($operationName, ['SELECT', 'INSERT', 'UPDATE', 'DELETE']),
+                callback: fn (Stringable $operationName) => $operationName->toString(),
+                default: fn () => ''
+            );
 
-        $span = Tracer::build($traceName)
+        $span = Tracer::build(sprintf('sql %s', $operationName))
             ->setSpanKind(SpanKind::KIND_CLIENT)
             ->setStartTimestamp($this->getEventStartTimestampNs($event->time))
             ->startSpan();
 
-        if ($span->isRecording()) {
-            $span->setAttribute(TraceAttributes::DB_SYSTEM, $event->connection->getDriverName())
-                ->setAttribute(TraceAttributes::DB_NAME, $event->connection->getDatabaseName())
-                ->setAttribute(TraceAttributes::DB_STATEMENT, $this->replaceBindings($event))
-                ->setAttribute(TraceAttributes::NET_PEER_NAME, $event->connection->getConfig('host'))
-                ->setAttribute(TraceAttributes::NET_PEER_PORT, $event->connection->getConfig('port'));
-        }
-
-        $span->end();
-    }
-
-    /**
-     * Format the given bindings to strings.
-     *
-     * @param  \Illuminate\Database\Events\QueryExecuted  $event
-     * @return array
-     */
-    protected function formatBindings($event)
-    {
-        return $event->connection->prepareBindings($event->bindings);
-    }
-
-    /**
-     * Replace the placeholders with the actual bindings.
-     *
-     * @param  \Illuminate\Database\Events\QueryExecuted  $event
-     * @return string
-     */
-    public function replaceBindings($event)
-    {
-        $sql = $event->sql;
-
-        foreach ($this->formatBindings($event) as $key => $binding) {
-            $regex = is_numeric($key)
-                ? "/\?(?=(?:[^'\\\']*'[^'\\\']*')*[^'\\\']*$)/"
-                : "/:{$key}(?=(?:[^'\\\']*'[^'\\\']*')*[^'\\\']*$)/";
-
-            if ($binding === null) {
-                $binding = 'null';
-            } elseif (! is_int($binding) && ! is_float($binding)) {
-                $binding = $this->quoteStringBinding($event, $binding);
-            }
-
-            $sql = preg_replace($regex, $binding, $sql, 1);
-        }
-
-        return $sql;
-    }
-
-    /**
-     * Add quotes to string bindings.
-     *
-     * @param  \Illuminate\Database\Events\QueryExecuted  $event
-     * @param  string  $binding
-     * @return string
-     */
-    protected function quoteStringBinding($event, $binding)
-    {
-        try {
-            return $event->connection->getPdo()->quote($binding);
-        } catch (\PDOException $e) {
-            throw_if('IM001' !== $e->getCode(), $e);
-        }
-
-        // Fallback when PDO::quote function is missing...
-        $binding = \strtr($binding, [
-            chr(26) => '\\Z',
-            chr(8) => '\\b',
-            '"' => '\"',
-            "'" => "\'",
-            '\\' => '\\\\',
+        $span->setAttributes([
+            TraceAttributes::DB_SYSTEM => $event->connection->getDriverName(),
+            TraceAttributes::DB_NAME => $event->connection->getDatabaseName(),
+            TraceAttributes::DB_OPERATION => $operationName,
+            TraceAttributes::DB_STATEMENT => $event->sql,
+            TraceAttributes::DB_USER => $event->connection->getConfig('username'),
+            TraceAttributes::NET_PEER_NAME => $event->connection->getConfig('host'),
+            TraceAttributes::NET_PEER_PORT => $event->connection->getConfig('port'),
         ]);
 
-        return "'".$binding."'";
+        $span->end();
     }
 }

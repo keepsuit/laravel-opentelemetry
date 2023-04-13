@@ -130,11 +130,11 @@ class Tracer
         return $this->activeSpan()->getContext()->getTraceId();
     }
 
-    public function propagationHeaders(): array
+    public function propagationHeaders(?ContextInterface $context = null): array
     {
         $headers = [];
 
-        $this->propagator->inject($headers);
+        $this->propagator->inject($headers, context: $context);
 
         return $headers;
     }

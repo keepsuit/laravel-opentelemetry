@@ -16,7 +16,7 @@ use OpenTelemetry\Context\ScopeInterface;
  * @method static SpanInterface activeSpan()
  * @method static ScopeInterface|null activeScope()
  * @method static ContextInterface currentContext()
- * @method static array propagationHeaders()
+ * @method static array propagationHeaders(?ContextInterface $context = null)
  * @method static SpanBuilderInterface build(string $name)
  * @method static SpanInterface start(string $name, int $spanKind = SpanKind::KIND_INTERNAL)
  * @method static mixed measure(string $name, \Closure $callback)

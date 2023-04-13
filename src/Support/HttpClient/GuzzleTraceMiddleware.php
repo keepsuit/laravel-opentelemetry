@@ -19,29 +19,36 @@ class GuzzleTraceMiddleware
             return static function (RequestInterface $request, array $options) use ($handler) {
                 $span = Tracer::build(sprintf('HTTP %s', $request->getMethod()))
                     ->setSpanKind(SpanKind::KIND_CLIENT)
-                    ->setAttribute(TraceAttributes::HTTP_METHOD, $request->getMethod())
-                    ->setAttribute(TraceAttributes::HTTP_FLAVOR, $request->getProtocolVersion())
-                    ->setAttribute(TraceAttributes::HTTP_URL, (string) $request->getUri())
-                    ->setAttribute(TraceAttributes::HTTP_REQUEST_CONTENT_LENGTH, $request->getBody()->getSize())
+                    ->setAttributes([
+                        TraceAttributes::HTTP_METHOD => $request->getMethod(),
+                        TraceAttributes::HTTP_FLAVOR => $request->getProtocolVersion(),
+                        TraceAttributes::HTTP_URL => sprintf('%s://%s%s', $request->getUri()->getScheme(), $request->getUri()->getHost(), $request->getUri()->getPath()),
+                        TraceAttributes::HTTP_TARGET => $request->getUri()->getPath(),
+                        TraceAttributes::HTTP_HOST => $request->getUri()->getHost(),
+                        TraceAttributes::HTTP_SCHEME => $request->getUri()->getScheme(),
+                        TraceAttributes::HTTP_REQUEST_CONTENT_LENGTH => $request->getBody()->getSize(),
+                    ])
                     ->startSpan();
 
-                $scope = $span->activate();
+                $context = $span->storeInContext(Tracer::currentContext());
 
-                foreach (Tracer::propagationHeaders() as $key => $value) {
+                foreach (Tracer::propagationHeaders($context) as $key => $value) {
                     $request = $request->withHeader($key, $value);
                 }
 
                 $promise = $handler($request, $options);
                 assert($promise instanceof PromiseInterface);
 
-                return $promise->then(function (Response $response) use ($scope, $span) {
-                    $span->setAttribute(TraceAttributes::HTTP_STATUS_CODE, $response->getStatusCode());
+                return $promise->then(function (Response $response) use ($span) {
+                    $span->setAttributes([
+                        TraceAttributes::HTTP_STATUS_CODE => $response->getStatusCode(),
+                        TraceAttributes::HTTP_RESPONSE_CONTENT_LENGTH => $response->getHeader('Content-Length')[0] ?? null,
+                    ]);
 
                     if ($response->getStatusCode() >= 400) {
                         $span->setStatus(StatusCode::STATUS_ERROR);
                     }
 
-                    $scope->detach();
                     $span->end();
 
                     return $response;
