@@ -42,6 +42,8 @@ return [
         Instrumentation\RedisInstrumentation::class => env('OT_INSTRUMENTATION_REDIS', true),
 
         Instrumentation\QueueInstrumentation::class => env('OT_INSTRUMENTATION_QUEUE', true),
+
+        Instrumentation\CacheInstrumentation::class => env('OT_INSTRUMENTATION_CACHE', true),
     ],
 
     /**
