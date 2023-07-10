@@ -2,6 +2,14 @@
 
 All notable changes to `laravel-opentelemetry` will be documented in this file.
 
+## v0.3.1 - 2023-07-10
+
+### What's Changed
+
+- Support for latest open-temetry sdk (which contains some namespace changes)
+
+**Full Changelog**: https://github.com/keepsuit/laravel-opentelemetry/compare/0.3.0...0.3.1
+
 ## v0.3.0 - 2023-04-13
 
 ### What's Changed
