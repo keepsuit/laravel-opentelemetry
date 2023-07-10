@@ -2,10 +2,6 @@
 
 namespace Keepsuit\LaravelOpenTelemetry\Instrumentation;
 
-use Illuminate\Cache\Events\CacheHit;
-use Illuminate\Cache\Events\CacheMissed;
-use Illuminate\Cache\Events\KeyForgotten;
-use Illuminate\Cache\Events\KeyWritten;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
