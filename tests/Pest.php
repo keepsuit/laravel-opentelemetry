@@ -1,6 +1,6 @@
 <?php
 
-use OpenTelemetry\API\Common\Instrumentation\Globals;
+use OpenTelemetry\API\Globals;
 use OpenTelemetry\SDK\Trace\TracerProviderInterface;
 
 uses(\Keepsuit\LaravelOpenTelemetry\Tests\TestCase::class)->in(__DIR__);

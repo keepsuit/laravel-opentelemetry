@@ -60,8 +60,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
     {
         ClockFactory::setDefault(new CarbonClock());
 
-        $resource = ResourceInfoFactory::merge(
-            ResourceInfoFactory::defaultResource(),
+        $resource = ResourceInfoFactory::defaultResource()->merge(
             ResourceInfo::create(Attributes::create([
                 ResourceAttributes::SERVICE_NAME => config('opentelemetry.service_name'),
             ]))
