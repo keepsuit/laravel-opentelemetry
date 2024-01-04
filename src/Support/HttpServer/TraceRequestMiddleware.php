@@ -57,23 +57,27 @@ class TraceRequestMiddleware
 
         Tracer::setRootSpan($span);
 
-        $span->setAttribute(TraceAttributes::HTTP_METHOD, $request->method())
-            ->setAttribute(TraceAttributes::HTTP_URL, $request->getUri())
-            ->setAttribute(TraceAttributes::HTTP_TARGET, $request->getRequestUri())
+        $span
+            ->setAttribute(TraceAttributes::URL_FULL, $request->fullUrl())
+            ->setAttribute(TraceAttributes::URL_PATH, $request->path() === '/' ? $request->path() : '/'.$request->path())
+            ->setAttribute(TraceAttributes::URL_QUERY, $request->getQueryString())
+            ->setAttribute(TraceAttributes::URL_SCHEME, $request->getScheme())
             ->setAttribute(TraceAttributes::HTTP_ROUTE, $route)
-            ->setAttribute(TraceAttributes::HTTP_HOST, $request->getHttpHost())
-            ->setAttribute(TraceAttributes::HTTP_SCHEME, $request->getScheme())
-            ->setAttribute(TraceAttributes::HTTP_USER_AGENT, $request->userAgent())
-            ->setAttribute(TraceAttributes::HTTP_CLIENT_IP, $request->ip())
-            ->setAttribute(TraceAttributes::HTTP_REQUEST_CONTENT_LENGTH, $request->header('Content-Length'));
+            ->setAttribute(TraceAttributes::HTTP_REQUEST_METHOD, $request->method())
+            ->setAttribute(TraceAttributes::HTTP_REQUEST_BODY_SIZE, $request->header('Content-Length'))
+            ->setAttribute(TraceAttributes::SERVER_ADDRESS, $request->getHttpHost())
+            ->setAttribute(TraceAttributes::SERVER_PORT, $request->getPort())
+            ->setAttribute(TraceAttributes::USER_AGENT_ORIGINAL, $request->userAgent())
+            ->setAttribute(TraceAttributes::NETWORK_PROTOCOL_VERSION, $request->getProtocolVersion())
+            ->setAttribute(TraceAttributes::NETWORK_PEER_ADDRESS, $request->ip());
 
         return $span;
     }
 
     protected function recordHttpResponseToSpan(SpanInterface $span, Response $response): void
     {
-        $span->setAttribute(TraceAttributes::HTTP_STATUS_CODE, $response->getStatusCode())
-            ->setAttribute(TraceAttributes::HTTP_RESPONSE_CONTENT_LENGTH, strlen($response->getContent()));
+        $span->setAttribute(TraceAttributes::HTTP_RESPONSE_STATUS_CODE, $response->getStatusCode())
+            ->setAttribute(TraceAttributes::HTTP_RESPONSE_BODY_SIZE, strlen($response->getContent()));
 
         if ($response->isSuccessful()) {
             $span->setStatus(StatusCode::STATUS_OK);

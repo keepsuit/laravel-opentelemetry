@@ -33,15 +33,18 @@ it('can trace a request', function () {
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_OK)
         ->getTraceId()->toBe($traceId)
         ->getAttributes()->toMatchArray([
-            'http.method' => 'GET',
-            'http.url' => 'http://localhost/test-ok',
-            'http.target' => '/test-ok',
+            'url.full' => 'http://localhost/test-ok',
+            'url.path' => '/test-ok',
+            'url.scheme' => 'http',
             'http.route' => '/test-ok',
-            'http.host' => 'localhost',
-            'http.scheme' => 'http',
-            'http.user_agent' => 'Symfony',
-            'http.status_code' => 200,
-            'http.response_content_length' => 32,
+            'http.request.method' => 'GET',
+            'server.address' => 'localhost',
+            'server.port' => 80,
+            'user_agent.original' => 'Symfony',
+            'network.protocol.version' => 'HTTP/1.1',
+            'network.peer.address' => '127.0.0.1',
+            'http.response.status_code' => 200,
+            'http.response.body.size' => 32,
         ]);
 });
 
@@ -60,14 +63,17 @@ it('can record route exception', function () {
         ->getKind()->toBe(SpanKind::KIND_SERVER)
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_ERROR)
         ->getAttributes()->toMatchArray([
-            'http.method' => 'GET',
-            'http.url' => 'http://localhost/test-exception',
-            'http.target' => '/test-exception',
+            'url.full' => 'http://localhost/test-exception',
+            'url.path' => '/test-exception',
+            'url.scheme' => 'http',
             'http.route' => '/test-exception',
-            'http.host' => 'localhost',
-            'http.scheme' => 'http',
-            'http.user_agent' => 'Symfony',
-            'http.status_code' => 500,
+            'http.request.method' => 'GET',
+            'server.address' => 'localhost',
+            'server.port' => 80,
+            'user_agent.original' => 'Symfony',
+            'network.protocol.version' => 'HTTP/1.1',
+            'network.peer.address' => '127.0.0.1',
+            'http.response.status_code' => 500,
         ]);
 });
 
@@ -86,10 +92,10 @@ it('set generic span name when route has parameters', function () {
         ->getKind()->toBe(SpanKind::KIND_SERVER)
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_OK)
         ->getAttributes()->toMatchArray([
-            'http.method' => 'GET',
-            'http.url' => 'http://localhost/test/user1',
-            'http.target' => '/test/user1',
+            'url.full' => 'http://localhost/test/user1',
+            'url.path' => '/test/user1',
             'http.route' => '/test/{parameter}',
+            'http.request.method' => 'GET',
         ]);
 });
 

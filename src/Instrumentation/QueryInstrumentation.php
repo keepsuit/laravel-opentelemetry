@@ -40,8 +40,8 @@ class QueryInstrumentation implements Instrumentation
             TraceAttributes::DB_OPERATION => $operationName,
             TraceAttributes::DB_STATEMENT => $event->sql,
             TraceAttributes::DB_USER => $event->connection->getConfig('username'),
-            TraceAttributes::NET_PEER_NAME => $event->connection->getConfig('host'),
-            TraceAttributes::NET_PEER_PORT => $event->connection->getConfig('port'),
+            TraceAttributes::SERVER_ADDRESS => $event->connection->getConfig('host'),
+            TraceAttributes::SERVER_PORT => $event->connection->getConfig('port'),
         ]);
 
         $span->end();

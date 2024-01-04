@@ -20,13 +20,14 @@ class GuzzleTraceMiddleware
                 $span = Tracer::build(sprintf('HTTP %s', $request->getMethod()))
                     ->setSpanKind(SpanKind::KIND_CLIENT)
                     ->setAttributes([
-                        TraceAttributes::HTTP_METHOD => $request->getMethod(),
-                        TraceAttributes::HTTP_FLAVOR => $request->getProtocolVersion(),
-                        TraceAttributes::HTTP_URL => sprintf('%s://%s%s', $request->getUri()->getScheme(), $request->getUri()->getHost(), $request->getUri()->getPath()),
-                        TraceAttributes::HTTP_TARGET => $request->getUri()->getPath(),
-                        TraceAttributes::HTTP_HOST => $request->getUri()->getHost(),
-                        TraceAttributes::HTTP_SCHEME => $request->getUri()->getScheme(),
-                        TraceAttributes::HTTP_REQUEST_CONTENT_LENGTH => $request->getBody()->getSize(),
+                        TraceAttributes::URL_FULL => sprintf('%s://%s%s', $request->getUri()->getScheme(), $request->getUri()->getHost(), $request->getUri()->getPath()),
+                        TraceAttributes::URL_PATH => $request->getUri()->getPath(),
+                        TraceAttributes::URL_QUERY => $request->getUri()->getQuery(),
+                        TraceAttributes::HTTP_REQUEST_METHOD => $request->getMethod(),
+                        TraceAttributes::HTTP_REQUEST_BODY_SIZE => $request->getBody()->getSize(),
+                        TraceAttributes::URL_SCHEME => $request->getUri()->getScheme(),
+                        TraceAttributes::SERVER_ADDRESS => $request->getUri()->getHost(),
+                        TraceAttributes::SERVER_PORT => $request->getUri()->getPort(),
                     ])
                     ->startSpan();
 
@@ -41,8 +42,8 @@ class GuzzleTraceMiddleware
 
                 return $promise->then(function (Response $response) use ($span) {
                     $span->setAttributes([
-                        TraceAttributes::HTTP_STATUS_CODE => $response->getStatusCode(),
-                        TraceAttributes::HTTP_RESPONSE_CONTENT_LENGTH => $response->getHeader('Content-Length')[0] ?? null,
+                        TraceAttributes::HTTP_RESPONSE_STATUS_CODE => $response->getStatusCode(),
+                        TraceAttributes::HTTP_REQUEST_BODY_SIZE => $response->getHeader('Content-Length')[0] ?? null,
                     ]);
 
                     if ($response->getStatusCode() >= 400) {

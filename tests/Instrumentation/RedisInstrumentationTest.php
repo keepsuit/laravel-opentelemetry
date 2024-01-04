@@ -16,10 +16,10 @@ it('can watch a redis call', function () {
     expect($span)
         ->getName()->toBe('redis default get')
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
-        ->getAttributes()->toArray()->toMatchArray([
+        ->getAttributes()->toArray()->toBe([
             'db.system' => 'redis',
             'db.statement' => 'get test',
-            'net.peer.name' => '127.0.0.1',
+            'server.address' => '127.0.0.1',
         ])
         ->hasEnded()->toBeTrue()
         ->getEndEpochNanos()->toBeLessThan(ClockFactory::getDefault()->now());

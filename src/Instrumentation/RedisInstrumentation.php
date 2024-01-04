@@ -35,7 +35,7 @@ class RedisInstrumentation implements Instrumentation
         if ($span->isRecording()) {
             $span->setAttribute(TraceAttributes::DB_SYSTEM, 'redis')
                 ->setAttribute(TraceAttributes::DB_STATEMENT, $this->formatCommand($event->command, $event->parameters))
-                ->setAttribute(TraceAttributes::NET_PEER_NAME, $event->connection->client()->getHost());
+                ->setAttribute(TraceAttributes::SERVER_ADDRESS, $event->connection->client()->getHost());
         }
 
         $span->end();

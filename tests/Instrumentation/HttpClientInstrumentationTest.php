@@ -58,12 +58,15 @@ it('create http client span', function () {
         ->getName()->toBe('HTTP GET')
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_UNSET)
         ->getAttributes()->toMatchArray([
-            'http.method' => 'GET',
-            'http.url' => 'http://127.0.0.1/',
-            'http.target' => '/',
-            'http.request_content_length' => 0,
-            'http.response_content_length' => 0,
-            'http.status_code' => 200,
+            'url.full' => 'http://127.0.0.1/',
+            'url.path' => '/',
+            'url.query' => '',
+            'http.request.method' => 'GET',
+            'http.request.body.size' => '0',
+            'url.scheme' => 'http',
+            'server.address' => '127.0.0.1',
+            'server.port' => 8126,
+            'http.response.status_code' => 200,
         ]);
 });
 
@@ -83,6 +86,6 @@ it('set span status to error on 4xx and 5xx status code', function () {
         ->getName()->toBe('HTTP GET')
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_ERROR)
         ->getAttributes()->toMatchArray([
-            'http.status_code' => 500,
+            'http.response.status_code' => 500,
         ]);
 });
