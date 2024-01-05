@@ -2,6 +2,19 @@
 
 All notable changes to `laravel-opentelemetry` will be documented in this file.
 
+## v0.4.0 - 2024-01-05
+
+### What's Changed
+
+* Replaced deprecated trace attributes
+* Increased phpstan level to 7
+* Required stable versions of opentelemetry
+* Bump actions/checkout from 3 to 4 by @dependabot in https://github.com/keepsuit/laravel-opentelemetry/pull/6
+* Bump stefanzweifel/git-auto-commit-action from 4 to 5 by @dependabot in https://github.com/keepsuit/laravel-opentelemetry/pull/7
+* Bump aglipanci/laravel-pint-action from 2.3.0 to 2.3.1 by @dependabot in https://github.com/keepsuit/laravel-opentelemetry/pull/8
+
+**Full Changelog**: https://github.com/keepsuit/laravel-opentelemetry/compare/0.3.2...0.4.0
+
 ## v0.3.1 - 2023-07-10
 
 ### What's Changed
