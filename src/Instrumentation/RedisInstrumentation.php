@@ -50,7 +50,7 @@ class RedisInstrumentation implements Instrumentation
             if (is_array($parameter)) {
                 return collect($parameter)->map(function ($value, $key) {
                     if (is_array($value)) {
-                        return json_encode($value);
+                        return \Safe\json_encode($value);
                     }
 
                     return is_int($key) ? $value : sprintf('%s %s', $key, $value);

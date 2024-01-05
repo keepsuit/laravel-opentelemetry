@@ -77,7 +77,7 @@ class TraceRequestMiddleware
     protected function recordHttpResponseToSpan(SpanInterface $span, Response $response): void
     {
         $span->setAttribute(TraceAttributes::HTTP_RESPONSE_STATUS_CODE, $response->getStatusCode())
-            ->setAttribute(TraceAttributes::HTTP_RESPONSE_BODY_SIZE, strlen($response->getContent()));
+            ->setAttribute(TraceAttributes::HTTP_RESPONSE_BODY_SIZE, strlen($response->getContent() ?: ''));
 
         if ($response->isSuccessful()) {
             $span->setStatus(StatusCode::STATUS_OK);

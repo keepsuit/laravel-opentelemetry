@@ -1,12 +1,13 @@
 parameters:
-    checkMissingIterableValueType: false
-    checkGenericClassInNonGenericObjectType: false
-    checkOctaneCompatibility: true
-    checkPhpDocMissingReturn: true
-
+    level: 7
     paths:
         - src
+        - config
+    tmpDir: build/phpstan
+    checkOctaneCompatibility: true
+    checkModelProperties: true
+    checkMissingIterableValueType: false
+    checkGenericClassInNonGenericObjectType: false
+    treatPhpDocTypesAsCertain: false
 
-    level: 6
-
-#    ignoreErrors:
+    ignoreErrors:

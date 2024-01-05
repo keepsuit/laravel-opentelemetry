@@ -23,7 +23,7 @@ class CacheInstrumentation implements Instrumentation
     {
         $this->addEvent('cache hit', [
             'key' => $event->key,
-            'tags' => json_encode($event->tags),
+            'tags' => \Safe\json_encode($event->tags),
         ]);
     }
 
@@ -31,20 +31,17 @@ class CacheInstrumentation implements Instrumentation
     {
         $this->addEvent('cache miss', [
             'key' => $event->key,
-            'tags' => json_encode($event->tags),
+            'tags' => \Safe\json_encode($event->tags),
         ]);
     }
 
-    /** @psalm-suppress UndefinedPropertyFetch */
     public function recordCacheSet(KeyWritten $event): void
     {
-        $ttl = property_exists($event, 'minutes')
-            ? $event->minutes * 60
-            : $event->seconds;
+        $ttl = $event->seconds ?? 0;
 
         $this->addEvent('cache set', [
             'key' => $event->key,
-            'tags' => json_encode($event->tags),
+            'tags' => \Safe\json_encode($event->tags),
             'expires_at' => $ttl > 0 ? now()->addSeconds($ttl)->getTimestamp() : 'never',
             'expires_in_seconds' => $ttl > 0 ? $ttl : 'never',
             'expires_in_human' => $ttl > 0 ? now()->addSeconds($ttl)->diffForHumans() : 'never',
@@ -55,7 +52,7 @@ class CacheInstrumentation implements Instrumentation
     {
         $this->addEvent('cache forget', [
             'key' => $event->key,
-            'tags' => json_encode($event->tags),
+            'tags' => \Safe\json_encode($event->tags),
         ]);
     }
 
