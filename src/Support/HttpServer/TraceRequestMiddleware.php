@@ -12,6 +12,7 @@ use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
 use OpenTelemetry\SemConv\TraceAttributes;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class TraceRequestMiddleware
 {
@@ -76,8 +77,11 @@ class TraceRequestMiddleware
 
     protected function recordHttpResponseToSpan(SpanInterface $span, Response $response): void
     {
-        $span->setAttribute(TraceAttributes::HTTP_RESPONSE_STATUS_CODE, $response->getStatusCode())
-            ->setAttribute(TraceAttributes::HTTP_RESPONSE_BODY_SIZE, strlen($response->getContent() ?: ''));
+        $span->setAttribute(TraceAttributes::HTTP_RESPONSE_STATUS_CODE, $response->getStatusCode());
+
+        if (($content = $response->getContent()) !== false) {
+            $span->setAttribute(TraceAttributes::HTTP_RESPONSE_BODY_SIZE, strlen($content));
+        }
 
         if ($response->isSuccessful()) {
             $span->setStatus(StatusCode::STATUS_OK);
