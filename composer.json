@@ -30,7 +30,7 @@
         "guzzlehttp/test-server": "^0.1.0",
         "larastan/larastan": "^2.7",
         "laravel/pint": "^1.2",
-        "nesbot/carbon": "^2.69.0",
+        "nesbot/carbon": "^2.69 || ^3.0",
         "nunomaduro/collision": "^6.0 || ^7.0",
         "open-telemetry/exporter-zipkin": "^1.0",
         "open-telemetry/extension-propagator-b3": "^1.0",
