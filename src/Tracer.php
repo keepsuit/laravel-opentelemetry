@@ -3,6 +3,7 @@
 namespace Keepsuit\LaravelOpenTelemetry;
 
 use Closure;
+use Illuminate\Foundation\Bus\PendingDispatch;
 use Illuminate\Support\Facades\Log;
 use Keepsuit\LaravelOpenTelemetry\Support\SpanBuilder;
 use OpenTelemetry\API\Trace\SpanInterface;
@@ -42,7 +43,7 @@ class Tracer
      *
      * @param  non-empty-string  $name
      * @param  Closure(SpanInterface $span): U  $callback
-     * @return U
+     * @return (U is PendingDispatch ? null : U)
      *
      * @throws \Throwable
      */

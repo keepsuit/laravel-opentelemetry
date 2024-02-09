@@ -70,7 +70,7 @@ class SpanBuilder implements SpanBuilderInterface
      * @template U
      *
      * @param  Closure(SpanInterface $span): U  $callback
-     * @return U
+     * @return (U is PendingDispatch ? null : U)
      *
      * @throws Throwable
      */

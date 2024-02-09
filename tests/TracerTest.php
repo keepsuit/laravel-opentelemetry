@@ -1,6 +1,7 @@
 <?php
 
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
+use OpenTelemetry\API\Trace\SpanInterface;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
 use OpenTelemetry\SDK\Common\Time\ClockFactory;
@@ -153,7 +154,7 @@ it('can measure nested spans', function () {
 
 it('can measure a callback', function () {
     /** @var Span $span */
-    $span = Tracer::measure('test span', function (Span $span) {
+    $span = Tracer::measure('test span', function (SpanInterface $span) {
         TestTime::addSecond();
 
         expect($span)
@@ -174,7 +175,7 @@ it('can record exceptions thrown in the callback', function () {
     $callbackSpan = null;
 
     try {
-        Tracer::measure('test span', function (Span $span) use (&$callbackSpan) {
+        Tracer::measure('test span', function (SpanInterface $span) use (&$callbackSpan) {
             $callbackSpan = $span;
 
             throw new Exception('test exception');
