@@ -68,7 +68,7 @@ class TraceRequestMiddleware
             ->setAttribute(TraceAttributes::USER_AGENT_ORIGINAL, $request->userAgent())
             ->setAttribute(TraceAttributes::NETWORK_PROTOCOL_VERSION, $request->getProtocolVersion())
             ->setAttribute(TraceAttributes::NETWORK_PEER_ADDRESS, $request->ip())
-            ->startSpan();
+            ->start();
     }
 
     protected function recordHttpResponseToSpan(SpanInterface $span, Response $response): void

@@ -2,21 +2,24 @@
 
 namespace Keepsuit\LaravelOpenTelemetry\Support;
 
+use Carbon\CarbonInterface;
 use Closure;
 use Illuminate\Foundation\Bus\PendingDispatch;
 use OpenTelemetry\API\Trace\SpanBuilderInterface;
 use OpenTelemetry\API\Trace\SpanContextInterface;
 use OpenTelemetry\API\Trace\SpanInterface;
+use OpenTelemetry\API\Trace\SpanKind;
+use OpenTelemetry\Context\ContextInterface;
 use Throwable;
 
-class SpanBuilder implements SpanBuilderInterface
+class SpanBuilder
 {
     public function __construct(
         protected SpanBuilderInterface $spanBuilder
     ) {
     }
 
-    public function setParent($context): SpanBuilder
+    public function setParent(?ContextInterface $context): SpanBuilder
     {
         $this->spanBuilder->setParent($context);
 
@@ -30,16 +33,16 @@ class SpanBuilder implements SpanBuilderInterface
         return $this;
     }
 
-    /**
-     * @param  mixed  $value
-     */
-    public function setAttribute(string $key, $value): SpanBuilder
+    public function setAttribute(string $key, mixed $value): SpanBuilder
     {
         $this->spanBuilder->setAttribute($key, $value);
 
         return $this;
     }
 
+    /**
+     * @param  iterable<string,mixed>  $attributes
+     */
     public function setAttributes(iterable $attributes): SpanBuilder
     {
         $this->spanBuilder->setAttributes($attributes);
@@ -47,13 +50,23 @@ class SpanBuilder implements SpanBuilderInterface
         return $this;
     }
 
-    public function setStartTimestamp(int $timestampNanos): SpanBuilder
+    /**
+     * @param  CarbonInterface|int  $timestamp  A carbon instance or a timestamp in nanoseconds
+     */
+    public function setStartTimestamp(CarbonInterface|int $timestamp): SpanBuilder
     {
-        $this->spanBuilder->setStartTimestamp($timestampNanos);
+        if ($timestamp instanceof CarbonInterface) {
+            $timestamp = CarbonClock::carbonToNanos($timestamp);
+        }
+
+        $this->spanBuilder->setStartTimestamp($timestamp);
 
         return $this;
     }
 
+    /**
+     * @phpstan-param  SpanKind::KIND_* $spanKind
+     */
     public function setSpanKind(int $spanKind): SpanBuilder
     {
         $this->spanBuilder->setSpanKind($spanKind);
@@ -61,7 +74,7 @@ class SpanBuilder implements SpanBuilderInterface
         return $this;
     }
 
-    public function startSpan(): SpanInterface
+    public function start(): SpanInterface
     {
         return $this->spanBuilder->startSpan();
     }
@@ -76,7 +89,7 @@ class SpanBuilder implements SpanBuilderInterface
      */
     public function measure(Closure $callback): mixed
     {
-        $span = $this->startSpan();
+        $span = $this->start();
         $scope = $span->activate();
 
         try {

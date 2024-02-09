@@ -2,7 +2,6 @@
 
 namespace Keepsuit\LaravelOpenTelemetry\Facades;
 
-use Closure;
 use Illuminate\Support\Facades\Facade;
 use Keepsuit\LaravelOpenTelemetry\Support\SpanBuilder;
 use OpenTelemetry\API\Trace\SpanInterface;
@@ -19,8 +18,6 @@ use OpenTelemetry\Context\ScopeInterface;
  * @method static array propagationHeaders(?ContextInterface $context = null)
  * @method static Context|null extractContextFromPropagationHeaders(array $headers)
  * @method static SpanBuilder newSpan(string $name)
- * @method static SpanInterface start(string $name)
- * @method static mixed measure(string $name, Closure $callback)
  * @method static void updateLogContext()
  */
 class Tracer extends Facade

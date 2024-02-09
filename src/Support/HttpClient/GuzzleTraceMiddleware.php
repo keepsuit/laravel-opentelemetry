@@ -27,7 +27,7 @@ class GuzzleTraceMiddleware
                     ->setAttribute(TraceAttributes::URL_SCHEME, $request->getUri()->getScheme())
                     ->setAttribute(TraceAttributes::SERVER_ADDRESS, $request->getUri()->getHost())
                     ->setAttribute(TraceAttributes::SERVER_PORT, $request->getUri()->getPort())
-                    ->startSpan();
+                    ->start();
 
                 $context = $span->storeInContext(Tracer::currentContext());
 

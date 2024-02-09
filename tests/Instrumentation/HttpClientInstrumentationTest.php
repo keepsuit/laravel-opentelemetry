@@ -21,7 +21,7 @@ it('injects propagation headers to Http client request', function () {
         new Response(200, ['Content-Length' => 0]),
     ]);
 
-    $root = Tracer::start('root');
+    $root = Tracer::newSpan('root')->start();
     $scope = $root->activate();
 
     Http::withTrace()->get(Server::$url);

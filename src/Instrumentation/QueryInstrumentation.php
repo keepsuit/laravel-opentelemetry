@@ -39,7 +39,7 @@ class QueryInstrumentation implements Instrumentation
             ->setAttribute(TraceAttributes::DB_USER, $event->connection->getConfig('username'))
             ->setAttribute(TraceAttributes::SERVER_ADDRESS, $event->connection->getConfig('host'))
             ->setAttribute(TraceAttributes::SERVER_PORT, $event->connection->getConfig('port'))
-            ->startSpan();
+            ->start();
 
         $span->end();
     }

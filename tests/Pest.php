@@ -30,7 +30,7 @@ function getRecordedSpans(): array
 
 function withRootSpan(Closure $callback): mixed
 {
-    $rootSpan = \Keepsuit\LaravelOpenTelemetry\Facades\Tracer::newSpan('root')->startSpan();
+    $rootSpan = \Keepsuit\LaravelOpenTelemetry\Facades\Tracer::newSpan('root')->start();
     $rootScope = $rootSpan->activate();
 
     $result = $callback();

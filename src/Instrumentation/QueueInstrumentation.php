@@ -38,7 +38,7 @@ class QueueInstrumentation implements Instrumentation
                 ->setAttribute('messaging.destination.kind', 'queue')
                 ->setAttribute('messaging.destination.name', $event->job->getQueue())
                 ->setAttribute('messaging.destination.template', $event->job->resolveName())
-                ->startSpan();
+                ->start();
 
             $span->activate();
 

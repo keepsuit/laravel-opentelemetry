@@ -25,7 +25,7 @@ it('can resolve laravel tracer', function () {
 });
 
 it('can measure a span', function () {
-    $span = Tracer::start('test span');
+    $span = Tracer::newSpan('test span')->start();
 
     expect(Tracer::activeSpan())->not->toBe($span);
 
@@ -49,7 +49,7 @@ it('can measure a span', function () {
 it('can measure sequential spans', function () {
     $startTimestamp = ClockFactory::getDefault()->now();
 
-    $span1 = Tracer::start('test span 1');
+    $span1 = Tracer::newSpan('test span 1')->start();
     assert($span1 instanceof Span);
 
     expect(Tracer::activeSpan())->not->toBe($span1);
@@ -58,7 +58,7 @@ it('can measure sequential spans', function () {
 
     $span1->end();
 
-    $span2 = Tracer::start('test span 2');
+    $span2 = Tracer::newSpan('test span 2')->start();
     assert($span2 instanceof Span);
 
     expect(Tracer::activeSpan())->not->toBe($span2);
@@ -83,10 +83,10 @@ it('can measure sequential spans', function () {
 it('can measure parallel spans', function () {
     $startTimestamp = ClockFactory::getDefault()->now();
 
-    $span1 = Tracer::start('test span 1');
+    $span1 = Tracer::newSpan('test span 1')->start();
     assert($span1 instanceof Span);
 
-    $span2 = Tracer::start('test span 2');
+    $span2 = Tracer::newSpan('test span 2')->start();
     assert($span2 instanceof Span);
 
     expect(Tracer::activeSpan())
@@ -117,7 +117,7 @@ it('can measure parallel spans', function () {
 it('can measure nested spans', function () {
     $startTimestamp = ClockFactory::getDefault()->now();
 
-    $span1 = Tracer::start('test span 1');
+    $span1 = Tracer::newSpan('test span 1')->start();
     assert($span1 instanceof Span);
     $scope = $span1->activate();
 
@@ -125,7 +125,7 @@ it('can measure nested spans', function () {
 
     TestTime::addSecond();
 
-    $span2 = Tracer::start('test span 2');
+    $span2 = Tracer::newSpan('test span 2')->start();
     assert($span2 instanceof Span);
 
     expect(Tracer::activeSpan())->toBe($span1);
@@ -155,7 +155,7 @@ it('can measure nested spans', function () {
 
 it('can measure a callback', function () {
     /** @var Span $span */
-    $span = Tracer::measure('test span', function (SpanInterface $span) {
+    $span = Tracer::newSpan('test span')->measure(function (SpanInterface $span) {
         TestTime::addSecond();
 
         expect($span)
@@ -176,7 +176,7 @@ it('can record exceptions thrown in the callback', function () {
     $callbackSpan = null;
 
     try {
-        Tracer::measure('test span', function (SpanInterface $span) use (&$callbackSpan) {
+        Tracer::newSpan('test span')->measure(function (SpanInterface $span) use (&$callbackSpan) {
             $callbackSpan = $span;
 
             throw new Exception('test exception');
@@ -198,7 +198,7 @@ it('can record exceptions thrown in the callback', function () {
 });
 
 it('provides headers for propagation', function () {
-    $span = Tracer::start('test span');
+    $span = Tracer::newSpan('test span')->start();
     $scope = $span->activate();
 
     expect(Tracer::propagationHeaders())
@@ -211,7 +211,7 @@ it('provides headers for propagation', function () {
 });
 
 it('provides traceId and spanId for propagation', function () {
-    $span = Tracer::start('test span');
+    $span = Tracer::newSpan('test span')->start();
     $scope = $span->activate();
 
     expect(Tracer::traceId())->toBe($span->getContext()->getTraceId());
@@ -221,7 +221,7 @@ it('provides traceId and spanId for propagation', function () {
 });
 
 it('provides active span', function () {
-    $span = Tracer::start('test span');
+    $span = Tracer::newSpan('test span')->start();
     $scope = $span->activate();
 
     expect(Tracer::activeSpan())->toBe($span);
@@ -231,7 +231,7 @@ it('provides active span', function () {
 });
 
 it('set traceId to log context', function () {
-    $span = Tracer::start('test span');
+    $span = Tracer::newSpan('test span')->start();
     $scope = $span->activate();
 
     expect(Log::sharedContext())->toBe([]);

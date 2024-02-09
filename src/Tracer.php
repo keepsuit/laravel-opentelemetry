@@ -2,8 +2,6 @@
 
 namespace Keepsuit\LaravelOpenTelemetry;
 
-use Closure;
-use Illuminate\Foundation\Bus\PendingDispatch;
 use Illuminate\Support\Facades\Log;
 use Keepsuit\LaravelOpenTelemetry\Support\SpanBuilder;
 use OpenTelemetry\API\Trace\SpanInterface;
@@ -20,36 +18,6 @@ class Tracer
         protected TracerInterface $tracer,
         protected TextMapPropagatorInterface $propagator
     ) {
-    }
-
-    /**
-     * @phpstan-param non-empty-string $name
-     */
-    public function newSpan(string $name): SpanBuilder
-    {
-        return new SpanBuilder($this->tracer->spanBuilder($name));
-    }
-
-    /**
-     * @phpstan-param non-empty-string $name
-     */
-    public function start(string $name): SpanInterface
-    {
-        return $this->newSpan($name)->startSpan();
-    }
-
-    /**
-     * @template U
-     *
-     * @param  non-empty-string  $name
-     * @param  Closure(SpanInterface $span): U  $callback
-     * @return (U is PendingDispatch ? null : U)
-     *
-     * @throws \Throwable
-     */
-    public function measure(string $name, Closure $callback)
-    {
-        return $this->newSpan($name)->measure($callback);
     }
 
     public function currentContext(): ContextInterface
@@ -72,20 +40,6 @@ class Tracer
         return $this->activeSpan()->getContext()->getTraceId();
     }
 
-    public function propagationHeaders(?ContextInterface $context = null): array
-    {
-        $headers = [];
-
-        $this->propagator->inject($headers, context: $context);
-
-        return $headers;
-    }
-
-    public function extractContextFromPropagationHeaders(array $headers): ContextInterface
-    {
-        return $this->propagator->extract($headers);
-    }
-
     public function isRecording(): bool
     {
         $enabled = config('opentelemetry.enabled', true);
@@ -99,6 +53,28 @@ class Tracer
         }
 
         return false;
+    }
+
+    /**
+     * @phpstan-param non-empty-string $name
+     */
+    public function newSpan(string $name): SpanBuilder
+    {
+        return new SpanBuilder($this->tracer->spanBuilder($name));
+    }
+
+    public function propagationHeaders(?ContextInterface $context = null): array
+    {
+        $headers = [];
+
+        $this->propagator->inject($headers, context: $context);
+
+        return $headers;
+    }
+
+    public function extractContextFromPropagationHeaders(array $headers): ContextInterface
+    {
+        return $this->propagator->extract($headers);
     }
 
     public function updateLogContext(): void
