@@ -43,9 +43,9 @@ class Tracer
      *
      * @param  non-empty-string  $name
      * @param  Closure(SpanInterface $span): U  $callback
-     * @throws \Throwable
      * @return (U is PendingDispatch ? null : U)
      *
+     * @throws \Throwable
      */
     public function measure(string $name, Closure $callback)
     {
