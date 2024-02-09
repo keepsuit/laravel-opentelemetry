@@ -8,7 +8,6 @@ use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Queue\QueueManager;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use OpenTelemetry\API\Trace\SpanKind;
-use OpenTelemetry\Context\Context;
 
 class QueueInstrumentation implements Instrumentation
 {
@@ -31,14 +30,17 @@ class QueueInstrumentation implements Instrumentation
         app('events')->listen(JobProcessing::class, function (JobProcessing $event) {
             $context = Tracer::extractContextFromPropagationHeaders($event->job->payload());
 
-            $span = Tracer::start(sprintf('%s process', $event->job->resolveName()), SpanKind::KIND_CONSUMER, $context);
-            $span->activate();
-
-            $span->setAttribute('messaging.system', config(sprintf('queue.connections.%s.driver', $event->connectionName)))
+            $span = Tracer::newSpan(sprintf('%s process', $event->job->resolveName()))
+                ->setSpanKind(SpanKind::KIND_CONSUMER)
+                ->setParent($context)
+                ->setAttribute('messaging.system', config(sprintf('queue.connections.%s.driver', $event->connectionName)))
                 ->setAttribute('messaging.operation', 'process')
                 ->setAttribute('messaging.destination.kind', 'queue')
                 ->setAttribute('messaging.destination.name', $event->job->getQueue())
-                ->setAttribute('messaging.destination.template', $event->job->resolveName());
+                ->setAttribute('messaging.destination.template', $event->job->resolveName())
+                ->startSpan();
+
+            $span->activate();
         });
     }
 

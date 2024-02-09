@@ -74,7 +74,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
                 ),
             ),
             'http' => new OtlpSpanExporter(
-            // @phpstan-ignore-next-line
+                // @phpstan-ignore-next-line
                 (new OtlpHttpTransportFactory())->create(
                     (new HttpEndpointResolver())->resolveToString(config('opentelemetry.exporters.http.endpoint'), Signals::TRACE),
                     'application/x-protobuf'

@@ -3,12 +3,9 @@
 namespace Keepsuit\LaravelOpenTelemetry;
 
 use Closure;
-use Exception;
-use Illuminate\Foundation\Bus\PendingDispatch;
 use Illuminate\Support\Facades\Log;
-use OpenTelemetry\API\Trace\SpanBuilderInterface;
+use Keepsuit\LaravelOpenTelemetry\Support\SpanBuilder;
 use OpenTelemetry\API\Trace\SpanInterface;
-use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\TracerInterface;
 use OpenTelemetry\Context\Context;
 use OpenTelemetry\Context\ContextInterface;
@@ -27,24 +24,17 @@ class Tracer
     /**
      * @phpstan-param non-empty-string $name
      */
-    public function build(string $name): SpanBuilderInterface
+    public function newSpan(string $name): SpanBuilder
     {
-        return $this->tracer->spanBuilder($name);
+        return new SpanBuilder($this->tracer->spanBuilder($name));
     }
 
     /**
      * @phpstan-param non-empty-string $name
-     * @phpstan-param SpanKind::KIND_* $spanKind
      */
-    public function start(
-        string $name,
-        int $spanKind = SpanKind::KIND_INTERNAL,
-        ?ContextInterface $context = null
-    ): SpanInterface {
-        return $this->build($name)
-            ->setSpanKind($spanKind)
-            ->setParent($context)
-            ->startSpan();
+    public function start(string $name): SpanInterface
+    {
+        return $this->newSpan($name)->startSpan();
     }
 
     /**
@@ -52,34 +42,13 @@ class Tracer
      *
      * @param  non-empty-string  $name
      * @param  Closure(SpanInterface $span): U  $callback
-     * @phpstan-param SpanKind::KIND_* $spanKind
-     *
-     * @throws Exception
      * @return U
      *
+     * @throws \Throwable
      */
-    public function measure(string $name, Closure $callback, int $spanKind = SpanKind::KIND_INTERNAL)
+    public function measure(string $name, Closure $callback)
     {
-        $span = $this->start($name, $spanKind);
-        $scope = $span->activate();
-
-        try {
-            $result = $callback($span);
-
-            // Fix: Dispatch is effective only on destruct
-            if ($result instanceof PendingDispatch) {
-                $result = null;
-            }
-
-            return $result;
-        } catch (Exception $exception) {
-            $span->recordException($exception);
-
-            throw $exception;
-        } finally {
-            $span->end();
-            $scope->detach();
-        }
+        return $this->newSpan($name)->measure($callback);
     }
 
     public function currentContext(): ContextInterface
@@ -131,14 +100,14 @@ class Tracer
         return false;
     }
 
-    protected function setTraceIdForLogs(SpanInterface $span): void
-    {
-        if (config('opentelemetry.logs.inject_trace_id', true)) {
-            $field = config('opentelemetry.logs.trace_id_field', 'traceId');
-
-            Log::shareContext([
-                $field => $span->getContext()->getTraceId(),
-            ]);
-        }
-    }
+    //    protected function setTraceIdForLogs(SpanInterface $span): void
+    //    {
+    //        if (config('opentelemetry.logs.inject_trace_id', true)) {
+    //            $field = config('opentelemetry.logs.trace_id_field', 'traceId');
+    //
+    //            Log::shareContext([
+    //                $field => $span->getContext()->getTraceId(),
+    //            ]);
+    //        }
+    //    }
 }

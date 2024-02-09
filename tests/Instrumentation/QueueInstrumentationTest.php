@@ -19,14 +19,14 @@ it('can trace queue jobs', function () {
     $spanId = '';
     $traceId = '';
 
-    Tracer::measure('dispatcher', function (Span $span) use (&$traceId, &$spanId) {
-        $spanId = $span->getContext()->getSpanId();
-        $traceId = $span->getContext()->getTraceId();
+    Tracer::newSpan('dispatcher')
+        ->setSpanKind(SpanKind::KIND_PRODUCER)
+        ->measure(function (Span $span) use (&$traceId, &$spanId) {
+            $spanId = $span->getContext()->getSpanId();
+            $traceId = $span->getContext()->getTraceId();
 
-        return dispatch(new TestJob($this->valuestore));
-    },
-        spanKind: SpanKind::KIND_PRODUCER
-    );
+            return dispatch(new TestJob($this->valuestore));
+        });
 
     expect($traceId)
         ->not->toBeEmpty()
