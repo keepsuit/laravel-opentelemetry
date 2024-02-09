@@ -42,5 +42,6 @@ it('can trace queue jobs', function () {
 
     expect($this->valuestore)
         ->get('traceparentInJob')->toBe(sprintf('00-%s-%s-01', $traceId, $spanId))
-        ->get('traceIdInJob')->toBe($traceId);
+        ->get('traceIdInJob')->toBe($traceId)
+        ->get('logContextInJob')->toMatchArray(['traceId' => $traceId]);
 });

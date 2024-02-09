@@ -41,6 +41,8 @@ class QueueInstrumentation implements Instrumentation
                 ->startSpan();
 
             $span->activate();
+
+            Tracer::updateLogContext();
         });
     }
 

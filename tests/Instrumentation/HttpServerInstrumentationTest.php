@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\HttpServerInstrumentation;
@@ -46,6 +47,10 @@ it('can trace a request', function () {
             'http.response.status_code' => 200,
             'http.response.body.size' => 32,
         ]);
+
+    expect(Log::sharedContext())->toMatchArray([
+        'traceId' => $traceId,
+    ]);
 });
 
 it('can record route exception', function () {

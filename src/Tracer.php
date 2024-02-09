@@ -43,9 +43,9 @@ class Tracer
      *
      * @param  non-empty-string  $name
      * @param  Closure(SpanInterface $span): U  $callback
+     * @throws \Throwable
      * @return (U is PendingDispatch ? null : U)
      *
-     * @throws \Throwable
      */
     public function measure(string $name, Closure $callback)
     {
@@ -101,14 +101,14 @@ class Tracer
         return false;
     }
 
-    //    protected function setTraceIdForLogs(SpanInterface $span): void
-    //    {
-    //        if (config('opentelemetry.logs.inject_trace_id', true)) {
-    //            $field = config('opentelemetry.logs.trace_id_field', 'traceId');
-    //
-    //            Log::shareContext([
-    //                $field => $span->getContext()->getTraceId(),
-    //            ]);
-    //        }
-    //    }
+    public function updateLogContext(): void
+    {
+        if (config('opentelemetry.logs.inject_trace_id', true)) {
+            $field = config('opentelemetry.logs.trace_id_field', 'traceId');
+
+            Log::shareContext([
+                $field => $this->traceId(),
+            ]);
+        }
+    }
 }

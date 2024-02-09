@@ -21,6 +21,7 @@ use OpenTelemetry\Context\ScopeInterface;
  * @method static SpanBuilder newSpan(string $name)
  * @method static SpanInterface start(string $name)
  * @method static mixed measure(string $name, Closure $callback)
+ * @method static void updateLogContext()
  */
 class Tracer extends Facade
 {

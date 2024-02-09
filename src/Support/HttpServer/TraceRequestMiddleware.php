@@ -24,6 +24,8 @@ class TraceRequestMiddleware
         $span = $this->startTracing($request);
         $scope = $span->activate();
 
+        Tracer::updateLogContext();
+
         try {
             $response = $next($request);
 
