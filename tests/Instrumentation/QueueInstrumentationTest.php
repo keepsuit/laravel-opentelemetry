@@ -5,7 +5,6 @@ use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Tests\Support\TestJob;
 use OpenTelemetry\API\Trace\SpanInterface;
 use OpenTelemetry\API\Trace\SpanKind;
-use OpenTelemetry\SDK\Trace\Span;
 use Spatie\Valuestore\Valuestore;
 
 beforeEach(function () {
