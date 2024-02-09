@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Artisan;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Tests\Support\TestJob;
+use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\SDK\Trace\Span;
 use Spatie\Valuestore\Valuestore;
 
@@ -18,12 +19,14 @@ it('can trace queue jobs', function () {
     $spanId = '';
     $traceId = '';
 
-    Tracer::measureAsync('dispatcher', function (Span $span) use (&$traceId, &$spanId) {
+    Tracer::measure('dispatcher', function (Span $span) use (&$traceId, &$spanId) {
         $spanId = $span->getContext()->getSpanId();
         $traceId = $span->getContext()->getTraceId();
 
-        dispatch(new TestJob($this->valuestore));
-    });
+        return dispatch(new TestJob($this->valuestore));
+    },
+        spanKind: SpanKind::KIND_PRODUCER
+    );
 
     expect($traceId)
         ->not->toBeEmpty()

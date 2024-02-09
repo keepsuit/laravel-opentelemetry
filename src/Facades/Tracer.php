@@ -17,13 +17,10 @@ use OpenTelemetry\Context\ScopeInterface;
  * @method static ScopeInterface|null activeScope()
  * @method static ContextInterface currentContext()
  * @method static array propagationHeaders(?ContextInterface $context = null)
- * @method static SpanBuilderInterface build(string $name)
- * @method static SpanInterface start(string $name, int $spanKind = SpanKind::KIND_INTERNAL)
- * @method static mixed measure(string $name, \Closure $callback)
- * @method static mixed measureAsync(string $name, \Closure $callback)
- * @method static SpanInterface recordExceptionToSpan(SpanInterface $span, \Throwable $exception)
  * @method static Context|null extractContextFromPropagationHeaders(array $headers)
- * @method static void setRootSpan(SpanInterface $span)
+ * @method static SpanBuilderInterface build(string $name)
+ * @method static SpanInterface start(string $name, int $spanKind = SpanKind::KIND_INTERNAL, ?ContextInterface $context = null)
+ * @method static mixed measure(string $name, \Closure $callback, int $spanKind = SpanKind::KIND_INTERNAL)
  */
 class Tracer extends Facade
 {

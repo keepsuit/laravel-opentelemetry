@@ -185,7 +185,7 @@ it('can record exceptions thrown in the callback', function () {
 
     expect($callbackSpan->toSpanData())
         ->hasEnded()->toBeTrue()
-        ->getStatus()->getCode()->toBe(StatusCode::STATUS_ERROR)
+        ->getStatus()->getCode()->toBe(StatusCode::STATUS_UNSET)
         ->getEvents()->toHaveCount(1);
 
     expect($callbackSpan->toSpanData()->getEvents()[0])
@@ -224,21 +224,6 @@ it('provides active span', function () {
     $scope = $span->activate();
 
     expect(Tracer::activeSpan())->toBe($span);
-
-    $scope->detach();
-    $span->end();
-});
-
-it('set traceId to log context', function () {
-    $span = Tracer::start('test span');
-    $scope = $span->activate();
-
-    Tracer::setRootSpan($span);
-
-    expect(Log::sharedContext())
-        ->toMatchArray([
-            'traceId' => $span->getContext()->getTraceId(),
-        ]);
 
     $scope->detach();
     $span->end();

@@ -31,20 +31,14 @@ class QueueInstrumentation implements Instrumentation
         app('events')->listen(JobProcessing::class, function (JobProcessing $event) {
             $context = Tracer::extractContextFromPropagationHeaders($event->job->payload());
 
-            $span = Tracer::build(sprintf('%s process', $event->job->resolveName()))
-                ->setSpanKind(SpanKind::KIND_CONSUMER)
-                ->setParent($context)
-                ->startSpan();
+            $span = Tracer::start(sprintf('%s process', $event->job->resolveName()), SpanKind::KIND_CONSUMER, $context);
+            $span->activate();
 
             $span->setAttribute('messaging.system', config(sprintf('queue.connections.%s.driver', $event->connectionName)))
                 ->setAttribute('messaging.operation', 'process')
                 ->setAttribute('messaging.destination.kind', 'queue')
                 ->setAttribute('messaging.destination.name', $event->job->getQueue())
                 ->setAttribute('messaging.destination.template', $event->job->resolveName());
-
-            Tracer::setRootSpan($span);
-
-            Context::storage()->attach($span->storeInContext($context));
         });
     }
 
@@ -64,8 +58,8 @@ class QueueInstrumentation implements Instrumentation
 
             $span->recordException($event->exception);
 
+            $scope?->detach();
             $span->end();
-            $scope->detach();
         });
     }
 
