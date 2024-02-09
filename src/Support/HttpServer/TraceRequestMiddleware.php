@@ -24,6 +24,8 @@ class TraceRequestMiddleware
         $span = $this->startTracing($request);
         $scope = $span->activate();
 
+        Tracer::updateLogContext();
+
         try {
             $response = $next($request);
 
@@ -33,7 +35,8 @@ class TraceRequestMiddleware
 
             return $response;
         } catch (\Throwable $exception) {
-            Tracer::recordExceptionToSpan($span, $exception);
+            $span->recordException($exception)
+                ->setStatus(StatusCode::STATUS_ERROR);
 
             throw $exception;
         } finally {
@@ -50,14 +53,9 @@ class TraceRequestMiddleware
         $route = rescue(fn () => Route::getRoutes()->match($request)->uri(), $request->path(), false);
         $route = str_starts_with($route, '/') ? $route : '/'.$route;
 
-        $span = Tracer::build(name: $route)
+        return Tracer::newSpan($route)
             ->setSpanKind(SpanKind::KIND_SERVER)
             ->setParent($context)
-            ->startSpan();
-
-        Tracer::setRootSpan($span);
-
-        $span
             ->setAttribute(TraceAttributes::URL_FULL, $request->fullUrl())
             ->setAttribute(TraceAttributes::URL_PATH, $request->path() === '/' ? $request->path() : '/'.$request->path())
             ->setAttribute(TraceAttributes::URL_QUERY, $request->getQueryString())
@@ -69,9 +67,8 @@ class TraceRequestMiddleware
             ->setAttribute(TraceAttributes::SERVER_PORT, $request->getPort())
             ->setAttribute(TraceAttributes::USER_AGENT_ORIGINAL, $request->userAgent())
             ->setAttribute(TraceAttributes::NETWORK_PROTOCOL_VERSION, $request->getProtocolVersion())
-            ->setAttribute(TraceAttributes::NETWORK_PEER_ADDRESS, $request->ip());
-
-        return $span;
+            ->setAttribute(TraceAttributes::NETWORK_PEER_ADDRESS, $request->ip())
+            ->start();
     }
 
     protected function recordHttpResponseToSpan(SpanInterface $span, Response $response): void

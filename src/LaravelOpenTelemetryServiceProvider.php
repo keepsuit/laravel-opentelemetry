@@ -155,5 +155,8 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         $envRepository = Env::getRepository();
 
         $envRepository->set(OTELVariables::OTEL_SERVICE_NAME, config('opentelemetry.service_name'));
+
+        // Disable debug scopes wrapping
+        $_SERVER['OTEL_PHP_DEBUG_SCOPES_DISABLED'] = 1;
     }
 }

@@ -4,6 +4,7 @@ namespace Keepsuit\LaravelOpenTelemetry\Support;
 
 use Carbon\Carbon;
 use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use OpenTelemetry\SDK\Common\Time\ClockInterface;
 use OpenTelemetry\SDK\Common\Time\SystemClock;
 
@@ -19,14 +20,14 @@ class CarbonClock implements ClockInterface
     public function now(): int
     {
         if (Carbon::hasTestNow()) {
-            return (int) CarbonImmutable::now()->getPreciseTimestamp(6) * 1000;
+            return static::carbonToNanos(CarbonImmutable::now());
         }
 
         return $this->systemClock->now();
     }
 
-    public function nanoTime(): int
+    public static function carbonToNanos(CarbonInterface $carbon): int
     {
-        return $this->now();
+        return (int) $carbon->getPreciseTimestamp(6) * 1000;
     }
 }

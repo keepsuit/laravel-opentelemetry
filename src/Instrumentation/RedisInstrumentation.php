@@ -27,10 +27,10 @@ class RedisInstrumentation implements Instrumentation
     {
         $traceName = sprintf('redis %s %s', $event->connection->getName(), $event->command);
 
-        $span = Tracer::build($traceName)
+        $span = Tracer::newSpan($traceName)
             ->setSpanKind(SpanKind::KIND_CLIENT)
             ->setStartTimestamp($this->getEventStartTimestampNs($event->time))
-            ->startSpan();
+            ->start();
 
         if ($span->isRecording()) {
             $span->setAttribute(TraceAttributes::DB_SYSTEM, 'redis')

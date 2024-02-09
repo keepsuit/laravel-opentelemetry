@@ -17,19 +17,17 @@ class GuzzleTraceMiddleware
     {
         return static function (callable $handler): callable {
             return static function (RequestInterface $request, array $options) use ($handler) {
-                $span = Tracer::build(sprintf('HTTP %s', $request->getMethod()))
+                $span = Tracer::newSpan(sprintf('HTTP %s', $request->getMethod()))
                     ->setSpanKind(SpanKind::KIND_CLIENT)
-                    ->setAttributes([
-                        TraceAttributes::URL_FULL => sprintf('%s://%s%s', $request->getUri()->getScheme(), $request->getUri()->getHost(), $request->getUri()->getPath()),
-                        TraceAttributes::URL_PATH => $request->getUri()->getPath(),
-                        TraceAttributes::URL_QUERY => $request->getUri()->getQuery(),
-                        TraceAttributes::HTTP_REQUEST_METHOD => $request->getMethod(),
-                        TraceAttributes::HTTP_REQUEST_BODY_SIZE => $request->getBody()->getSize(),
-                        TraceAttributes::URL_SCHEME => $request->getUri()->getScheme(),
-                        TraceAttributes::SERVER_ADDRESS => $request->getUri()->getHost(),
-                        TraceAttributes::SERVER_PORT => $request->getUri()->getPort(),
-                    ])
-                    ->startSpan();
+                    ->setAttribute(TraceAttributes::URL_FULL, sprintf('%s://%s%s', $request->getUri()->getScheme(), $request->getUri()->getHost(), $request->getUri()->getPath()))
+                    ->setAttribute(TraceAttributes::URL_PATH, $request->getUri()->getPath())
+                    ->setAttribute(TraceAttributes::URL_QUERY, $request->getUri()->getQuery())
+                    ->setAttribute(TraceAttributes::HTTP_REQUEST_METHOD, $request->getMethod())
+                    ->setAttribute(TraceAttributes::HTTP_REQUEST_BODY_SIZE, $request->getBody()->getSize())
+                    ->setAttribute(TraceAttributes::URL_SCHEME, $request->getUri()->getScheme())
+                    ->setAttribute(TraceAttributes::SERVER_ADDRESS, $request->getUri()->getHost())
+                    ->setAttribute(TraceAttributes::SERVER_PORT, $request->getUri()->getPort())
+                    ->start();
 
                 $context = $span->storeInContext(Tracer::currentContext());
 
@@ -41,10 +39,8 @@ class GuzzleTraceMiddleware
                 assert($promise instanceof PromiseInterface);
 
                 return $promise->then(function (Response $response) use ($span) {
-                    $span->setAttributes([
-                        TraceAttributes::HTTP_RESPONSE_STATUS_CODE => $response->getStatusCode(),
-                        TraceAttributes::HTTP_REQUEST_BODY_SIZE => $response->getHeader('Content-Length')[0] ?? null,
-                    ]);
+                    $span->setAttribute(TraceAttributes::HTTP_RESPONSE_STATUS_CODE, $response->getStatusCode())
+                        ->setAttribute(TraceAttributes::HTTP_REQUEST_BODY_SIZE, $response->getHeader('Content-Length')[0] ?? null);
 
                     if ($response->getStatusCode() >= 400) {
                         $span->setStatus(StatusCode::STATUS_ERROR);

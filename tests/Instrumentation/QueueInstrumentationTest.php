@@ -3,7 +3,8 @@
 use Illuminate\Support\Facades\Artisan;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Tests\Support\TestJob;
-use OpenTelemetry\SDK\Trace\Span;
+use OpenTelemetry\API\Trace\SpanInterface;
+use OpenTelemetry\API\Trace\SpanKind;
 use Spatie\Valuestore\Valuestore;
 
 beforeEach(function () {
@@ -18,12 +19,14 @@ it('can trace queue jobs', function () {
     $spanId = '';
     $traceId = '';
 
-    Tracer::measureAsync('dispatcher', function (Span $span) use (&$traceId, &$spanId) {
-        $spanId = $span->getContext()->getSpanId();
-        $traceId = $span->getContext()->getTraceId();
+    Tracer::newSpan('dispatcher')
+        ->setSpanKind(SpanKind::KIND_PRODUCER)
+        ->measure(function (SpanInterface $span) use (&$traceId, &$spanId) {
+            $spanId = $span->getContext()->getSpanId();
+            $traceId = $span->getContext()->getTraceId();
 
-        dispatch(new TestJob($this->valuestore));
-    });
+            return dispatch(new TestJob($this->valuestore));
+        });
 
     expect($traceId)
         ->not->toBeEmpty()
@@ -39,5 +42,6 @@ it('can trace queue jobs', function () {
 
     expect($this->valuestore)
         ->get('traceparentInJob')->toBe(sprintf('00-%s-%s-01', $traceId, $spanId))
-        ->get('traceIdInJob')->toBe($traceId);
+        ->get('traceIdInJob')->toBe($traceId)
+        ->get('logContextInJob')->toMatchArray(['traceId' => $traceId]);
 });
