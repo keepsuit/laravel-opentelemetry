@@ -85,6 +85,13 @@ return [
         Instrumentation\RedisInstrumentation::class => env('OT_INSTRUMENTATION_REDIS', true),
 
         Instrumentation\QueueInstrumentation::class => env('OT_INSTRUMENTATION_QUEUE', true),
+
+        Instrumentation\CacheInstrumentation::class => env('OT_INSTRUMENTATION_CACHE', true),
+
+        Instrumentation\EventInstrumentation::class => [
+            'enabled' => env('OT_INSTRUMENTATION_EVENT', true),
+            'ignored' => [],
+        ],
     ],
 
     /**
@@ -161,17 +168,17 @@ You can disable it by setting `OT_INSTRUMENTATION_REDIS` to `false` or removing 
 Queue jobs are automatically traced.
 You can disable it by setting `OT_INSTRUMENTATION_QUEUE` to `false` or removing the `QueueInstrumentation::class` from the config file.
 
-To correctly trace queue jobs, you should wrap the job dispatch call in a `measureAsync` call:
+To correctly trace queue jobs, you should wrap the job dispatch call in a parent span with kind `PRODUCER`:
 
 ```php
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
+use OpenTelemetry\API\Trace\SpanKind;
 
-Tracer::measureAsync('dispatch job', function () {
+Tracer::newSpan('dispatch job')->setSpanKind(SpanKind::KIND_PRODUCER)->measure(function () {
     dispatch(new MyJob());
 });
 ```
-
-This will create a parent span of kind `PRODUCER` and a child span of kind `CONSUMER` for the job.
+The instrumentation will automatically create a child span of kind `CONSUMER` for the job when it's executed.
 
 
 ### Logs context
@@ -180,16 +187,19 @@ When starting a trace with provided instrumentation, the trace id is automatical
 This allows to correlate logs with traces.
 
 If you are starting the root trace manually,
-you should call `Tracer::setRootSpan($span)` to inject the trace id in the log context.
+you should call `Tracer::updateLogContext()` to inject the trace id in the log context.
 
 ### Manual traces
+
+Spans can be manually created with the `newSpan` method on the `Tracer` facade.
+This method returns a `SpanBuilder` instance that can be used to customize and start the span.
 
 The simplest way to create a custom trace is with `measure` method:
 
 ```php
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 
-Tracer::measure('my custom trace', function () {
+Tracer::newSpan('my custom trace')->measure(function () {
     // do something
 });
 ```
@@ -199,7 +209,7 @@ Alternatively you can manage the span manually:
 ```php
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 
-$span = Tracer::start('my custom trace');
+$span = Tracer::newSpan('my custom trace')->start();
 
 // do something
 
@@ -212,13 +222,13 @@ With `start` you have to manually set the span as active:
 ```php
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 
-$span = Tracer::start('my custom trace');
+$span = Tracer::newSpan('my custom trace')->start();
 $scope = $span->activate()
 
 // do something
 
-$span->end();
 $scope->detach();
+$span->end();
 ```
 
 Other utility methods are available on the `Tracer` facade:
@@ -227,10 +237,12 @@ Other utility methods are available on the `Tracer` facade:
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 
 Tracer::isRecording(); // check if tracing is enabled
+Tracer::traceId(); // get the active trace id
 Tracer::activeSpan(); // get the active span
 Tracer::activeScope(); // get the active scope
-Tracer::traceId(); // get the active trace id
+Tracer::currentContext(); // get the current trace context (useful for advanced use cases)
 Tracer::propagationHeaders(); // get the propagation headers required to propagate the trace to other services
+Tracer::extractContextFromPropagationHeaders(array $headers); // extract the trace context from propagation headers
 ```
 
 ## Testing
