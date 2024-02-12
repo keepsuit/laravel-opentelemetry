@@ -53,7 +53,7 @@ class TraceRequestMiddleware
         $route = rescue(fn () => Route::getRoutes()->match($request)->uri(), $request->path(), false);
         $route = str_starts_with($route, '/') ? $route : '/'.$route;
 
-        return Tracer::newSpan($route)
+        $span = Tracer::newSpan($route)
             ->setSpanKind(SpanKind::KIND_SERVER)
             ->setParent($context)
             ->setAttribute(TraceAttributes::URL_FULL, $request->fullUrl())
@@ -69,6 +69,10 @@ class TraceRequestMiddleware
             ->setAttribute(TraceAttributes::NETWORK_PROTOCOL_VERSION, $request->getProtocolVersion())
             ->setAttribute(TraceAttributes::NETWORK_PEER_ADDRESS, $request->ip())
             ->start();
+
+        $this->recordHeaders($span, $request);
+
+        return $span;
     }
 
     protected function recordHttpResponseToSpan(SpanInterface $span, Response $response): void
@@ -79,6 +83,8 @@ class TraceRequestMiddleware
             $span->setAttribute(TraceAttributes::HTTP_RESPONSE_BODY_SIZE, strlen($content));
         }
 
+        $this->recordHeaders($span, $response);
+
         if ($response->isSuccessful()) {
             $span->setStatus(StatusCode::STATUS_OK);
         }
@@ -86,5 +92,25 @@ class TraceRequestMiddleware
         if ($response->isServerError() || $response->isClientError()) {
             $span->setStatus(StatusCode::STATUS_ERROR);
         }
+    }
+
+    protected function recordHeaders(SpanInterface $span, Request|Response $http): SpanInterface
+    {
+        $prefix = match (true) {
+            $http instanceof Request => 'http.request.header.',
+            $http instanceof Response => 'http.response.header.',
+        };
+
+        foreach ($http->headers->all() as $key => $value) {
+            if (! in_array($key, HttpServerInstrumentation::getAllowedHeaders())) {
+                continue;
+            }
+
+            $value = in_array($key, HttpServerInstrumentation::getSensitiveHeaders()) ? ['*****'] : $value;
+
+            $span->setAttribute($prefix.$key, $value);
+        }
+
+        return $span;
     }
 }

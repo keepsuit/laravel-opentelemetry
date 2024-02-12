@@ -36,4 +36,7 @@
     <logging>
         <junit outputFile="build/report.junit.xml"/>
     </logging>
+    <php>
+        <env name="APP_KEY" value="base64:Otue13cqTvN3tEEu1F5C25ku031q5HktoEk2AnOZEgg="/>
+    </php>
 </phpunit>

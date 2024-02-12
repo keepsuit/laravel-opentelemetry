@@ -33,6 +33,8 @@ return [
         Instrumentation\HttpServerInstrumentation::class => [
             'enabled' => env('OT_INSTRUMENTATION_HTTP_SERVER', true),
             'excluded_paths' => [],
+            'allowed_headers' => [],
+            'sensitive_headers' => [],
         ],
 
         Instrumentation\HttpClientInstrumentation::class => env('OT_INSTRUMENTATION_HTTP_CLIENT', true),
