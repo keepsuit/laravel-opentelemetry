@@ -70,10 +70,16 @@ return [
         Instrumentation\HttpServerInstrumentation::class => [
             'enabled' => env('OT_INSTRUMENTATION_HTTP_SERVER', true),
             'excluded_paths' => [],
+            'allowed_headers' => [],
+            'sensitive_headers' => [],
         ],
 
-        Instrumentation\HttpClientInstrumentation::class => env('OT_INSTRUMENTATION_HTTP_CLIENT', true),
-        
+        Instrumentation\HttpClientInstrumentation::class => [
+            'enabled' => env('OT_INSTRUMENTATION_HTTP_CLIENT', true),
+            'allowed_headers' => [],
+            'sensitive_headers' => [],
+        ],
+
         Instrumentation\QueryInstrumentation::class => env('OT_INSTRUMENTATION_QUERY', true),
 
         Instrumentation\RedisInstrumentation::class => env('OT_INSTRUMENTATION_REDIS', true),
@@ -129,6 +135,8 @@ You can disable it by setting `OT_INSTRUMENTATION_HTTP_SERVER` to `false` or rem
 Configuration options:
 
 - `excluded_paths`: list of paths to exclude from tracing
+- `allowed_headers`: list of headers to include in the trace
+- `sensitive_headers`: list of headers with sensitive data to hide in the trace
 
 ### Http client
 
@@ -137,6 +145,13 @@ To trace an outgoing http request call the `withTrace` method on the request bui
 ```php
 Http::withTrace()->get('https://example.com');
 ```
+
+You can disable it by setting `OT_INSTRUMENTATION_HTTP_CLIENT` to `false` or removing the `HttpClientInstrumentation::class` from the config file.
+
+Configuration options:
+
+- `allowed_headers`: list of headers to include in the trace
+- `sensitive_headers`: list of headers with sensitive data to hide in the trace
 
 ### Database
 

@@ -8,7 +8,7 @@ use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
 
 beforeEach(function () {
-    Route::any('test-ok', fn () => Tracer::traceId());
+    Route::any('test-ok', fn () => Tracer::traceId())->middleware(['web']);
     Route::any('test-exception', fn () => throw new Exception('test exception'));
     Route::any('test/{parameter}', fn () => Tracer::traceId());
 });
@@ -139,4 +139,109 @@ it('skip tracing for excluded paths', function () {
 
     expect($spans)
         ->toHaveCount(0);
+});
+
+it('trace allowed request headers', function () {
+    app()->make(HttpServerInstrumentation::class)->register([
+        'allowed_headers' => [
+            'x-foo',
+        ],
+    ]);
+
+    $response = $this->get('test-ok', [
+        'x-foo' => 'bar',
+        'x-bar' => 'baz',
+    ]);
+
+    $response->assertOk();
+
+    expect($response->content())
+        ->not->toBeEmpty();
+
+    $span = getRecordedSpans()[0];
+
+    expect($span->getAttributes())
+        ->toMatchArray([
+            'http.request.header.x-foo' => ['bar'],
+        ])
+        ->not->toHaveKey('http.request.header.x-bar');
+});
+
+it('trace allowed response headers', function () {
+    app()->make(HttpServerInstrumentation::class)->register([
+        'allowed_headers' => [
+            'content-type',
+        ],
+    ]);
+
+    $response = $this->get('test-ok');
+
+    $response->assertOk();
+
+    expect($response->content())
+        ->not->toBeEmpty();
+
+    $span = getRecordedSpans()[0];
+
+    expect($span->getAttributes())
+        ->toMatchArray([
+            'http.response.header.content-type' => ['text/html; charset=UTF-8'],
+        ])
+        ->not->toHaveKey('http.response.header.date');
+});
+
+it('trace sensitive headers with hidden value', function () {
+    app()->make(HttpServerInstrumentation::class)->register([
+        'allowed_headers' => [
+            'x-foo',
+        ],
+        'sensitive_headers' => [
+            'x-foo',
+        ],
+    ]);
+
+    $response = $this->get('test-ok', [
+        'x-foo' => 'bar',
+    ]);
+
+    $response->assertOk();
+
+    expect($response->content())
+        ->not->toBeEmpty();
+
+    $span = getRecordedSpans()[0];
+
+    expect($span->getAttributes())
+        ->toMatchArray([
+            'http.request.header.x-foo' => ['*****'],
+        ]);
+});
+
+it('mark some headers as sensitive by default', function () {
+    app()->make(HttpServerInstrumentation::class)->register([
+        'allowed_headers' => [
+            'authorization',
+            'cookie',
+            'set-cookie',
+        ],
+    ]);
+
+    $response = $this->get('test-ok', [
+        'authorization' => 'Bearer token',
+        'cookie' => 'cookie',
+    ]);
+
+    $response->assertOk();
+
+    expect($response->content())
+        ->not->toBeEmpty();
+
+    $span = getRecordedSpans()[0];
+
+    expect($span->getAttributes())
+        ->toMatchArray([
+            'http.request.header.authorization' => ['*****'],
+            'http.request.header.cookie' => ['*****'],
+            'http.response.header.set-cookie' => ['*****'],
+        ]);
 });
