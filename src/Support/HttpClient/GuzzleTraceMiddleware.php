@@ -4,12 +4,14 @@ namespace Keepsuit\LaravelOpenTelemetry\Support\HttpClient;
 
 use Closure;
 use GuzzleHttp\Promise\PromiseInterface;
-use GuzzleHttp\Psr7\Response;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
+use Keepsuit\LaravelOpenTelemetry\Instrumentation\HttpClientInstrumentation;
+use OpenTelemetry\API\Trace\SpanInterface;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
 use OpenTelemetry\SemConv\TraceAttributes;
 use Psr\Http\Message\RequestInterface;
+use Psr\Http\Message\ResponseInterface;
 
 class GuzzleTraceMiddleware
 {
@@ -29,6 +31,8 @@ class GuzzleTraceMiddleware
                     ->setAttribute(TraceAttributes::SERVER_PORT, $request->getUri()->getPort())
                     ->start();
 
+                static::recordHeaders($span, $request);
+
                 $context = $span->storeInContext(Tracer::currentContext());
 
                 foreach (Tracer::propagationHeaders($context) as $key => $value) {
@@ -38,9 +42,14 @@ class GuzzleTraceMiddleware
                 $promise = $handler($request, $options);
                 assert($promise instanceof PromiseInterface);
 
-                return $promise->then(function (Response $response) use ($span) {
-                    $span->setAttribute(TraceAttributes::HTTP_RESPONSE_STATUS_CODE, $response->getStatusCode())
-                        ->setAttribute(TraceAttributes::HTTP_REQUEST_BODY_SIZE, $response->getHeader('Content-Length')[0] ?? null);
+                return $promise->then(function (ResponseInterface $response) use ($span) {
+                    $span->setAttribute(TraceAttributes::HTTP_RESPONSE_STATUS_CODE, $response->getStatusCode());
+
+                    if (($contentLength = $response->getHeader('Content-Length')[0] ?? null) !== null) {
+                        $span->setAttribute(TraceAttributes::HTTP_RESPONSE_BODY_SIZE, $contentLength);
+                    }
+
+                    static::recordHeaders($span, $response);
 
                     if ($response->getStatusCode() >= 400) {
                         $span->setStatus(StatusCode::STATUS_ERROR);
@@ -52,5 +61,27 @@ class GuzzleTraceMiddleware
                 });
             };
         };
+    }
+
+    protected static function recordHeaders(SpanInterface $span, RequestInterface|ResponseInterface $http): SpanInterface
+    {
+        $prefix = match (true) {
+            $http instanceof RequestInterface => 'http.request.header.',
+            $http instanceof ResponseInterface => 'http.response.header.',
+        };
+
+        foreach ($http->getHeaders() as $key => $value) {
+            $key = strtolower($key);
+
+            if (! in_array($key, HttpClientInstrumentation::getAllowedHeaders())) {
+                continue;
+            }
+
+            $value = in_array($key, HttpClientInstrumentation::getSensitiveHeaders()) ? ['*****'] : $value;
+
+            $span->setAttribute($prefix.$key, $value);
+        }
+
+        return $span;
     }
 }

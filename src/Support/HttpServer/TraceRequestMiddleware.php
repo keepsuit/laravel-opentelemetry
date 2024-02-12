@@ -102,6 +102,8 @@ class TraceRequestMiddleware
         };
 
         foreach ($http->headers->all() as $key => $value) {
+            $key = strtolower($key);
+
             if (! in_array($key, HttpServerInstrumentation::getAllowedHeaders())) {
                 continue;
             }

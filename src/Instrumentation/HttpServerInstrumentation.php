@@ -8,18 +8,9 @@ use Keepsuit\LaravelOpenTelemetry\Support\HttpServer\TraceRequestMiddleware;
 
 class HttpServerInstrumentation implements Instrumentation
 {
-    protected const DEFAULT_SENSITIVE_HEADERS = [
-        'authorization',
-        'php-auth-pw',
-        'cookie',
-        'set-cookie',
-    ];
+    use HandlesHttpHeaders;
 
     protected static array $excludedPaths = [];
-
-    protected static array $allowedHeaders = [];
-
-    protected static array $sensitiveHeaders = [];
 
     /**
      * @return array<string>
@@ -29,22 +20,6 @@ class HttpServerInstrumentation implements Instrumentation
         return static::$excludedPaths;
     }
 
-    /**
-     * @return array<string>
-     */
-    public static function getAllowedHeaders(): array
-    {
-        return static::$allowedHeaders;
-    }
-
-    /**
-     * @return array<string>
-     */
-    public static function getSensitiveHeaders(): array
-    {
-        return static::$sensitiveHeaders;
-    }
-
     public function register(array $options): void
     {
         static::$excludedPaths = array_map(
@@ -52,16 +27,11 @@ class HttpServerInstrumentation implements Instrumentation
             Arr::get($options, 'excluded_paths', [])
         );
 
-        static::$allowedHeaders = array_map(
-            fn (string $header) => strtolower(trim($header)),
-            Arr::get($options, 'allowed_headers', [])
-        );
+        static::$allowedHeaders = $this->normalizeHeaders(Arr::get($options, 'allowed_headers', []));
+
         static::$sensitiveHeaders = array_merge(
-            array_map(
-                fn (string $header) => strtolower(trim($header)),
-                Arr::get($options, 'sensitive_headers', [])
-            ),
-            self::DEFAULT_SENSITIVE_HEADERS
+            $this->normalizeHeaders(Arr::get($options, 'sensitive_headers', [])),
+            $this->defaultSensitiveHeaders
         );
 
         $this->injectMiddleware(app(Kernel::class));

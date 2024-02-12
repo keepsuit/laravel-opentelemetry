@@ -5,6 +5,7 @@ use GuzzleHttp\Server\Server;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
+use Keepsuit\LaravelOpenTelemetry\Instrumentation\HttpClientInstrumentation;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
 
@@ -87,5 +88,104 @@ it('set span status to error on 4xx and 5xx status code', function () {
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_ERROR)
         ->getAttributes()->toMatchArray([
             'http.response.status_code' => 500,
+        ]);
+});
+
+it('trace allowed request headers', function () {
+    app()->make(HttpClientInstrumentation::class)->register([
+        'allowed_headers' => [
+            'x-foo',
+        ],
+    ]);
+
+    Server::enqueue([
+        new Response(200, ['Content-Length' => 0]),
+    ]);
+
+    Http::withHeaders([
+        'x-foo' => 'bar',
+        'x-bar' => 'baz',
+    ])->withTrace()->get(Server::$url);
+
+    $span = getRecordedSpans()[0];
+
+    expect($span->getAttributes())
+        ->toMatchArray([
+            'http.request.header.x-foo' => ['bar'],
+        ])
+        ->not->toHaveKey('http.request.header.x-bar');
+});
+
+it('trace allowed response headers', function () {
+    app()->make(HttpClientInstrumentation::class)->register([
+        'allowed_headers' => [
+            'content-type',
+        ],
+    ]);
+
+    Server::enqueue([
+        new Response(200, ['Content-Length' => 0, 'Content-Type' => 'text/html; charset=UTF-8']),
+    ]);
+
+    Http::withTrace()->get(Server::$url);
+
+    $span = getRecordedSpans()[0];
+
+    expect($span->getAttributes())
+        ->toMatchArray([
+            'http.response.header.content-type' => ['text/html; charset=UTF-8'],
+        ])
+        ->not->toHaveKey('http.response.header.date');
+});
+
+it('trace sensitive headers with hidden value', function () {
+    app()->make(HttpClientInstrumentation::class)->register([
+        'allowed_headers' => [
+            'x-foo',
+        ],
+        'sensitive_headers' => [
+            'x-foo',
+        ],
+    ]);
+
+    Server::enqueue([
+        new Response(200, ['Content-Length' => 0]),
+    ]);
+
+    Http::withHeaders(['x-foo' => 'bar'])->withTrace()->get(Server::$url);
+
+    $span = getRecordedSpans()[0];
+
+    expect($span->getAttributes())
+        ->toMatchArray([
+            'http.request.header.x-foo' => ['*****'],
+        ]);
+});
+
+it('mark some headers as sensitive by default', function () {
+    app()->make(HttpClientInstrumentation::class)->register([
+        'allowed_headers' => [
+            'authorization',
+            'cookie',
+            'set-cookie',
+        ],
+    ]);
+
+    Server::enqueue([
+        new Response(200, ['Content-Length' => 0, 'Set-Cookie' => 'cookie']),
+    ]);
+
+    Http::withHeaders([
+        'authorization' => 'Bearer token',
+        'cookie' => 'cookie',
+    ])->withTrace()->get(Server::$url);
+
+    $span = getRecordedSpans()[0];
+
+    expect($span->getAttributes())
+        ->toMatchArray([
+            'http.request.header.authorization' => ['*****'],
+            'http.request.header.cookie' => ['*****'],
+            'http.response.header.set-cookie' => ['*****'],
         ]);
 });
