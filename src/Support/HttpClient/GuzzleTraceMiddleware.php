@@ -73,11 +73,11 @@ class GuzzleTraceMiddleware
         foreach ($http->getHeaders() as $key => $value) {
             $key = strtolower($key);
 
-            if (! in_array($key, HttpClientInstrumentation::getAllowedHeaders())) {
+            if (! HttpClientInstrumentation::headerIsAllowed($key)) {
                 continue;
             }
 
-            $value = in_array($key, HttpClientInstrumentation::getSensitiveHeaders()) ? ['*****'] : $value;
+            $value = HttpClientInstrumentation::headerIsSensitive($key) ? ['*****'] : $value;
 
             $span->setAttribute($prefix.$key, $value);
         }

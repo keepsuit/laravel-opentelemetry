@@ -104,11 +104,11 @@ class TraceRequestMiddleware
         foreach ($http->headers->all() as $key => $value) {
             $key = strtolower($key);
 
-            if (! in_array($key, HttpServerInstrumentation::getAllowedHeaders())) {
+            if (! HttpServerInstrumentation::headerIsAllowed($key)) {
                 continue;
             }
 
-            $value = in_array($key, HttpServerInstrumentation::getSensitiveHeaders()) ? ['*****'] : $value;
+            $value = HttpServerInstrumentation::headerIsSensitive($key) ? ['*****'] : $value;
 
             $span->setAttribute($prefix.$key, $value);
         }
