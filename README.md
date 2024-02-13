@@ -166,20 +166,8 @@ You can disable it by setting `OT_INSTRUMENTATION_REDIS` to `false` or removing 
 ### Queue jobs
 
 Queue jobs are automatically traced.
+It will automatically create a parent span with kind `PRODUCER` when a job is dispatched and a child span with kind `CONSUMER` when the job is executed.
 You can disable it by setting `OT_INSTRUMENTATION_QUEUE` to `false` or removing the `QueueInstrumentation::class` from the config file.
-
-To correctly trace queue jobs, you should wrap the job dispatch call in a parent span with kind `PRODUCER`:
-
-```php
-use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
-use OpenTelemetry\API\Trace\SpanKind;
-
-Tracer::newSpan('dispatch job')->setSpanKind(SpanKind::KIND_PRODUCER)->measure(function () {
-    dispatch(new MyJob());
-});
-```
-The instrumentation will automatically create a child span of kind `CONSUMER` for the job when it's executed.
-
 
 ### Logs context
 
