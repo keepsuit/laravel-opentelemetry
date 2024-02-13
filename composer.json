@@ -19,9 +19,9 @@
         "php": "^8.1",
         "illuminate/contracts": "^10.0 || ^11.0",
         "illuminate/support": "^10.0 || ^11.0",
-        "open-telemetry/exporter-otlp": "^1.0",
         "open-telemetry/context": "^1.0.1",
-        "open-telemetry/sdk": "^1.0",
+        "open-telemetry/exporter-otlp": "^1.0",
+        "open-telemetry/sdk": "^1.0.1",
         "open-telemetry/sem-conv": "^1.23",
         "spatie/laravel-package-tools": "^1.16",
         "thecodingmachine/safe": "^2.0"
