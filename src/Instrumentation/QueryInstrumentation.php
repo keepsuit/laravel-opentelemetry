@@ -29,6 +29,10 @@ class QueryInstrumentation implements Instrumentation
                 default: fn () => ''
             );
 
+        if ($operationName === '') {
+            return;
+        }
+
         $span = Tracer::newSpan(sprintf('sql %s', $operationName))
             ->setSpanKind(SpanKind::KIND_CLIENT)
             ->setStartTimestamp($this->getEventStartTimestampNs($event->time))
