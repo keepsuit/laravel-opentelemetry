@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Collection;
 use OpenTelemetry\API\Globals;
 use OpenTelemetry\SDK\Trace\TracerProviderInterface;
 
@@ -16,16 +17,16 @@ function flushSpans()
 }
 
 /**
- * @return \OpenTelemetry\SDK\Trace\ImmutableSpan[]
+ * @return Collection<array-key,\OpenTelemetry\SDK\Trace\ImmutableSpan>
  */
-function getRecordedSpans(): array
+function getRecordedSpans(): Collection
 {
     flushSpans();
 
     $exporter = app(\OpenTelemetry\SDK\Trace\SpanExporterInterface::class);
     assert($exporter instanceof \OpenTelemetry\SDK\Trace\SpanExporter\InMemoryExporter);
 
-    return $exporter->getSpans();
+    return collect($exporter->getSpans());
 }
 
 function withRootSpan(Closure $callback): mixed

@@ -1,6 +1,5 @@
 <?php
 
-use Illuminate\Support\Arr;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\SDK\Common\Time\ClockFactory;
 use OpenTelemetry\SDK\Trace\ImmutableSpan;
@@ -10,7 +9,7 @@ it('can watch a redis call', function () {
 
     flushSpans();
 
-    $span = Arr::last(getRecordedSpans());
+    $span = getRecordedSpans()->last();
     assert($span instanceof ImmutableSpan);
 
     expect($span)

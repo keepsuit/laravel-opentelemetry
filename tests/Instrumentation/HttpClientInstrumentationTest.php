@@ -41,9 +41,7 @@ it('create http client span', function () {
 
     Http::withTrace()->get(Server::$url);
 
-    $spans = getRecordedSpans();
-
-    $httpSpan = Arr::last($spans);
+    $httpSpan = getRecordedSpans()->last();
 
     expect($httpSpan)
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
@@ -69,9 +67,7 @@ it('set span status to error on 4xx and 5xx status code', function () {
 
     Http::withTrace()->get(Server::$url);
 
-    $spans = getRecordedSpans();
-
-    $httpSpan = Arr::last($spans);
+    $httpSpan = getRecordedSpans()->last();
 
     expect($httpSpan)
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
