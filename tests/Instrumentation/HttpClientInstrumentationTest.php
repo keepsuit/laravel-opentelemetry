@@ -1,6 +1,5 @@
 <?php
 
-use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\Server\Server;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
@@ -9,17 +8,9 @@ use Keepsuit\LaravelOpenTelemetry\Instrumentation\HttpClientInstrumentation;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
 
-beforeEach(function () {
-    Server::start();
-});
-
-afterEach(function () {
-    Server::stop();
-});
-
 it('injects propagation headers to Http client request', function () {
-    Server::enqueue([
-        new Response(200, ['Content-Length' => 0]),
+    $http = Http::fake([
+        '*' => Http::response('', 200, ['Content-Length' => 0]),
     ]);
 
     $root = Tracer::newSpan('root')->start();
@@ -36,16 +27,16 @@ it('injects propagation headers to Http client request', function () {
 
     $httpSpan = Arr::get($spans, count($spans) - 2);
 
-    $request = Server::received()[0];
+    $request = Http::recorded()->first()[0];
+    assert($request instanceof \Illuminate\Http\Client\Request);
 
     expect($request)
-        ->hasHeader('traceparent')->toBeTrue()
-        ->getHeader('traceparent')->toBe([sprintf('00-%s-%s-01', $traceId, $httpSpan->getSpanId())]);
+        ->header('traceparent')->toBe([sprintf('00-%s-%s-01', $traceId, $httpSpan->getSpanId())]);
 });
 
 it('create http client span', function () {
-    Server::enqueue([
-        new Response(200, ['Content-Length' => 0]),
+    Http::fake([
+        '*' => Http::response('', 200, ['Content-Length' => 0]),
     ]);
 
     Http::withTrace()->get(Server::$url);
@@ -70,8 +61,8 @@ it('create http client span', function () {
 });
 
 it('set span status to error on 4xx and 5xx status code', function () {
-    Server::enqueue([
-        new Response(500, ['Content-Length' => 0]),
+    Http::fake([
+        '*' => Http::response('', 500, ['Content-Length' => 0]),
     ]);
 
     Http::withTrace()->get(Server::$url);
@@ -94,8 +85,8 @@ it('trace allowed request headers', function () {
         ],
     ]);
 
-    Server::enqueue([
-        new Response(200, ['Content-Length' => 0]),
+    Http::fake([
+        '*' => Http::response('', 200, ['Content-Length' => 0]),
     ]);
 
     Http::withHeaders([
@@ -119,8 +110,8 @@ it('trace allowed response headers', function () {
         ],
     ]);
 
-    Server::enqueue([
-        new Response(200, ['Content-Length' => 0, 'Content-Type' => 'text/html; charset=UTF-8']),
+    Http::fake([
+        '*' => Http::response('', 200, ['Content-Length' => 0, 'Content-Type' => 'text/html; charset=UTF-8']),
     ]);
 
     Http::withTrace()->get(Server::$url);
@@ -144,8 +135,8 @@ it('trace sensitive headers with hidden value', function () {
         ],
     ]);
 
-    Server::enqueue([
-        new Response(200, ['Content-Length' => 0]),
+    Http::fake([
+        '*' => Http::response('', 200, ['Content-Length' => 0]),
     ]);
 
     Http::withHeaders(['x-foo' => 'bar'])->withTrace()->get(Server::$url);
@@ -167,8 +158,8 @@ it('mark some headers as sensitive by default', function () {
         ],
     ]);
 
-    Server::enqueue([
-        new Response(200, ['Content-Length' => 0, 'Set-Cookie' => 'cookie']),
+    Http::fake([
+        '*' => Http::response('', 200, ['Content-Length' => 0, 'Set-Cookie' => 'cookie']),
     ]);
 
     Http::withHeaders([
