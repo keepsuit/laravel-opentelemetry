@@ -10,12 +10,18 @@ use Illuminate\Queue\QueueManager;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
+use OpenTelemetry\API\Trace\SpanInterface;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\SemConv\TraceAttributes;
 
 class QueueInstrumentation implements Instrumentation
 {
     use SpanTimeAdapter;
+
+    /**
+     * @var array<string,SpanInterface>
+     */
+    protected array $activeSpans = [];
 
     public function register(array $options): void
     {
@@ -32,17 +38,29 @@ class QueueInstrumentation implements Instrumentation
         }
 
         app('events')->listen(JobQueued::class, function (JobQueued $event) {
-            $scope = Tracer::activeScope();
-            $span = Tracer::activeSpan();
+            $uuid = $event->payload()['uuid'] ?? null;
 
-            $scope?->detach();
-            $span->end();
+            if (! is_string($uuid)) {
+                return;
+            }
+
+            $span = $this->activeSpans[$uuid] ?? null;
+
+            $span?->end();
+
+            unset($this->activeSpans[$uuid]);
         });
     }
 
     protected function registerQueueInterceptor(QueueManager $queue): void
     {
         $queue->createPayloadUsing(function (string $connection, string $queue, array $payload) {
+            $uuid = $payload['uuid'];
+
+            if (! is_string($uuid)) {
+                return $payload;
+            }
+
             $jobName = Arr::get($payload, 'displayName', 'unknown');
             $queueName = Str::after($queue, 'queues:');
 
@@ -50,14 +68,16 @@ class QueueInstrumentation implements Instrumentation
                 ->setSpanKind(SpanKind::KIND_PRODUCER)
                 ->setAttribute(TraceAttributes::MESSAGING_SYSTEM, $this->connectionDriver($connection))
                 ->setAttribute(TraceAttributes::MESSAGING_OPERATION, 'enqueue')
-                ->setAttribute(TraceAttributes::MESSAGE_ID, $payload['uuid'])
+                ->setAttribute(TraceAttributes::MESSAGE_ID, $uuid)
                 ->setAttribute(TraceAttributes::MESSAGING_DESTINATION_NAME, $queueName)
                 ->setAttribute(TraceAttributes::MESSAGING_DESTINATION_TEMPLATE, $jobName)
                 ->start();
 
-            $span->activate();
+            $context = $span->storeInContext(Tracer::currentContext());
 
-            return Tracer::propagationHeaders();
+            $this->activeSpans[$uuid] = $span;
+
+            return Tracer::propagationHeaders($context);
         });
     }
 

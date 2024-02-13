@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use OpenTelemetry\API\Trace\SpanKind;
@@ -21,7 +20,7 @@ it('can watch a query', function () {
 
     flushSpans();
 
-    $span = Arr::last(getRecordedSpans());
+    $span = getRecordedSpans()->last();
     assert($span instanceof ImmutableSpan);
 
     expect($span)
@@ -48,7 +47,7 @@ it('can watch a query with bindings', function () {
 
     flushSpans();
 
-    $span = Arr::last(getRecordedSpans());
+    $span = getRecordedSpans()->last();
     assert($span instanceof ImmutableSpan);
 
     expect($span)
@@ -75,7 +74,7 @@ it('can watch a query with named bindings', function () {
 
     flushSpans();
 
-    $span = Arr::last(getRecordedSpans());
+    $span = getRecordedSpans()->last();
     assert($span instanceof ImmutableSpan);
 
     expect($span)
