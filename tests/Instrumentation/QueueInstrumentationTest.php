@@ -1,10 +1,9 @@
 <?php
 
 use Illuminate\Support\Facades\Artisan;
-use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Tests\Support\TestJob;
-use OpenTelemetry\API\Trace\SpanInterface;
-use OpenTelemetry\API\Trace\SpanKind;
+use OpenTelemetry\SDK\Trace\ImmutableSpan;
+use OpenTelemetry\SemConv\TraceAttributes;
 use Spatie\Valuestore\Valuestore;
 
 beforeEach(function () {
@@ -16,17 +15,20 @@ afterEach(function () {
 });
 
 it('can trace queue jobs', function () {
-    $spanId = '';
-    $traceId = '';
+    withRootSpan(function () {
+        dispatch(new TestJob($this->valuestore));
+    });
 
-    Tracer::newSpan('dispatcher')
-        ->setSpanKind(SpanKind::KIND_PRODUCER)
-        ->measure(function (SpanInterface $span) use (&$traceId, &$spanId) {
-            $spanId = $span->getContext()->getSpanId();
-            $traceId = $span->getContext()->getTraceId();
+    $parentSpan = collect(getRecordedSpans())
+        ->first(fn (ImmutableSpan $span) => $span->getName() === TestJob::class.' enqueue');
 
-            return dispatch(new TestJob($this->valuestore));
-        });
+    expect($parentSpan)
+        ->not->toBeNull();
+
+    assert($parentSpan instanceof ImmutableSpan);
+
+    $traceId = $parentSpan->getTraceId();
+    $spanId = $parentSpan->getSpanId();
 
     expect($traceId)
         ->not->toBeEmpty()
@@ -41,7 +43,30 @@ it('can trace queue jobs', function () {
     ]);
 
     expect($this->valuestore)
+        ->get('uuid')->not->toBeNull()
         ->get('traceparentInJob')->toBe(sprintf('00-%s-%s-01', $traceId, $spanId))
         ->get('traceIdInJob')->toBe($traceId)
         ->get('logContextInJob')->toMatchArray(['traceId' => $traceId]);
+
+    $jobSpan = collect(getRecordedSpans())
+        ->first(fn (ImmutableSpan $span) => $span->getName() === TestJob::class.' process');
+
+    expect($parentSpan)
+        ->getAttributes()->toMatchArray([
+            TraceAttributes::MESSAGING_SYSTEM => 'redis',
+            TraceAttributes::MESSAGING_OPERATION => 'enqueue',
+            TraceAttributes::MESSAGE_ID => $this->valuestore->get('uuid'),
+            TraceAttributes::MESSAGING_DESTINATION_NAME => 'default',
+            TraceAttributes::MESSAGING_DESTINATION_TEMPLATE => TestJob::class,
+        ]);
+
+    expect($jobSpan)
+        ->not->toBeNull()
+        ->getAttributes()->toMatchArray([
+            TraceAttributes::MESSAGING_SYSTEM => 'redis',
+            TraceAttributes::MESSAGING_OPERATION => 'process',
+            TraceAttributes::MESSAGE_ID => $this->valuestore->get('uuid'),
+            TraceAttributes::MESSAGING_DESTINATION_NAME => 'default',
+            TraceAttributes::MESSAGING_DESTINATION_TEMPLATE => TestJob::class,
+        ]);
 });

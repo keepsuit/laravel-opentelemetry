@@ -21,6 +21,7 @@ class TestJob implements ShouldQueue
 
     public function handle(): void
     {
+        $this->valuestore->put('uuid', $this->job->uuid());
         $this->valuestore->put('traceparentInJob', $this->job->payload()['traceparent'] ?? null);
         $this->valuestore->put('traceIdInJob', Tracer::traceId());
         $this->valuestore->put('logContextInJob', Log::sharedContext());
