@@ -32,10 +32,10 @@ return [
     ],
 
     /**
-     * Exporter to use
+     * Traces exporter
      * Supported: "zipkin", "http", "grpc", "console", "null"
      */
-    'exporter' => env('OTEL_EXPORTER', 'http'),
+    'exporter' => env('OTEL_TRACES_EXPORTER', 'http'),
 
     /**
      * Comma separated list of propagators to use.
