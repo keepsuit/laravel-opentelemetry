@@ -69,16 +69,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
                     'application/json'
                 ),
             ),
-            'http' => new OtlpSpanExporter(
-                // @phpstan-ignore-next-line
-                (new OtlpHttpTransportFactory())->create(
-                    (new HttpEndpointResolver())->resolveToString(config('opentelemetry.exporters.http.endpoint'), Signals::TRACE),
-                    'application/x-protobuf'
-                )
-            ),
-            'grpc' => new OtlpSpanExporter(
-                (new GrpcTransportFactory())->create(config('opentelemetry.exporters.grpc.endpoint').OtlpUtil::method(Signals::TRACE))
-            ),
+            'otlp' => $this->buildOtlpExporter(),
             'console' => (new ConsoleSpanExporterFactory())->create(),
             default => (new InMemorySpanExporterFactory())->create(),
         };
@@ -150,5 +141,23 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 
         // Disable debug scopes wrapping
         $envRepository->set('OTEL_PHP_DEBUG_SCOPES_DISABLED', '1');
+    }
+
+    protected function buildOtlpExporter(): OtlpSpanExporter
+    {
+        $transport = match (config('opentelemetry.exporters.otlp.protocol')) {
+            'grpc' => (new GrpcTransportFactory())->create(config('opentelemetry.exporters.otlp.endpoint').OtlpUtil::method(Signals::TRACE)),
+            'http/json', 'json' => (new OtlpHttpTransportFactory())->create(
+                (new HttpEndpointResolver())->resolveToString(config('opentelemetry.exporters.otlp.endpoint'), Signals::TRACE),
+                'application/json'
+            ),
+            default => (new OtlpHttpTransportFactory())->create(
+                (new HttpEndpointResolver())->resolveToString(config('opentelemetry.exporters.otlp.endpoint'), Signals::TRACE),
+                'application/x-protobuf'
+            ),
+        };
+
+        // @phpstan-ignore-next-line
+        return new OtlpSpanExporter($transport);
     }
 }

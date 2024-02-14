@@ -78,16 +78,15 @@ return [
      * Exporters config
      */
     'exporters' => [
+        'otlp' => [
+            'endpoint' => env('OTEL_EXPORTER_OTLP_TRACES_ENDPOINT', env('OTEL_EXPORTER_OTLP_ENDPOINT', 'http://localhost:4318')),
+
+            // Supported: "grpc", "http/protobuf", "http/json"
+            'protocol' => env('OTEL_EXPORTER_OTLP_TRACES_PROTOCOL', env('OTEL_EXPORTER_OTLP_PROTOCOL', 'http')),
+        ],
+
         'zipkin' => [
             'endpoint' => env('OTEL_ZIPKIN_HTTP_ENDPOINT', 'http://localhost:9411'),
-        ],
-
-        'http' => [
-            'endpoint' => env('OTEL_OTLP_HTTP_ENDPOINT', 'http://localhost:4318'),
-        ],
-
-        'grpc' => [
-            'endpoint' => env('OTEL_OTLP_GRPC_ENDPOINT', 'http://localhost:4317'),
         ],
     ],
 
