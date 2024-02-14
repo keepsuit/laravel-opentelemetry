@@ -86,7 +86,7 @@ return [
         ],
 
         'zipkin' => [
-            'endpoint' => env('OTEL_ZIPKIN_HTTP_ENDPOINT', 'http://localhost:9411'),
+            'endpoint' => env('OTEL_EXPORTER_ZIPKIN_ENDPOINT', 'http://localhost:9411'),
         ],
     ],
 
