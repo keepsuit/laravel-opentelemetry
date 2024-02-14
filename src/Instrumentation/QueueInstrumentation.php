@@ -12,6 +12,7 @@ use Illuminate\Support\Str;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use OpenTelemetry\API\Trace\SpanInterface;
 use OpenTelemetry\API\Trace\SpanKind;
+use OpenTelemetry\API\Trace\StatusCode;
 use OpenTelemetry\SemConv\TraceAttributes;
 
 class QueueInstrumentation implements Instrumentation
@@ -113,7 +114,8 @@ class QueueInstrumentation implements Instrumentation
             $scope = Tracer::activeScope();
             $span = Tracer::activeSpan();
 
-            $span->recordException($event->exception);
+            $span->recordException($event->exception)
+                ->setStatus(StatusCode::STATUS_ERROR);
 
             $scope?->detach();
             $span->end();

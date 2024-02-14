@@ -15,8 +15,10 @@ class TestJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function __construct(protected Valuestore $valuestore)
-    {
+    public function __construct(
+        protected Valuestore $valuestore,
+        protected bool $fail = false
+    ) {
     }
 
     public function handle(): void
@@ -25,5 +27,9 @@ class TestJob implements ShouldQueue
         $this->valuestore->put('traceparentInJob', $this->job->payload()['traceparent'] ?? null);
         $this->valuestore->put('traceIdInJob', Tracer::traceId());
         $this->valuestore->put('logContextInJob', Log::sharedContext());
+
+        if ($this->fail) {
+            throw new \Exception('Job failed');
+        }
     }
 }
