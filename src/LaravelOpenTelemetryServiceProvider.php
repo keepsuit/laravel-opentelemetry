@@ -7,9 +7,9 @@ use Illuminate\Support\Env;
 use Illuminate\Support\Str;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\Instrumentation;
 use Keepsuit\LaravelOpenTelemetry\Support\CarbonClock;
+use Keepsuit\LaravelOpenTelemetry\Support\PropagatorBuilder;
 use OpenTelemetry\API\Instrumentation\CachedInstrumentation;
 use OpenTelemetry\API\Signals;
-use OpenTelemetry\API\Trace\Propagation\TraceContextPropagator;
 use OpenTelemetry\API\Trace\TracerInterface;
 use OpenTelemetry\Context\Propagation\TextMapPropagatorInterface;
 use OpenTelemetry\Contrib\Grpc\GrpcTransportFactory;
@@ -18,8 +18,6 @@ use OpenTelemetry\Contrib\Otlp\OtlpHttpTransportFactory;
 use OpenTelemetry\Contrib\Otlp\OtlpUtil;
 use OpenTelemetry\Contrib\Otlp\SpanExporter as OtlpSpanExporter;
 use OpenTelemetry\Contrib\Zipkin\Exporter as ZipkinExporter;
-use OpenTelemetry\Extension\Propagator\B3\B3MultiPropagator;
-use OpenTelemetry\Extension\Propagator\B3\B3SinglePropagator;
 use OpenTelemetry\SDK\Common\Attribute\Attributes;
 use OpenTelemetry\SDK\Common\Configuration\Variables as OTELVariables;
 use OpenTelemetry\SDK\Common\Export\Http\PsrTransportFactory;
@@ -102,11 +100,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
             ->setSampler($sampler)
             ->build();
 
-        $propagator = match (config('opentelemetry.propagator')) {
-            'b3' => B3SinglePropagator::getInstance(),
-            'b3multi' => B3MultiPropagator::getInstance(),
-            default => TraceContextPropagator::getInstance(),
-        };
+        $propagator = PropagatorBuilder::new()->build(config('opentelemetry.propagators'));
 
         Sdk::builder()
             ->setTracerProvider($tracerProvider)

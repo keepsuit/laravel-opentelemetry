@@ -10,21 +10,21 @@ return [
 
     /**
      * Enable tracing
-     * Valid values: 'true', 'false', 'parent'
+     * Valid values: "true", "false", "parent"
      */
     'enabled' => env('OTEL_ENABLED', true),
 
     /**
      * Exporter to use
-     * Supported: 'zipkin', 'http', 'grpc', 'console', 'null'
+     * Supported: "zipkin", "http", "grpc", "console", "null"
      */
     'exporter' => env('OTEL_EXPORTER', 'http'),
 
     /**
-     * Propagator to use
-     * Supported: 'b3', 'b3multi', 'tracecontext',
+     * Comma separated list of propagators to use.
+     * Supports any otel propagator, for example: "tracecontext", "baggage", "b3", "b3multi", "none"
      */
-    'propagator' => env('OTEL_PROPAGATOR', 'tracecontext'),
+    'propagators' => env('OTEL_PROPAGATORS', 'tracecontext'),
 
     /**
      * List of instrumentation used for application tracing
