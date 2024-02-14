@@ -90,6 +90,9 @@ return [
         ],
     ],
 
+    /**
+     * Logs context config
+     */
     'logs' => [
         /**
          * Inject active trace id in log context
