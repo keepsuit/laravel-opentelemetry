@@ -82,7 +82,7 @@ return [
             'endpoint' => env('OTEL_EXPORTER_OTLP_TRACES_ENDPOINT', env('OTEL_EXPORTER_OTLP_ENDPOINT', 'http://localhost:4318')),
 
             // Supported: "grpc", "http/protobuf", "http/json"
-            'protocol' => env('OTEL_EXPORTER_OTLP_TRACES_PROTOCOL', env('OTEL_EXPORTER_OTLP_PROTOCOL', 'http')),
+            'protocol' => env('OTEL_EXPORTER_OTLP_TRACES_PROTOCOL', env('OTEL_EXPORTER_OTLP_PROTOCOL', 'http/protobuf')),
         ],
 
         'zipkin' => [
