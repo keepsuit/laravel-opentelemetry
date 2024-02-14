@@ -6,53 +6,53 @@ return [
     /**
      * Service name
      */
-    'service_name' => \Illuminate\Support\Str::slug(env('APP_NAME', 'laravel-app')),
+    'service_name' => env('OTEL_SERVICE_NAME', \Illuminate\Support\Str::slug(env('APP_NAME', 'laravel-app'))),
 
     /**
      * Enable tracing
      * Valid values: 'true', 'false', 'parent'
      */
-    'enabled' => env('OT_ENABLED', true),
+    'enabled' => env('OTEL_ENABLED', true),
 
     /**
      * Exporter to use
      * Supported: 'zipkin', 'http', 'grpc', 'console', 'null'
      */
-    'exporter' => env('OT_EXPORTER', 'http'),
+    'exporter' => env('OTEL_EXPORTER', 'http'),
 
     /**
      * Propagator to use
      * Supported: 'b3', 'b3multi', 'tracecontext',
      */
-    'propagator' => env('OT_PROPAGATOR', 'tracecontext'),
+    'propagator' => env('OTEL_PROPAGATOR', 'tracecontext'),
 
     /**
      * List of instrumentation used for application tracing
      */
     'instrumentation' => [
         Instrumentation\HttpServerInstrumentation::class => [
-            'enabled' => env('OT_INSTRUMENTATION_HTTP_SERVER', true),
+            'enabled' => env('OTEL_INSTRUMENTATION_HTTP_SERVER', true),
             'excluded_paths' => [],
             'allowed_headers' => [],
             'sensitive_headers' => [],
         ],
 
         Instrumentation\HttpClientInstrumentation::class => [
-            'enabled' => env('OT_INSTRUMENTATION_HTTP_CLIENT', true),
+            'enabled' => env('OTEL_INSTRUMENTATION_HTTP_CLIENT', true),
             'allowed_headers' => [],
             'sensitive_headers' => [],
         ],
 
-        Instrumentation\QueryInstrumentation::class => env('OT_INSTRUMENTATION_QUERY', true),
+        Instrumentation\QueryInstrumentation::class => env('OTEL_INSTRUMENTATION_QUERY', true),
 
-        Instrumentation\RedisInstrumentation::class => env('OT_INSTRUMENTATION_REDIS', true),
+        Instrumentation\RedisInstrumentation::class => env('OTEL_INSTRUMENTATION_REDIS', true),
 
-        Instrumentation\QueueInstrumentation::class => env('OT_INSTRUMENTATION_QUEUE', true),
+        Instrumentation\QueueInstrumentation::class => env('OTEL_INSTRUMENTATION_QUEUE', true),
 
-        Instrumentation\CacheInstrumentation::class => env('OT_INSTRUMENTATION_CACHE', true),
+        Instrumentation\CacheInstrumentation::class => env('OTEL_INSTRUMENTATION_CACHE', true),
 
         Instrumentation\EventInstrumentation::class => [
-            'enabled' => env('OT_INSTRUMENTATION_EVENT', true),
+            'enabled' => env('OTEL_INSTRUMENTATION_EVENT', true),
             'ignored' => [],
         ],
     ],
@@ -62,15 +62,15 @@ return [
      */
     'exporters' => [
         'zipkin' => [
-            'endpoint' => env('OT_ZIPKIN_HTTP_ENDPOINT', 'http://localhost:9411'),
+            'endpoint' => env('OTEL_ZIPKIN_HTTP_ENDPOINT', 'http://localhost:9411'),
         ],
 
         'http' => [
-            'endpoint' => env('OT_OTLP_HTTP_ENDPOINT', 'http://localhost:4318'),
+            'endpoint' => env('OTEL_OTLP_HTTP_ENDPOINT', 'http://localhost:4318'),
         ],
 
         'grpc' => [
-            'endpoint' => env('OT_OTLP_GRPC_ENDPOINT', 'http://localhost:4317'),
+            'endpoint' => env('OTEL_OTLP_GRPC_ENDPOINT', 'http://localhost:4317'),
         ],
     ],
 
