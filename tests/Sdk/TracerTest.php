@@ -2,6 +2,7 @@
 
 use Composer\InstalledVersions;
 use Keepsuit\LaravelOpenTelemetry\Support\PropagatorBuilder;
+use Keepsuit\LaravelOpenTelemetry\Support\SamplerBuilder;
 
 it('can build open telemetry tracer', function () {
     /** @var \OpenTelemetry\SDK\Trace\Tracer $tracer */
@@ -35,4 +36,33 @@ it('register noop propagator when empty or invalid', function () {
 
     expect(PropagatorBuilder::new()->build('invalid'))
         ->toBeInstanceOf(\OpenTelemetry\Context\Propagation\NoopTextMapPropagator::class);
+});
+
+it('can register sampler', function () {
+    expect(SamplerBuilder::new()->build('always_on'))
+        ->toBeInstanceOf(\OpenTelemetry\SDK\Trace\Sampler\AlwaysOnSampler::class);
+
+    expect(SamplerBuilder::new()->build('always_off'))
+        ->toBeInstanceOf(\OpenTelemetry\SDK\Trace\Sampler\AlwaysOffSampler::class);
+
+    $instance = SamplerBuilder::new()->build('traceidratio', args: ['ratio' => 0.5]);
+    expect($instance)
+        ->toBeInstanceOf(\OpenTelemetry\SDK\Trace\Sampler\TraceIdRatioBasedSampler::class);
+    expect(invade($instance)->probability)->toBe(0.5);
+});
+
+it('can register parent based sampler', function () {
+    expect(invade(SamplerBuilder::new()->build('always_on', true)))
+        ->obj->toBeInstanceOf(\OpenTelemetry\SDK\Trace\Sampler\ParentBased::class)
+        ->root->toBeInstanceOf(\OpenTelemetry\SDK\Trace\Sampler\AlwaysOnSampler::class);
+
+    expect(invade(SamplerBuilder::new()->build('always_off', true)))
+        ->obj->toBeInstanceOf(\OpenTelemetry\SDK\Trace\Sampler\ParentBased::class)
+        ->root->toBeInstanceOf(\OpenTelemetry\SDK\Trace\Sampler\AlwaysOffSampler::class);
+
+    $instance = SamplerBuilder::new()->build('traceidratio', true, ['ratio' => 0.5]);
+    expect(invade($instance))
+        ->obj->toBeInstanceOf(\OpenTelemetry\SDK\Trace\Sampler\ParentBased::class)
+        ->root->toBeInstanceOf(\OpenTelemetry\SDK\Trace\Sampler\TraceIdRatioBasedSampler::class);
+    expect(invade(invade($instance)->root)->probability)->toBe(0.5);
 });

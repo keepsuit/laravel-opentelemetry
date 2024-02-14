@@ -10,7 +10,6 @@ use OpenTelemetry\Context\ContextInterface;
 use OpenTelemetry\Context\ScopeInterface;
 
 /**
- * @method static bool isRecording()
  * @method static string traceId()
  * @method static SpanInterface activeSpan()
  * @method static ScopeInterface|null activeScope()

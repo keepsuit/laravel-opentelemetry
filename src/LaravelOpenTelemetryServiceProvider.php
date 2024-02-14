@@ -8,6 +8,7 @@ use Illuminate\Support\Str;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\Instrumentation;
 use Keepsuit\LaravelOpenTelemetry\Support\CarbonClock;
 use Keepsuit\LaravelOpenTelemetry\Support\PropagatorBuilder;
+use Keepsuit\LaravelOpenTelemetry\Support\SamplerBuilder;
 use OpenTelemetry\API\Instrumentation\CachedInstrumentation;
 use OpenTelemetry\API\Signals;
 use OpenTelemetry\API\Trace\TracerInterface;
@@ -25,9 +26,6 @@ use OpenTelemetry\SDK\Common\Time\ClockFactory;
 use OpenTelemetry\SDK\Resource\ResourceInfo;
 use OpenTelemetry\SDK\Resource\ResourceInfoFactory;
 use OpenTelemetry\SDK\Sdk;
-use OpenTelemetry\SDK\Trace\Sampler\AlwaysOffSampler;
-use OpenTelemetry\SDK\Trace\Sampler\AlwaysOnSampler;
-use OpenTelemetry\SDK\Trace\Sampler\ParentBased;
 use OpenTelemetry\SDK\Trace\SpanExporter\ConsoleSpanExporterFactory;
 use OpenTelemetry\SDK\Trace\SpanExporter\InMemorySpanExporterFactory;
 use OpenTelemetry\SDK\Trace\SpanExporterInterface;
@@ -88,11 +86,11 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         $spanProcessor = (new BatchSpanProcessorBuilder($spanExporter))
             ->build();
 
-        $sampler = match (config('opentelemetry.enabled', true)) {
-            'parent' => new ParentBased(new AlwaysOffSampler()),
-            true => new AlwaysOnSampler(),
-            default => new AlwaysOffSampler(),
-        };
+        $sampler = SamplerBuilder::new()->build(
+            config('opentelemetry.sampler.type'),
+            config('opentelemetry.sampler.parent'),
+            config('opentelemetry.sampler.args', [])
+        );
 
         $tracerProvider = TracerProvider::builder()
             ->addSpanProcessor($spanProcessor)
@@ -123,7 +121,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 
     protected function registerInstrumentation(): void
     {
-        if (config('opentelemetry.enabled') === false) {
+        if (Sdk::isDisabled()) {
             return;
         }
 

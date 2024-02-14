@@ -9,10 +9,27 @@ return [
     'service_name' => env('OTEL_SERVICE_NAME', \Illuminate\Support\Str::slug(env('APP_NAME', 'laravel-app'))),
 
     /**
-     * Enable tracing
-     * Valid values: "true", "false", "parent"
+     * Traces sampler
      */
-    'enabled' => env('OTEL_ENABLED', true),
+    'sampler' => [
+        /**
+         * Wraps the sampler in a parent based sampler
+         */
+        'parent' => env('OTEL_TRACES_SAMPLER_PARENT', true),
+
+        /**
+         * Sampler type
+         * Supported values: "always_on", "always_off", "traceidratio"
+         */
+        'type' => env('OTEL_TRACES_SAMPLER_TYPE', 'always_on'),
+
+        'args' => [
+            /**
+             * Sampling ratio for traceidratio sampler
+             */
+            'ratio' => env('OTEL_TRACES_SAMPLER_TRACEIDRATIO_RATIO', 0.05),
+        ],
+    ],
 
     /**
      * Exporter to use

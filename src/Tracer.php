@@ -40,21 +40,6 @@ class Tracer
         return $this->activeSpan()->getContext()->getTraceId();
     }
 
-    public function isRecording(): bool
-    {
-        $enabled = config('opentelemetry.enabled', true);
-
-        if (is_bool($enabled)) {
-            return $enabled;
-        }
-
-        if ($enabled === 'parent') {
-            return Span::getCurrent()->getContext()->isSampled();
-        }
-
-        return false;
-    }
-
     /**
      * @phpstan-param non-empty-string $name
      */

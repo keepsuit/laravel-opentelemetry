@@ -19,7 +19,6 @@ it('can resolve laravel tracer', function () {
 
     expect($tracer)
         ->toBeInstanceOf(\Keepsuit\LaravelOpenTelemetry\Tracer::class)
-        ->isRecording()->toBeTrue()
         ->traceId()->toBe('00000000000000000000000000000000')
         ->activeSpan()->toBeInstanceOf(\OpenTelemetry\API\Trace\NonRecordingSpan::class);
 });
