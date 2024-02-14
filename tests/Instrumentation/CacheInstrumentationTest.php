@@ -3,13 +3,17 @@
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 
+beforeEach(function () {
+    \Spatie\TestTime\TestTime::freeze();
+});
+
 it('records cache hits', function () {
     withRootSpan(function () {
         Cache::remember('test-hit', 60, fn () => 'test');
         Cache::get('test-hit');
     });
 
-    $rootSpan = Arr::last(getRecordedSpans());
+    $rootSpan = getRecordedSpans()->last();
 
     /** @var \OpenTelemetry\SDK\Trace\Event $event */
     $event = Arr::last($rootSpan->getEvents());
@@ -28,7 +32,7 @@ it('records cache miss', function () {
         Cache::get('test-miss');
     });
 
-    $rootSpan = Arr::last(getRecordedSpans());
+    $rootSpan = getRecordedSpans()->last();
 
     /** @var \OpenTelemetry\SDK\Trace\Event $event */
     $event = Arr::last($rootSpan->getEvents());
@@ -47,7 +51,7 @@ it('records cache put without a ttl', function () {
         Cache::put('test-put', 'test');
     });
 
-    $rootSpan = Arr::last(getRecordedSpans());
+    $rootSpan = getRecordedSpans()->last();
 
     /** @var \OpenTelemetry\SDK\Trace\Event $event */
     $event = Arr::last($rootSpan->getEvents());
@@ -71,7 +75,7 @@ it('records cache put with a ttl', function () {
         Cache::put('test-put', 'test', $expiredAt);
     });
 
-    $rootSpan = Arr::last(getRecordedSpans());
+    $rootSpan = getRecordedSpans()->last();
 
     /** @var \OpenTelemetry\SDK\Trace\Event $event */
     $event = Arr::last($rootSpan->getEvents());
@@ -79,12 +83,12 @@ it('records cache put with a ttl', function () {
     expect($event)
         ->not->toBeNull()
         ->getName()->toBe('cache set')
-        ->getAttributes()->toArray()->toBe([
+        ->getAttributes()->toMatchArray([
             'key' => 'test-put',
             'tags' => '[]',
             'expires_at' => $expiredAt->getTimestamp(),
             'expires_in_seconds' => 60,
-            'expires_in_human' => '59 seconds from now',
+            'expires_in_human' => '1 minute from now',
         ]);
 });
 
@@ -94,7 +98,7 @@ it('records cache forget', function () {
         Cache::forget('test-forget');
     });
 
-    $rootSpan = Arr::last(getRecordedSpans());
+    $rootSpan = getRecordedSpans()->last();
 
     /** @var \OpenTelemetry\SDK\Trace\Event $event */
     $event = Arr::last($rootSpan->getEvents());

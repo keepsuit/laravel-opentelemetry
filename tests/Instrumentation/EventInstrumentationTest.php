@@ -9,7 +9,7 @@ it('records string event', function () {
         event('test-event', 'value');
     });
 
-    $rootSpan = Arr::last(getRecordedSpans());
+    $rootSpan = getRecordedSpans()->last();
 
     /** @var \OpenTelemetry\SDK\Trace\Event $event */
     $event = Arr::last($rootSpan->getEvents());
@@ -27,7 +27,7 @@ it('records class event', function () {
         event(new TestEvent('test'));
     });
 
-    $rootSpan = Arr::last(getRecordedSpans());
+    $rootSpan = getRecordedSpans()->last();
 
     /** @var \OpenTelemetry\SDK\Trace\Event $event */
     $event = Arr::last($rootSpan->getEvents());
@@ -49,7 +49,7 @@ it('can ignore events', function () {
         event('test-event', 'value');
     });
 
-    $rootSpan = Arr::last(getRecordedSpans());
+    $rootSpan = getRecordedSpans()->last();
 
     /** @var \OpenTelemetry\SDK\Trace\Event $event */
     $event = Arr::last($rootSpan->getEvents());
