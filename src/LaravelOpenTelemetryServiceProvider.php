@@ -7,9 +7,10 @@ use Illuminate\Support\Env;
 use Illuminate\Support\Str;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\Instrumentation;
 use Keepsuit\LaravelOpenTelemetry\Support\CarbonClock;
+use Keepsuit\LaravelOpenTelemetry\Support\PropagatorBuilder;
+use Keepsuit\LaravelOpenTelemetry\Support\SamplerBuilder;
 use OpenTelemetry\API\Instrumentation\CachedInstrumentation;
 use OpenTelemetry\API\Signals;
-use OpenTelemetry\API\Trace\Propagation\TraceContextPropagator;
 use OpenTelemetry\API\Trace\TracerInterface;
 use OpenTelemetry\Context\Propagation\TextMapPropagatorInterface;
 use OpenTelemetry\Contrib\Grpc\GrpcTransportFactory;
@@ -18,8 +19,6 @@ use OpenTelemetry\Contrib\Otlp\OtlpHttpTransportFactory;
 use OpenTelemetry\Contrib\Otlp\OtlpUtil;
 use OpenTelemetry\Contrib\Otlp\SpanExporter as OtlpSpanExporter;
 use OpenTelemetry\Contrib\Zipkin\Exporter as ZipkinExporter;
-use OpenTelemetry\Extension\Propagator\B3\B3MultiPropagator;
-use OpenTelemetry\Extension\Propagator\B3\B3SinglePropagator;
 use OpenTelemetry\SDK\Common\Attribute\Attributes;
 use OpenTelemetry\SDK\Common\Configuration\Variables as OTELVariables;
 use OpenTelemetry\SDK\Common\Export\Http\PsrTransportFactory;
@@ -27,9 +26,6 @@ use OpenTelemetry\SDK\Common\Time\ClockFactory;
 use OpenTelemetry\SDK\Resource\ResourceInfo;
 use OpenTelemetry\SDK\Resource\ResourceInfoFactory;
 use OpenTelemetry\SDK\Sdk;
-use OpenTelemetry\SDK\Trace\Sampler\AlwaysOffSampler;
-use OpenTelemetry\SDK\Trace\Sampler\AlwaysOnSampler;
-use OpenTelemetry\SDK\Trace\Sampler\ParentBased;
 use OpenTelemetry\SDK\Trace\SpanExporter\ConsoleSpanExporterFactory;
 use OpenTelemetry\SDK\Trace\SpanExporter\InMemorySpanExporterFactory;
 use OpenTelemetry\SDK\Trace\SpanExporterInterface;
@@ -73,16 +69,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
                     'application/json'
                 ),
             ),
-            'http' => new OtlpSpanExporter(
-                // @phpstan-ignore-next-line
-                (new OtlpHttpTransportFactory())->create(
-                    (new HttpEndpointResolver())->resolveToString(config('opentelemetry.exporters.http.endpoint'), Signals::TRACE),
-                    'application/x-protobuf'
-                )
-            ),
-            'grpc' => new OtlpSpanExporter(
-                (new GrpcTransportFactory())->create(config('opentelemetry.exporters.grpc.endpoint').OtlpUtil::method(Signals::TRACE))
-            ),
+            'otlp' => $this->buildOtlpExporter(),
             'console' => (new ConsoleSpanExporterFactory())->create(),
             default => (new InMemorySpanExporterFactory())->create(),
         };
@@ -90,11 +77,11 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         $spanProcessor = (new BatchSpanProcessorBuilder($spanExporter))
             ->build();
 
-        $sampler = match (config('opentelemetry.enabled', true)) {
-            'parent' => new ParentBased(new AlwaysOffSampler()),
-            true => new AlwaysOnSampler(),
-            default => new AlwaysOffSampler(),
-        };
+        $sampler = SamplerBuilder::new()->build(
+            config('opentelemetry.sampler.type'),
+            config('opentelemetry.sampler.parent'),
+            config('opentelemetry.sampler.args', [])
+        );
 
         $tracerProvider = TracerProvider::builder()
             ->addSpanProcessor($spanProcessor)
@@ -102,11 +89,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
             ->setSampler($sampler)
             ->build();
 
-        $propagator = match (config('opentelemetry.propagator')) {
-            'b3' => B3SinglePropagator::getInstance(),
-            'b3multi' => B3MultiPropagator::getInstance(),
-            default => TraceContextPropagator::getInstance(),
-        };
+        $propagator = PropagatorBuilder::new()->build(config('opentelemetry.propagators'));
 
         Sdk::builder()
             ->setTracerProvider($tracerProvider)
@@ -129,7 +112,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 
     protected function registerInstrumentation(): void
     {
-        if (config('opentelemetry.enabled') === false) {
+        if (Sdk::isDisabled()) {
             return;
         }
 
@@ -158,5 +141,23 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 
         // Disable debug scopes wrapping
         $envRepository->set('OTEL_PHP_DEBUG_SCOPES_DISABLED', '1');
+    }
+
+    protected function buildOtlpExporter(): OtlpSpanExporter
+    {
+        $transport = match (config('opentelemetry.exporters.otlp.protocol')) {
+            'grpc' => (new GrpcTransportFactory())->create(config('opentelemetry.exporters.otlp.endpoint').OtlpUtil::method(Signals::TRACE)),
+            'http/json', 'json' => (new OtlpHttpTransportFactory())->create(
+                (new HttpEndpointResolver())->resolveToString(config('opentelemetry.exporters.otlp.endpoint'), Signals::TRACE),
+                'application/json'
+            ),
+            default => (new OtlpHttpTransportFactory())->create(
+                (new HttpEndpointResolver())->resolveToString(config('opentelemetry.exporters.otlp.endpoint'), Signals::TRACE),
+                'application/x-protobuf'
+            ),
+        };
+
+        // @phpstan-ignore-next-line
+        return new OtlpSpanExporter($transport);
     }
 }
