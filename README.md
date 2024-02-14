@@ -243,7 +243,6 @@ Other utility methods are available on the `Tracer` facade:
 ```php
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 
-Tracer::isRecording(); // check if tracing is enabled
 Tracer::traceId(); // get the active trace id
 Tracer::activeSpan(); // get the active span
 Tracer::activeScope(); // get the active scope
