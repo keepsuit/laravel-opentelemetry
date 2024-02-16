@@ -55,7 +55,7 @@ class QueueInstrumentation implements Instrumentation
 
     protected function registerQueueInterceptor(QueueManager $queue): void
     {
-        $queue->createPayloadUsing(function (string $connection, string $queue, array $payload) {
+        $queue->createPayloadUsing(function (string $connection, ?string $queue, array $payload) {
             $uuid = $payload['uuid'];
 
             if (! is_string($uuid)) {
