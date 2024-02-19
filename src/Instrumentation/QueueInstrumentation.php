@@ -63,7 +63,7 @@ class QueueInstrumentation implements Instrumentation
             }
 
             $jobName = Arr::get($payload, 'displayName', 'unknown');
-            $queueName = Str::after($queue, 'queues:');
+            $queueName = Str::after($queue ?? 'default', 'queues:');
 
             $span = Tracer::newSpan(sprintf('%s enqueue', $jobName))
                 ->setSpanKind(SpanKind::KIND_PRODUCER)
