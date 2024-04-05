@@ -57,7 +57,7 @@ return [
          * This should be the key of one of the exporters defined in the exporters section
          * Supported drivers: "otlp", "console", "null"
          */
-        'exporter' => env('OTEL_LOGS_EXPORTER', 'console'),
+        'exporter' => env('OTEL_LOGS_EXPORTER', 'otlp'),
 
         /**
          * Inject active trace id in log context
