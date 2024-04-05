@@ -26,9 +26,7 @@ use OpenTelemetry\SDK\Common\Configuration\Variables as OTELVariables;
 use OpenTelemetry\SDK\Common\Export\Http\PsrTransportFactory;
 use OpenTelemetry\SDK\Common\Export\TransportInterface;
 use OpenTelemetry\SDK\Common\Time\ClockFactory;
-use OpenTelemetry\SDK\Logs\Exporter\ConsoleExporter;
 use OpenTelemetry\SDK\Logs\Exporter\ConsoleExporterFactory as LogsConsoleExporterFactory;
-use OpenTelemetry\SDK\Logs\Exporter\InMemoryExporter;
 use OpenTelemetry\SDK\Logs\Exporter\InMemoryExporterFactory as LogsInMemoryExporterFactory;
 use OpenTelemetry\SDK\Logs\LoggerProvider;
 use OpenTelemetry\SDK\Logs\LogRecordExporterInterface;
@@ -163,7 +161,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
     protected function buildSpanExporter(): SpanExporterInterface
     {
         $tracesExporter = config('opentelemetry.traces.exporter');
-        $tracesExporterConfig = config(sprintf("opentelemetry.exporters.%s", $tracesExporter));
+        $tracesExporterConfig = config(sprintf('opentelemetry.exporters.%s', $tracesExporter));
         $tracesExporterDriver = is_array($tracesExporterConfig) ? $tracesExporterConfig['driver'] : $tracesExporter;
 
         return match ($tracesExporterDriver) {
@@ -182,7 +180,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
     protected function buildLogsExporter(): LogRecordExporterInterface
     {
         $logsExporter = config('opentelemetry.logs.exporter');
-        $logsExporterConfig = config(sprintf("opentelemetry.exporters.%s", $logsExporter));
+        $logsExporterConfig = config(sprintf('opentelemetry.exporters.%s', $logsExporter));
         $logsExporterDriver = is_array($logsExporterConfig) ? $logsExporterConfig['driver'] : $logsExporter;
 
         return match ($logsExporterDriver) {
