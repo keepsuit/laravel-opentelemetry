@@ -18,8 +18,6 @@ beforeEach(function () {
 it('can watch a query', function () {
     DB::table('users')->get();
 
-    flushSpans();
-
     $span = getRecordedSpans()->last();
     assert($span instanceof ImmutableSpan);
 
@@ -45,8 +43,6 @@ it('can watch a query with bindings', function () {
         ->where('name', 'like', 'John%')
         ->get();
 
-    flushSpans();
-
     $span = getRecordedSpans()->last();
     assert($span instanceof ImmutableSpan);
 
@@ -71,8 +67,6 @@ it('can watch a query with named bindings', function () {
     SQL, [
         'name' => 'Admin',
     ]);
-
-    flushSpans();
 
     $span = getRecordedSpans()->last();
     assert($span instanceof ImmutableSpan);

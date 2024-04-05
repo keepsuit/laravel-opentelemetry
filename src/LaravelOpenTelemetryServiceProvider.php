@@ -11,6 +11,7 @@ use Keepsuit\LaravelOpenTelemetry\Support\CarbonClock;
 use Keepsuit\LaravelOpenTelemetry\Support\PropagatorBuilder;
 use Keepsuit\LaravelOpenTelemetry\Support\SamplerBuilder;
 use OpenTelemetry\API\Instrumentation\CachedInstrumentation;
+use OpenTelemetry\API\Logs\LoggerInterface;
 use OpenTelemetry\API\Signals;
 use OpenTelemetry\API\Trace\TracerInterface;
 use OpenTelemetry\Context\Propagation\TextMapPropagatorInterface;
@@ -76,6 +77,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
          * Traces
          */
         $spanExporter = $this->buildSpanExporter();
+        $this->app->bind(SpanExporterInterface::class, fn () => $spanExporter);
         $spanProcessor = (new BatchSpanProcessorBuilder($spanExporter))->build();
 
         $samplerConfig = config('opentelemetry.traces.sampler', []);
@@ -95,6 +97,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
          * Logs
          */
         $logExporter = $this->buildLogsExporter();
+        $this->app->bind(LogRecordExporterInterface::class, fn () => $logExporter);
         $logProcessor = new BatchLogRecordProcessor(
             exporter: $logExporter,
             clock: ClockFactory::getDefault()
@@ -118,11 +121,14 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
             schemaUrl: TraceAttributes::SCHEMA_URL,
         );
 
-        $this->app->bind(TracerInterface::class, fn () => $instrumentation->tracer());
         $this->app->bind(TextMapPropagatorInterface::class, fn () => $propagator);
-        $this->app->bind(SpanExporterInterface::class, fn () => $spanExporter);
+        $this->app->bind(TracerInterface::class, fn () => $instrumentation->tracer());
+        $this->app->bind(LoggerInterface::class, fn () => $instrumentation->logger());
 
-        $this->app->terminating(fn () => $tracerProvider->forceFlush());
+        $this->app->terminating(function () use ($loggerProvider, $tracerProvider) {
+            $tracerProvider->forceFlush();
+            $loggerProvider->forceFlush();
+        });
     }
 
     protected function registerInstrumentation(): void
