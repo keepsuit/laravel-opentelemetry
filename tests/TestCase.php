@@ -22,9 +22,11 @@ class TestCase extends Orchestra
 
         $app['config']->set('database.default', 'sqlite');
         $app['config']->set('database.connections.sqlite.database', ':memory:');
+        $app['config']->set('database.redis.options.prefix', sprintf('%s_', Str::uuid()));
 
         $app['config']->set('queue.default', 'redis');
         $app['config']->set('queue.failed.driver', null);
-        $app['config']->set('database.redis.options.prefix', sprintf('%s_', Str::uuid()));
+
+        $app['config']->set('logging.default', 'otlp');
     }
 }

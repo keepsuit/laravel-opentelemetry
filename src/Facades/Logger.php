@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Facade;
  * @method static void notice(string $message, array $context = [])
  * @method static void info(string $message, array $context = [])
  * @method static void debug(string $message, array $context = [])
+ * @method static void log(string $level, string $message, array $context = [])
  */
 class Logger extends Facade
 {

@@ -3,11 +3,13 @@
 namespace Keepsuit\LaravelOpenTelemetry;
 
 use Composer\InstalledVersions;
+use Illuminate\Config\Repository;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Env;
 use Illuminate\Support\Str;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\Instrumentation;
 use Keepsuit\LaravelOpenTelemetry\Support\CarbonClock;
+use Keepsuit\LaravelOpenTelemetry\Support\OpenTelemetryMonologHandler;
 use Keepsuit\LaravelOpenTelemetry\Support\PropagatorBuilder;
 use Keepsuit\LaravelOpenTelemetry\Support\SamplerBuilder;
 use OpenTelemetry\API\Instrumentation\CachedInstrumentation;
@@ -50,6 +52,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
     public function packageBooted(): void
     {
         $this->configureEnvironmentVariables();
+        $this->injectConfig();
         $this->init();
         $this->registerInstrumentation();
     }
@@ -212,5 +215,20 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
                 'application/x-protobuf'
             ),
         };
+    }
+
+    protected function injectConfig(): void
+    {
+        $this->callAfterResolving(Repository::class, function (Repository $config) {
+            if ($config->has('logging.channels.otlp')) {
+                return;
+            }
+
+            $config->set('logging.channels.otlp', [
+                'driver' => 'monolog',
+                'handler' => OpenTelemetryMonologHandler::class,
+                'level' => 'debug',
+            ]);
+        });
     }
 }
