@@ -5,7 +5,6 @@ namespace Keepsuit\LaravelOpenTelemetry\Support;
 use Carbon\CarbonInterface;
 use Closure;
 use Illuminate\Foundation\Bus\PendingDispatch;
-use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use OpenTelemetry\API\Trace\SpanBuilderInterface;
 use OpenTelemetry\API\Trace\SpanContextInterface;
 use OpenTelemetry\API\Trace\SpanInterface;
