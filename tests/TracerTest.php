@@ -239,7 +239,7 @@ it('set traceId to log context', function () {
 
     expect(Log::sharedContext())
         ->toMatchArray([
-            'traceId' => $span->getContext()->getTraceId(),
+            'traceid' => $span->getContext()->getTraceId(),
         ]);
 
     $scope->detach();

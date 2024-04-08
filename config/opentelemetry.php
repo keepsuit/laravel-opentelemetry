@@ -61,13 +61,16 @@ return [
 
         /**
          * Inject active trace id in log context
+         *
+         * When using the OpenTelemetry logger, the trace id is always injected in the exported log record.
+         * This option allows to inject the trace id in the log context for other loggers.
          */
         'inject_trace_id' => true,
 
         /**
          * Context field name for trace id
          */
-        'trace_id_field' => 'traceId',
+        'trace_id_field' => 'traceid',
     ],
 
     /**

@@ -49,7 +49,7 @@ it('can trace a request', function () {
         ]);
 
     expect(Log::sharedContext())->toMatchArray([
-        'traceId' => $traceId,
+        'traceid' => $traceId,
     ]);
 });
 

@@ -69,25 +69,6 @@ class Logger
             $logRecord->setAttribute($key, $value);
         }
 
-        $this->injectTraceId($logRecord);
-
         $this->logger->emit($logRecord);
-    }
-
-    protected function injectTraceId(LogRecord $logRecord): void
-    {
-        if (! config('opentelemetry.logs.inject_trace_id', true)) {
-            return;
-        }
-
-        $traceId = \Keepsuit\LaravelOpenTelemetry\Facades\Tracer::traceId();
-
-        if ($traceId === null) {
-            return;
-        }
-
-        $field = config('opentelemetry.logs.trace_id_field', 'traceId');
-
-        $logRecord->setAttribute($field, $traceId);
     }
 }

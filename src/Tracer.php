@@ -77,7 +77,7 @@ class Tracer
             return;
         }
 
-        $field = config('opentelemetry.logs.trace_id_field', 'traceId');
+        $field = config('opentelemetry.logs.trace_id_field', 'traceid');
 
         Log::shareContext([
             $field => $traceId,

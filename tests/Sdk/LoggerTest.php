@@ -2,7 +2,6 @@
 
 use Illuminate\Support\Facades\Log;
 use Keepsuit\LaravelOpenTelemetry\Facades\Logger;
-use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use OpenTelemetry\API\Logs\Map\Psr3;
 use OpenTelemetry\SDK\Common\Time\ClockFactory;
 use OpenTelemetry\SDK\Logs\ReadableLogRecord;
@@ -62,41 +61,3 @@ it('can log a message through laravel Log facade', function (string $level) {
     LogLevel::INFO,
     LogLevel::DEBUG,
 ]);
-
-test('trace id is injected without log context sharing', function () {
-    $span = Tracer::newSpan('test')->start();
-    $scope = $span->activate();
-
-    $traceId = Tracer::traceId();
-    expect(\OpenTelemetry\API\Trace\SpanContextValidator::isValidTraceId($traceId))->toBeTrue();
-
-    Logger::info('test');
-
-    $scope->detach();
-    $span->end();
-
-    $log = getRecordedLogs()->first();
-
-    expect($log)
-        ->getBody()->toBe('test')
-        ->getAttributes()->toArray()->toBe([
-            'traceId' => $traceId,
-        ]);
-});
-
-test('trace id is not injected when tracer scope is not valid', function () {
-    $span = Tracer::newSpan('test')->start();
-
-    $traceId = Tracer::traceId();
-    expect($traceId)->toBeNull();
-
-    Logger::info('test');
-
-    $span->end();
-
-    $log = getRecordedLogs()->first();
-
-    expect($log)
-        ->getBody()->toBe('test')
-        ->getAttributes()->toArray()->toBe([]);
-});
