@@ -54,7 +54,7 @@ it('can trace queue jobs', function () {
         ->get('uuid')->not->toBeNull()
         ->get('traceparentInJob')->toBe(sprintf('00-%s-%s-01', $traceId, $spanId))
         ->get('traceIdInJob')->toBe($traceId)
-        ->get('logContextInJob')->toMatchArray(['traceId' => $traceId]);
+        ->get('logContextInJob')->toMatchArray(['traceid' => $traceId]);
 
     expect($enqueueSpan)
         ->getAttributes()->toMatchArray([
@@ -112,7 +112,7 @@ it('can trace queue jobs dispatched after commit', function () {
         ->get('uuid')->not->toBeNull()
         ->get('traceparentInJob')->toBe(sprintf('00-%s-%s-01', $root->getTraceId(), $enqueueSpan->getSpanId()))
         ->get('traceIdInJob')->toBe($root->getTraceId())
-        ->get('logContextInJob')->toMatchArray(['traceId' => $root->getTraceId()]);
+        ->get('logContextInJob')->toMatchArray(['traceid' => $root->getTraceId()]);
 });
 
 it('can trace queue failing jobs', function () {
@@ -139,7 +139,7 @@ it('can trace queue failing jobs', function () {
         ->get('uuid')->not->toBeNull()
         ->get('traceparentInJob')->toBe(sprintf('00-%s-%s-01', $traceId, $spanId))
         ->get('traceIdInJob')->toBe($traceId)
-        ->get('logContextInJob')->toMatchArray(['traceId' => $traceId]);
+        ->get('logContextInJob')->toMatchArray(['traceid' => $traceId]);
 
     expect($enqueueSpan)
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_UNSET)

@@ -19,7 +19,7 @@ it('can resolve laravel tracer', function () {
 
     expect($tracer)
         ->toBeInstanceOf(\Keepsuit\LaravelOpenTelemetry\Tracer::class)
-        ->traceId()->toBe('00000000000000000000000000000000')
+        ->traceId()->toBeNull()
         ->activeSpan()->toBeInstanceOf(\OpenTelemetry\API\Trace\NonRecordingSpan::class);
 });
 
@@ -239,7 +239,7 @@ it('set traceId to log context', function () {
 
     expect(Log::sharedContext())
         ->toMatchArray([
-            'traceId' => $span->getContext()->getTraceId(),
+            'traceid' => $span->getContext()->getTraceId(),
         ]);
 
     $scope->detach();

@@ -7,8 +7,6 @@ use OpenTelemetry\SDK\Trace\ImmutableSpan;
 it('can watch a redis call', function () {
     \Illuminate\Support\Facades\Redis::connection('default')->get('test');
 
-    flushSpans();
-
     $span = getRecordedSpans()->last();
     assert($span instanceof ImmutableSpan);
 

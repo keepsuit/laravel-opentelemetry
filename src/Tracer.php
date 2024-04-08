@@ -4,6 +4,7 @@ namespace Keepsuit\LaravelOpenTelemetry;
 
 use Illuminate\Support\Facades\Log;
 use Keepsuit\LaravelOpenTelemetry\Support\SpanBuilder;
+use OpenTelemetry\API\Trace\SpanContextValidator;
 use OpenTelemetry\API\Trace\SpanInterface;
 use OpenTelemetry\API\Trace\TracerInterface;
 use OpenTelemetry\Context\Context;
@@ -35,9 +36,11 @@ class Tracer
         return Span::getCurrent();
     }
 
-    public function traceId(): string
+    public function traceId(): ?string
     {
-        return $this->activeSpan()->getContext()->getTraceId();
+        $traceId = $this->activeSpan()->getContext()->getTraceId();
+
+        return SpanContextValidator::isValidTraceId($traceId) ? $traceId : null;
     }
 
     /**
@@ -64,12 +67,20 @@ class Tracer
 
     public function updateLogContext(): void
     {
-        if (config('opentelemetry.logs.inject_trace_id', true)) {
-            $field = config('opentelemetry.logs.trace_id_field', 'traceId');
-
-            Log::shareContext([
-                $field => $this->traceId(),
-            ]);
+        if (! config('opentelemetry.logs.inject_trace_id', true)) {
+            return;
         }
+
+        $traceId = $this->traceId();
+
+        if ($traceId === null) {
+            return;
+        }
+
+        $field = config('opentelemetry.logs.trace_id_field', 'traceid');
+
+        Log::shareContext([
+            $field => $traceId,
+        ]);
     }
 }

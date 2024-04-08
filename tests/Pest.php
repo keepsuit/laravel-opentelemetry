@@ -6,22 +6,14 @@ use OpenTelemetry\SDK\Trace\TracerProviderInterface;
 
 uses(\Keepsuit\LaravelOpenTelemetry\Tests\TestCase::class)->in(__DIR__);
 
-function flushSpans()
-{
-    $tracerProvider = Globals::tracerProvider();
-    assert($tracerProvider instanceof TracerProviderInterface);
-
-    $tracerProvider->forceFlush();
-
-    return test();
-}
-
 /**
  * @return Collection<array-key,\OpenTelemetry\SDK\Trace\ImmutableSpan>
  */
 function getRecordedSpans(): Collection
 {
-    flushSpans();
+    $tracerProvider = Globals::tracerProvider();
+    assert($tracerProvider instanceof TracerProviderInterface);
+    $tracerProvider->forceFlush();
 
     $exporter = app(\OpenTelemetry\SDK\Trace\SpanExporterInterface::class);
     assert($exporter instanceof \OpenTelemetry\SDK\Trace\SpanExporter\InMemoryExporter);
@@ -40,4 +32,19 @@ function withRootSpan(Closure $callback): mixed
     $rootSpan->end();
 
     return $result;
+}
+
+/**
+ * @return Collection<array-key,\OpenTelemetry\API\Logs\LogRecord>
+ */
+function getRecordedLogs(): Collection
+{
+    $loggerProvider = Globals::loggerProvider();
+    assert($loggerProvider instanceof \OpenTelemetry\SDK\Logs\LoggerProvider);
+    $loggerProvider->forceFlush();
+
+    $exporter = app(\OpenTelemetry\SDK\Logs\LogRecordExporterInterface::class);
+    assert($exporter instanceof \OpenTelemetry\SDK\Logs\Exporter\InMemoryExporter);
+
+    return collect($exporter->getStorage()->getArrayCopy());
 }
