@@ -4,10 +4,10 @@ namespace Keepsuit\LaravelOpenTelemetry;
 
 use Composer\InstalledVersions;
 use Illuminate\Config\Repository;
+use Illuminate\Foundation\Application;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Env;
 use Illuminate\Support\Str;
-use Keepsuit\LaravelOpenTelemetry\Instrumentation\Instrumentation;
 use Keepsuit\LaravelOpenTelemetry\Support\CarbonClock;
 use Keepsuit\LaravelOpenTelemetry\Support\OpenTelemetryMonologHandler;
 use Keepsuit\LaravelOpenTelemetry\Support\PropagatorBuilder;
@@ -140,21 +140,9 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
             return;
         }
 
-        foreach (config('opentelemetry.instrumentation') as $key => $options) {
-            if ($options === false) {
-                continue;
-            }
-
-            if (is_array($options) && ! ($options['enabled'] ?? true)) {
-                continue;
-            }
-
-            $watcher = $this->app->make($key);
-
-            if ($watcher instanceof Instrumentation) {
-                $watcher->register(is_array($options) ? $options : []);
-            }
-        }
+        $this->app->booted(function (Application $app) {
+            $app->register(InstrumentationServiceProvider::class);
+        });
     }
 
     private function configureEnvironmentVariables(): void
