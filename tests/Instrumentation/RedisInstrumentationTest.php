@@ -4,7 +4,9 @@ use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\SDK\Common\Time\ClockFactory;
 use OpenTelemetry\SDK\Trace\ImmutableSpan;
 
-it('can watch a redis call', function () {
+it('can watch a redis call', function (string $client) {
+    config()->set('database.redis.client', $client);
+
     \Illuminate\Support\Facades\Redis::connection('default')->get('test');
 
     $span = getRecordedSpans()->last();
@@ -23,4 +25,7 @@ it('can watch a redis call', function () {
 
     expect($span->getEndEpochNanos() - $span->getStartEpochNanos())
         ->toBeGreaterThan(0);
-});
+})->with([
+    'predis',
+    'phpredis',
+]);

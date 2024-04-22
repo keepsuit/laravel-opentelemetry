@@ -35,16 +35,33 @@ class RedisInstrumentation implements Instrumentation
         if ($span->isRecording()) {
             $span->setAttribute(TraceAttributes::DB_SYSTEM, 'redis')
                 ->setAttribute(TraceAttributes::DB_STATEMENT, $this->formatCommand($event->command, $event->parameters))
-                ->setAttribute(TraceAttributes::SERVER_ADDRESS, $event->connection->client()->getHost());
+                ->setAttribute(TraceAttributes::SERVER_ADDRESS, $this->resolveRedisAddress($event->connection->client()));
         }
 
         $span->end();
     }
 
+    protected function resolveRedisAddress(mixed $client): ?string
+    {
+        if ($client instanceof \Redis) {
+            return $client->getHost() ?: null;
+        }
+
+        if ($client instanceof \Predis\Client) {
+            $connection = $client->getConnection();
+
+            return $connection instanceof \Predis\Connection\NodeConnectionInterface
+                ? ($connection->getParameters()->host ?? null)
+                : null;
+        }
+
+        return null;
+    }
+
     /**
      * Format the given Redis command.
      */
-    private function formatCommand(string $command, array $parameters): string
+    protected function formatCommand(string $command, array $parameters): string
     {
         $parameters = collect($parameters)->map(function ($parameter) {
             if (is_array($parameter)) {
@@ -63,7 +80,7 @@ class RedisInstrumentation implements Instrumentation
         return sprintf('%s %s', $command, $parameters);
     }
 
-    private function registerRedisEvents(mixed $redis): void
+    protected function registerRedisEvents(mixed $redis): void
     {
         if ($redis instanceof RedisManager) {
             foreach ((array) $redis->connections() as $connection) {
