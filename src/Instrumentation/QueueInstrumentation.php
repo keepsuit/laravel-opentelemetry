@@ -14,6 +14,7 @@ use OpenTelemetry\API\Trace\SpanInterface;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
 use OpenTelemetry\SemConv\TraceAttributes;
+use Throwable;
 
 class QueueInstrumentation implements Instrumentation
 {
@@ -55,31 +56,35 @@ class QueueInstrumentation implements Instrumentation
 
     protected function registerQueueInterceptor(QueueManager $queue): void
     {
-        $queue->createPayloadUsing(function (string $connection, ?string $queue, array $payload) {
-            $uuid = $payload['uuid'];
+        try {
+            $queue->createPayloadUsing(function (string $connection, ?string $queue, array $payload) {
+                $uuid = $payload['uuid'];
 
-            if (! is_string($uuid)) {
-                return $payload;
-            }
+                if (! is_string($uuid)) {
+                    return $payload;
+                }
 
-            $jobName = Arr::get($payload, 'displayName', 'unknown');
-            $queueName = Str::after($queue ?? 'default', 'queues:');
+                $jobName = Arr::get($payload, 'displayName', 'unknown');
+                $queueName = Str::after($queue ?? 'default', 'queues:');
 
-            $span = Tracer::newSpan(sprintf('%s enqueue', $jobName))
-                ->setSpanKind(SpanKind::KIND_PRODUCER)
-                ->setAttribute(TraceAttributes::MESSAGING_SYSTEM, $this->connectionDriver($connection))
-                ->setAttribute(TraceAttributes::MESSAGING_OPERATION, 'enqueue')
-                ->setAttribute(TraceAttributes::MESSAGE_ID, $uuid)
-                ->setAttribute(TraceAttributes::MESSAGING_DESTINATION_NAME, $queueName)
-                ->setAttribute(TraceAttributes::MESSAGING_DESTINATION_TEMPLATE, $jobName)
-                ->start();
+                $span = Tracer::newSpan(sprintf('%s enqueue', $jobName))
+                    ->setSpanKind(SpanKind::KIND_PRODUCER)
+                    ->setAttribute(TraceAttributes::MESSAGING_SYSTEM, $this->connectionDriver($connection))
+                    ->setAttribute(TraceAttributes::MESSAGING_OPERATION, 'enqueue')
+                    ->setAttribute(TraceAttributes::MESSAGE_ID, $uuid)
+                    ->setAttribute(TraceAttributes::MESSAGING_DESTINATION_NAME, $queueName)
+                    ->setAttribute(TraceAttributes::MESSAGING_DESTINATION_TEMPLATE, $jobName)
+                    ->start();
 
-            $context = $span->storeInContext(Tracer::currentContext());
+                $context = $span->storeInContext(Tracer::currentContext());
 
-            $this->activeSpans[$uuid] = $span;
+                $this->activeSpans[$uuid] = $span;
 
-            return Tracer::propagationHeaders($context);
-        });
+                return Tracer::propagationHeaders($context);
+            });
+        } catch (Throwable $e) {
+            report($e);
+        }
     }
 
     protected function recordJobProcessing(): void
