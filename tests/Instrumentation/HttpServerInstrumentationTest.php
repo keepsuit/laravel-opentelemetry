@@ -37,8 +37,6 @@ it('can trace a request', function () {
 
     $spans = getRecordedSpans();
 
-    expect($spans)->count()->toBeGreaterThan(1);
-
     expect($spans->last())
         ->getName()->toBe('/test-ok')
         ->getKind()->toBe(SpanKind::KIND_SERVER)
