@@ -18,8 +18,7 @@ class Tracer
     public function __construct(
         protected TracerInterface $tracer,
         protected TextMapPropagatorInterface $propagator
-    ) {
-    }
+    ) {}
 
     public function currentContext(): ContextInterface
     {

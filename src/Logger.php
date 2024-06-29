@@ -12,8 +12,7 @@ class Logger
 {
     public function __construct(
         protected LoggerInterface $logger
-    ) {
-    }
+    ) {}
 
     public function emergency(string $message, array $context = []): void
     {

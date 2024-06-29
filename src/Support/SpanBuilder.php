@@ -16,8 +16,7 @@ class SpanBuilder
 {
     public function __construct(
         protected SpanBuilderInterface $spanBuilder
-    ) {
-    }
+    ) {}
 
     public function setParent(?ContextInterface $context): SpanBuilder
     {

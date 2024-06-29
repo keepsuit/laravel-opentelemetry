@@ -18,8 +18,7 @@ class TestJob implements ShouldQueue
     public function __construct(
         protected Valuestore $valuestore,
         protected bool $fail = false
-    ) {
-    }
+    ) {}
 
     public function handle(): void
     {
