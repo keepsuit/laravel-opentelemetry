@@ -6,6 +6,8 @@ use Illuminate\Support\Str;
 use Keepsuit\LaravelOpenTelemetry\LaravelOpenTelemetryServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
 
+use function Orchestra\Testbench\load_migration_paths;
+
 class TestCase extends Orchestra
 {
     protected function getPackageProviders($app): array
@@ -28,5 +30,10 @@ class TestCase extends Orchestra
         $app['config']->set('queue.failed.driver', null);
 
         $app['config']->set('logging.default', 'otlp');
+    }
+
+    protected function defineDatabaseMigrations(): void
+    {
+        load_migration_paths($this->app, __DIR__.'/migrations');
     }
 }

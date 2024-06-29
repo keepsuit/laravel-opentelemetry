@@ -4,13 +4,25 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\HttpServerInstrumentation;
+use Keepsuit\LaravelOpenTelemetry\Tests\Support\Product;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
 
+use function Pest\Laravel\withoutExceptionHandling;
+
+uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+
 beforeEach(function () {
-    Route::any('test-ok', fn () => Tracer::traceId())->middleware(['web']);
-    Route::any('test-exception', fn () => throw new Exception('test exception'));
-    Route::any('test/{parameter}', fn () => Tracer::traceId());
+    Route::middleware('web')->group(function () {
+        Route::any('test-ok', fn () => Tracer::traceId())->middleware(['web']);
+        Route::any('test-exception', fn () => throw new Exception('test exception'));
+        Route::any('test/{parameter}', fn () => Tracer::traceId());
+        Route::get('products/{product}', function (Product $product) {
+            Tracer::activeSpan()->setAttribute('product', $product->id);
+
+            return Tracer::traceId();
+        });
+    });
 });
 
 it('can trace a request', function () {
@@ -25,10 +37,9 @@ it('can trace a request', function () {
 
     $spans = getRecordedSpans();
 
-    expect($spans)
-        ->toHaveCount(1);
+    expect($spans)->count()->toBeGreaterThan(1);
 
-    expect($spans[0])
+    expect($spans->last())
         ->getName()->toBe('/test-ok')
         ->getKind()->toBe(SpanKind::KIND_SERVER)
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_OK)
@@ -53,6 +64,45 @@ it('can trace a request', function () {
     ]);
 });
 
+it('can trace a request with route model binding', function () {
+    $product = Product::create(['name' => 'test']);
+    $response = withoutExceptionHandling()->get('products/'.$product->id);
+
+    $response->assertOk();
+
+    expect($response->content())
+        ->not->toBeEmpty();
+
+    $traceId = $response->content();
+
+    $span = getRecordedSpans()->last();
+
+    expect($span)
+        ->getName()->toBe('/products/{product}')
+        ->getKind()->toBe(SpanKind::KIND_SERVER)
+        ->getStatus()->getCode()->toBe(StatusCode::STATUS_OK)
+        ->getTraceId()->toBe($traceId)
+        ->getAttributes()->toMatchArray([
+            'url.full' => 'http://localhost/products/1',
+            'url.path' => '/products/1',
+            'url.scheme' => 'http',
+            'http.route' => '/products/{product}',
+            'http.request.method' => 'GET',
+            'server.address' => 'localhost',
+            'server.port' => 80,
+            'user_agent.original' => 'Symfony',
+            'network.protocol.version' => 'HTTP/1.1',
+            'network.peer.address' => '127.0.0.1',
+            'http.response.status_code' => 200,
+            'http.response.body.size' => 32,
+            'product' => 1,
+        ]);
+
+    expect(Log::sharedContext())->toMatchArray([
+        'traceid' => $traceId,
+    ]);
+});
+
 it('can record route exception', function () {
     $response = $this->get('test-exception');
 
@@ -60,10 +110,7 @@ it('can record route exception', function () {
 
     $spans = getRecordedSpans();
 
-    expect($spans)
-        ->toHaveCount(1);
-
-    expect($spans[0])
+    expect($spans->last())
         ->getName()->toBe('/test-exception')
         ->getKind()->toBe(SpanKind::KIND_SERVER)
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_ERROR)
@@ -92,7 +139,7 @@ it('set generic span name when route has parameters', function () {
 
     $spans = getRecordedSpans();
 
-    expect($spans[0])
+    expect($spans->last())
         ->getName()->toBe('/test/{parameter}')
         ->getKind()->toBe(SpanKind::KIND_SERVER)
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_OK)
@@ -113,10 +160,7 @@ it('continue trace', function () {
 
     $spans = getRecordedSpans();
 
-    expect($spans)
-        ->toHaveCount(1);
-
-    expect($spans[0])
+    expect($spans->last())
         ->getName()->toBe('/test-ok')
         ->getKind()->toBe(SpanKind::KIND_SERVER)
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_OK)
@@ -137,8 +181,10 @@ it('skip tracing for excluded paths', function () {
 
     $spans = getRecordedSpans();
 
-    expect($spans)
-        ->toHaveCount(0);
+    $serverSpan = $spans->firstWhere(fn (\OpenTelemetry\SDK\Trace\ImmutableSpan $span) => $span->getKind() === SpanKind::KIND_SERVER);
+
+    expect($serverSpan)
+        ->toBeNull();
 });
 
 it('trace allowed request headers', function () {
@@ -158,7 +204,7 @@ it('trace allowed request headers', function () {
     expect($response->content())
         ->not->toBeEmpty();
 
-    $span = getRecordedSpans()[0];
+    $span = getRecordedSpans()->last();
 
     expect($span->getAttributes())
         ->toMatchArray([
@@ -181,7 +227,7 @@ it('trace allowed response headers', function () {
     expect($response->content())
         ->not->toBeEmpty();
 
-    $span = getRecordedSpans()[0];
+    $span = getRecordedSpans()->last();
 
     expect($span->getAttributes())
         ->toMatchArray([
@@ -209,7 +255,7 @@ it('trace sensitive headers with hidden value', function () {
     expect($response->content())
         ->not->toBeEmpty();
 
-    $span = getRecordedSpans()[0];
+    $span = getRecordedSpans()->last();
 
     expect($span->getAttributes())
         ->toMatchArray([
@@ -236,7 +282,7 @@ it('mark some headers as sensitive by default', function () {
     expect($response->content())
         ->not->toBeEmpty();
 
-    $span = getRecordedSpans()[0];
+    $span = getRecordedSpans()->last();
 
     expect($span->getAttributes())
         ->toMatchArray([
