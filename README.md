@@ -20,7 +20,7 @@ composer require keepsuit/laravel-opentelemetry
 You can publish the config file with:
 
 ```bash
-php artisan vendor:publish --provider="Keepsuit\LaravelOpentelemetry\LaravelOpentelemetryServiceProvider" --tag="opentelemetry-config"
+php artisan vendor:publish --provider="Keepsuit\LaravelOpenTelemetry\LaravelOpenTelemetryServiceProvider" --tag="opentelemetry-config"
 ```
 
 This is the contents of the published config file:
