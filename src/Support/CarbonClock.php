@@ -14,7 +14,7 @@ class CarbonClock implements ClockInterface
 
     public function __construct()
     {
-        $this->systemClock = new SystemClock();
+        $this->systemClock = new SystemClock;
     }
 
     public function now(): int

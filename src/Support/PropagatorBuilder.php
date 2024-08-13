@@ -12,7 +12,7 @@ final class PropagatorBuilder
 {
     public static function new(): PropagatorBuilder
     {
-        return new PropagatorBuilder();
+        return new PropagatorBuilder;
     }
 
     public function build(string $propagators): TextMapPropagatorInterface

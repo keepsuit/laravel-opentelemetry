@@ -66,7 +66,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 
     protected function init(): void
     {
-        ClockFactory::setDefault(new CarbonClock());
+        ClockFactory::setDefault(new CarbonClock);
 
         $resource = ResourceInfoFactory::defaultResource()->merge(
             ResourceInfo::create(Attributes::create([
@@ -169,8 +169,8 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
                 ),
             ),
             'otlp' => new OtlpSpanExporter($this->buildOtlpTransport($tracesExporterConfig ?? [], Signals::TRACE)),
-            'console' => (new ConsoleSpanExporterFactory())->create(),
-            default => (new InMemorySpanExporterFactory())->create(),
+            'console' => (new ConsoleSpanExporterFactory)->create(),
+            default => (new InMemorySpanExporterFactory)->create(),
         };
     }
 
@@ -182,8 +182,8 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 
         return match ($logsExporterDriver) {
             'otlp' => new LogsExporter($this->buildOtlpTransport($logsExporterConfig ?? [], Signals::LOGS)),
-            'console' => (new LogsConsoleExporterFactory())->create(),
-            default => (new LogsInMemoryExporterFactory())->create()
+            'console' => (new LogsConsoleExporterFactory)->create(),
+            default => (new LogsInMemoryExporterFactory)->create()
         };
     }
 
@@ -196,13 +196,13 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         $endpoint = $config['endpoint'] ?? 'http://localhost:4318';
 
         return match ($protocol) {
-            'grpc' => (new GrpcTransportFactory())->create($endpoint.OtlpUtil::method($signal)),
-            'http/json', 'json' => (new OtlpHttpTransportFactory())->create(
-                (new HttpEndpointResolver())->resolveToString($endpoint, $signal),
+            'grpc' => (new GrpcTransportFactory)->create($endpoint.OtlpUtil::method($signal)),
+            'http/json', 'json' => (new OtlpHttpTransportFactory)->create(
+                (new HttpEndpointResolver)->resolveToString($endpoint, $signal),
                 'application/json'
             ),
-            default => (new OtlpHttpTransportFactory())->create(
-                (new HttpEndpointResolver())->resolveToString($endpoint, $signal),
+            default => (new OtlpHttpTransportFactory)->create(
+                (new HttpEndpointResolver)->resolveToString($endpoint, $signal),
                 'application/x-protobuf'
             ),
         };
