@@ -58,7 +58,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 
     protected function initTracer(): void
     {
-        ClockFactory::setDefault(new CarbonClock());
+        ClockFactory::setDefault(new CarbonClock);
 
         $resource = ResourceInfoFactory::defaultResource()->merge(
             ResourceInfo::create(Attributes::create([
@@ -75,25 +75,25 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
             ),
             'http' => new OtlpSpanExporter(
                 // @phpstan-ignore-next-line
-                (new OtlpHttpTransportFactory())->create(
-                    (new HttpEndpointResolver())->resolveToString(config('opentelemetry.exporters.http.endpoint'), Signals::TRACE),
+                (new OtlpHttpTransportFactory)->create(
+                    (new HttpEndpointResolver)->resolveToString(config('opentelemetry.exporters.http.endpoint'), Signals::TRACE),
                     'application/x-protobuf'
                 )
             ),
             'grpc' => new OtlpSpanExporter(
-                (new GrpcTransportFactory())->create(config('opentelemetry.exporters.grpc.endpoint').OtlpUtil::method(Signals::TRACE))
+                (new GrpcTransportFactory)->create(config('opentelemetry.exporters.grpc.endpoint').OtlpUtil::method(Signals::TRACE))
             ),
-            'console' => (new ConsoleSpanExporterFactory())->create(),
-            default => (new InMemorySpanExporterFactory())->create(),
+            'console' => (new ConsoleSpanExporterFactory)->create(),
+            default => (new InMemorySpanExporterFactory)->create(),
         };
 
         $spanProcessor = (new BatchSpanProcessorBuilder($spanExporter))
             ->build();
 
         $sampler = match (config('opentelemetry.enabled', true)) {
-            'parent' => new ParentBased(new AlwaysOffSampler()),
-            true => new AlwaysOnSampler(),
-            default => new AlwaysOffSampler(),
+            'parent' => new ParentBased(new AlwaysOffSampler),
+            true => new AlwaysOnSampler,
+            default => new AlwaysOffSampler,
         };
 
         $tracerProvider = TracerProvider::builder()

@@ -23,8 +23,7 @@ class Tracer
     public function __construct(
         protected TracerInterface $tracer,
         protected TextMapPropagatorInterface $propagator
-    ) {
-    }
+    ) {}
 
     /**
      * @phpstan-param non-empty-string $name
