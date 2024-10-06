@@ -2,6 +2,14 @@
 
 All notable changes to `laravel-opentelemetry` will be documented in this file.
 
+## v0.4.1 - 2024-10-06
+
+### What's changed
+
+* Fix #27
+
+**Full Changelog**: https://github.com/keepsuit/laravel-opentelemetry/compare/0.4.0...0.4.1
+
 ## v0.4.0 - 2024-01-05
 
 ### What's Changed
