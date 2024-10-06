@@ -3,6 +3,8 @@
 namespace Keepsuit\LaravelOpenTelemetry;
 
 use Composer\InstalledVersions;
+use Http\Discovery\Psr17FactoryDiscovery;
+use Http\Discovery\Psr18ClientDiscovery;
 use Illuminate\Config\Repository;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Arr;
@@ -12,6 +14,7 @@ use Keepsuit\LaravelOpenTelemetry\Support\CarbonClock;
 use Keepsuit\LaravelOpenTelemetry\Support\OpenTelemetryMonologHandler;
 use Keepsuit\LaravelOpenTelemetry\Support\PropagatorBuilder;
 use Keepsuit\LaravelOpenTelemetry\Support\SamplerBuilder;
+use OpenTelemetry\API\Common\Time\Clock;
 use OpenTelemetry\API\Instrumentation\CachedInstrumentation;
 use OpenTelemetry\API\Logs\LoggerInterface;
 use OpenTelemetry\API\Signals;
@@ -28,7 +31,6 @@ use OpenTelemetry\SDK\Common\Attribute\Attributes;
 use OpenTelemetry\SDK\Common\Configuration\Variables as OTELVariables;
 use OpenTelemetry\SDK\Common\Export\Http\PsrTransportFactory;
 use OpenTelemetry\SDK\Common\Export\TransportInterface;
-use OpenTelemetry\SDK\Common\Time\ClockFactory;
 use OpenTelemetry\SDK\Logs\Exporter\ConsoleExporterFactory as LogsConsoleExporterFactory;
 use OpenTelemetry\SDK\Logs\Exporter\InMemoryExporterFactory as LogsInMemoryExporterFactory;
 use OpenTelemetry\SDK\Logs\LoggerProvider;
@@ -66,7 +68,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 
     protected function init(): void
     {
-        ClockFactory::setDefault(new CarbonClock);
+        Clock::setDefault(new CarbonClock);
 
         $resource = ResourceInfoFactory::defaultResource()->merge(
             ResourceInfo::create(Attributes::create([
@@ -103,7 +105,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         $this->app->bind(LogRecordExporterInterface::class, fn () => $logExporter);
         $logProcessor = new BatchLogRecordProcessor(
             exporter: $logExporter,
-            clock: ClockFactory::getDefault()
+            clock: Clock::getDefault()
         );
 
         $loggerProvider = LoggerProvider::builder()
@@ -163,7 +165,11 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 
         return match ($tracesExporterDriver) {
             'zipkin' => new ZipkinExporter(
-                PsrTransportFactory::discover()->create(
+                (new PsrTransportFactory(
+                    Psr18ClientDiscovery::find(),
+                    Psr17FactoryDiscovery::findRequestFactory(),
+                    Psr17FactoryDiscovery::findStreamFactory(),
+                ))->create(
                     Str::of(Arr::get($tracesExporterConfig ?? [], 'endpoint'))->rtrim('/')->append('/api/v2/spans')->toString(),
                     'application/json'
                 ),

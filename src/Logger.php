@@ -2,10 +2,10 @@
 
 namespace Keepsuit\LaravelOpenTelemetry;
 
+use OpenTelemetry\API\Common\Time\Clock;
 use OpenTelemetry\API\Logs\LoggerInterface;
 use OpenTelemetry\API\Logs\LogRecord;
-use OpenTelemetry\API\Logs\Map\Psr3;
-use OpenTelemetry\SDK\Common\Time\ClockFactory;
+use OpenTelemetry\API\Logs\Severity;
 use Psr\Log\LogLevel;
 
 class Logger
@@ -60,8 +60,8 @@ class Logger
     public function log(string $level, string $message, array $context = []): void
     {
         $logRecord = (new LogRecord($message))
-            ->setTimestamp(ClockFactory::getDefault()->now())
-            ->setSeverityNumber(Psr3::severityNumber($level))
+            ->setTimestamp(Clock::getDefault()->now())
+            ->setSeverityNumber(Severity::fromPsr3($level))
             ->setSeverityText($level);
 
         foreach ($context as $key => $value) {

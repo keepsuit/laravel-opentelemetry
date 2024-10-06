@@ -59,8 +59,8 @@ it('can trace queue jobs', function () {
     expect($enqueueSpan)
         ->getAttributes()->toMatchArray([
             TraceAttributes::MESSAGING_SYSTEM => 'redis',
-            TraceAttributes::MESSAGING_OPERATION => 'enqueue',
-            TraceAttributes::MESSAGE_ID => $this->valuestore->get('uuid'),
+            TraceAttributes::MESSAGING_OPERATION_TYPE => 'enqueue',
+            TraceAttributes::RPC_MESSAGE_ID => $this->valuestore->get('uuid'),
             TraceAttributes::MESSAGING_DESTINATION_NAME => 'default',
             TraceAttributes::MESSAGING_DESTINATION_TEMPLATE => TestJob::class,
         ]);
@@ -69,8 +69,8 @@ it('can trace queue jobs', function () {
         ->not->toBeNull()
         ->getAttributes()->toMatchArray([
             TraceAttributes::MESSAGING_SYSTEM => 'redis',
-            TraceAttributes::MESSAGING_OPERATION => 'process',
-            TraceAttributes::MESSAGE_ID => $this->valuestore->get('uuid'),
+            TraceAttributes::MESSAGING_OPERATION_TYPE => 'process',
+            TraceAttributes::RPC_MESSAGE_ID => $this->valuestore->get('uuid'),
             TraceAttributes::MESSAGING_DESTINATION_NAME => 'default',
             TraceAttributes::MESSAGING_DESTINATION_TEMPLATE => TestJob::class,
         ]);
@@ -145,8 +145,8 @@ it('can trace queue failing jobs', function () {
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_UNSET)
         ->getAttributes()->toMatchArray([
             TraceAttributes::MESSAGING_SYSTEM => 'redis',
-            TraceAttributes::MESSAGING_OPERATION => 'enqueue',
-            TraceAttributes::MESSAGE_ID => $this->valuestore->get('uuid'),
+            TraceAttributes::MESSAGING_OPERATION_TYPE => 'enqueue',
+            TraceAttributes::RPC_MESSAGE_ID => $this->valuestore->get('uuid'),
             TraceAttributes::MESSAGING_DESTINATION_NAME => 'default',
             TraceAttributes::MESSAGING_DESTINATION_TEMPLATE => TestJob::class,
         ]);
@@ -158,8 +158,8 @@ it('can trace queue failing jobs', function () {
         ->getEvents()->{0}->getName()->toBe('exception')
         ->getAttributes()->toMatchArray([
             TraceAttributes::MESSAGING_SYSTEM => 'redis',
-            TraceAttributes::MESSAGING_OPERATION => 'process',
-            TraceAttributes::MESSAGE_ID => $this->valuestore->get('uuid'),
+            TraceAttributes::MESSAGING_OPERATION_TYPE => 'process',
+            TraceAttributes::RPC_MESSAGE_ID => $this->valuestore->get('uuid'),
             TraceAttributes::MESSAGING_DESTINATION_NAME => 'default',
             TraceAttributes::MESSAGING_DESTINATION_TEMPLATE => TestJob::class,
         ]);

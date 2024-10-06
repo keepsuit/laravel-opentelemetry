@@ -1,7 +1,7 @@
 <?php
 
+use OpenTelemetry\API\Common\Time\Clock;
 use OpenTelemetry\API\Trace\SpanKind;
-use OpenTelemetry\SDK\Common\Time\ClockFactory;
 use OpenTelemetry\SDK\Trace\ImmutableSpan;
 
 it('can watch a redis call', function (string $client) {
@@ -17,11 +17,11 @@ it('can watch a redis call', function (string $client) {
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
         ->getAttributes()->toArray()->toBe([
             'db.system' => 'redis',
-            'db.statement' => 'get test',
+            'db.query.text' => 'get test',
             'server.address' => '127.0.0.1',
         ])
         ->hasEnded()->toBeTrue()
-        ->getEndEpochNanos()->toBeLessThan(ClockFactory::getDefault()->now());
+        ->getEndEpochNanos()->toBeLessThan(Clock::getDefault()->now());
 
     expect($span->getEndEpochNanos() - $span->getStartEpochNanos())
         ->toBeGreaterThan(0);

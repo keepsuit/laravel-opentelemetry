@@ -24,11 +24,11 @@ it('can watch a query', function () {
     expect($span)
         ->getName()->toBe('sql SELECT')
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
-        ->getAttributes()->toArray()->toMatchArray([
+        ->getAttributes()->toArray()->toBe([
             'db.system' => 'sqlite',
-            'db.name' => ':memory:',
-            'db.operation' => 'SELECT',
-            'db.statement' => 'select * from "users"',
+            'db.namespace' => ':memory:',
+            'db.operation.name' => 'SELECT',
+            'db.query.text' => 'select * from "users"',
         ])
         ->hasEnded()->toBeTrue()
         ->getEndEpochNanos()->toBeLessThan(ClockFactory::getDefault()->now());
@@ -49,10 +49,11 @@ it('can watch a query with bindings', function () {
     expect($span)
         ->getName()->toBe('sql SELECT')
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
-        ->getAttributes()->toArray()->toMatchArray([
+        ->getAttributes()->toArray()->toBe([
             'db.system' => 'sqlite',
-            'db.name' => ':memory:',
-            'db.statement' => 'select * from "users" where "id" = ? and "name" like ?',
+            'db.namespace' => ':memory:',
+            'db.operation.name' => 'SELECT',
+            'db.query.text' => 'select * from "users" where "id" = ? and "name" like ?',
         ]);
 });
 
@@ -74,9 +75,10 @@ it('can watch a query with named bindings', function () {
     expect($span)
         ->getName()->toBe('sql UPDATE')
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
-        ->getAttributes()->toArray()->toMatchArray([
+        ->getAttributes()->toArray()->toBe([
             'db.system' => 'sqlite',
-            'db.name' => ':memory:',
-            'db.statement' => 'update "users" set "name" = :name where admin = true',
+            'db.namespace' => ':memory:',
+            'db.operation.name' => 'UPDATE',
+            'db.query.text' => 'update "users" set "name" = :name where admin = true',
         ]);
 });

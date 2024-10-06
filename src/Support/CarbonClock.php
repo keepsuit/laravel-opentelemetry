@@ -5,8 +5,8 @@ namespace Keepsuit\LaravelOpenTelemetry\Support;
 use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
-use OpenTelemetry\SDK\Common\Time\ClockInterface;
-use OpenTelemetry\SDK\Common\Time\SystemClock;
+use OpenTelemetry\API\Common\Time\ClockInterface;
+use OpenTelemetry\API\Common\Time\SystemClock;
 
 class CarbonClock implements ClockInterface
 {

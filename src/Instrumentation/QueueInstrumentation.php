@@ -70,8 +70,8 @@ class QueueInstrumentation implements Instrumentation
                 $span = Tracer::newSpan(sprintf('%s enqueue', $jobName))
                     ->setSpanKind(SpanKind::KIND_PRODUCER)
                     ->setAttribute(TraceAttributes::MESSAGING_SYSTEM, $this->connectionDriver($connection))
-                    ->setAttribute(TraceAttributes::MESSAGING_OPERATION, 'enqueue')
-                    ->setAttribute(TraceAttributes::MESSAGE_ID, $uuid)
+                    ->setAttribute(TraceAttributes::MESSAGING_OPERATION_TYPE, 'enqueue')
+                    ->setAttribute(TraceAttributes::RPC_MESSAGE_ID, $uuid)
                     ->setAttribute(TraceAttributes::MESSAGING_DESTINATION_NAME, $queueName)
                     ->setAttribute(TraceAttributes::MESSAGING_DESTINATION_TEMPLATE, $jobName)
                     ->start();
@@ -96,8 +96,8 @@ class QueueInstrumentation implements Instrumentation
                 ->setSpanKind(SpanKind::KIND_CONSUMER)
                 ->setParent($context)
                 ->setAttribute(TraceAttributes::MESSAGING_SYSTEM, $this->connectionDriver($event->connectionName))
-                ->setAttribute(TraceAttributes::MESSAGING_OPERATION, 'process')
-                ->setAttribute(TraceAttributes::MESSAGE_ID, $event->job->uuid())
+                ->setAttribute(TraceAttributes::MESSAGING_OPERATION_TYPE, 'process')
+                ->setAttribute(TraceAttributes::RPC_MESSAGE_ID, $event->job->uuid())
                 ->setAttribute(TraceAttributes::MESSAGING_DESTINATION_NAME, $event->job->getQueue())
                 ->setAttribute(TraceAttributes::MESSAGING_DESTINATION_TEMPLATE, $event->job->resolveName())
                 ->start();

@@ -2,8 +2,8 @@
 
 use Illuminate\Support\Facades\Log;
 use Keepsuit\LaravelOpenTelemetry\Facades\Logger;
-use OpenTelemetry\API\Logs\Map\Psr3;
-use OpenTelemetry\SDK\Common\Time\ClockFactory;
+use OpenTelemetry\API\Common\Time\Clock;
+use OpenTelemetry\API\Logs\Severity;
 use OpenTelemetry\SDK\Logs\ReadableLogRecord;
 use Psr\Log\LogLevel;
 use Spatie\TestTime\TestTime;
@@ -20,9 +20,9 @@ it('can log a message', function (string $level) {
     expect($logs->first())
         ->toBeInstanceOf(ReadableLogRecord::class)
         ->getBody()->toBe('test')
-        ->getSeverityNumber()->toBe(Psr3::severityNumber($level))
+        ->getSeverityNumber()->toBe(Severity::fromPsr3($level)->value)
         ->getSeverityText()->toBe($level)
-        ->getTimestamp()->toBe(ClockFactory::getDefault()->now())
+        ->getTimestamp()->toBe(Clock::getDefault()->now())
         ->getAttributes()->toArray()->toBe(['foo' => 'bar']);
 })->with([
     LogLevel::EMERGENCY,
@@ -47,9 +47,9 @@ it('can log a message through laravel Log facade', function (string $level) {
     expect($logs->first())
         ->toBeInstanceOf(ReadableLogRecord::class)
         ->getBody()->toBe('test')
-        ->getSeverityNumber()->toBe(Psr3::severityNumber($level))
+        ->getSeverityNumber()->toBe(Severity::fromPsr3($level)->value)
         ->getSeverityText()->toBe($level)
-        ->getTimestamp()->toBe(ClockFactory::getDefault()->now())
+        ->getTimestamp()->toBe(Clock::getDefault()->now())
         ->getAttributes()->toArray()->toBe(['foo' => 'bar']);
 })->with([
     LogLevel::EMERGENCY,
