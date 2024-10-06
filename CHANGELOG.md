@@ -2,6 +2,57 @@
 
 All notable changes to `laravel-opentelemetry` will be documented in this file.
 
+## v1.0.0 - 2024-10-06
+
+### Breaking changes
+
+This release contains a lot of breaking changes
+
+* Compare your published config and update it accordingly.
+* ENV variables prefix is changed from `OT` to `OTEL` and some env variables are changed.
+* Tracer has been completely refactored, manual traces must been updated with the new methods.
+
+`Tracer::start`, `Tracer::measure` and `Tracer::measureAsync` has been removed and replaced with:
+
+```php
+Tracer::newSpan('name')->start(); // same as old start
+Tracer::newSpan('name')->measure(callback); // same as old measure
+Tracer::newSpan('name')->setSpanKind(SpanKind::KIND_PRODUCER)->measure(callback); // same as old measureAsync
+
+```
+`Tracer::recordExceptionToSpan` has been removed and exception should be recorded directly to span: `$span->recordException($exception)`
+
+`Tracer::setRootSpan($span)` has been removed, it was only used to share traceId with log context. This has been replaced with `Tracer::updateLogContext()`
+
+##### Logging
+
+This release introduce a custom log channel for laravel `otlp` that allows to collect laravel logs with OpenTelemetry.
+This is the injected `otlp` channel:
+
+```php
+// config/logging.php
+'channels' => [
+    // injected channel config, you can override it adding an `otlp` channel in your config
+    'otlp' => [
+        'driver' => 'monolog',
+        'handler' => \Keepsuit\LaravelOpenTelemetry\Support\OpenTelemetryMonologHandler::class,
+        'level' => 'debug',
+    ]
+]
+
+```
+### What's Changed
+
+* Refactoring tracer api by @cappuc in https://github.com/keepsuit/laravel-opentelemetry/pull/12
+* Track http headers by @cappuc in https://github.com/keepsuit/laravel-opentelemetry/pull/13
+* Improved http client tests by @cappuc in https://github.com/keepsuit/laravel-opentelemetry/pull/15
+* Drop laravel 9 by @cappuc in https://github.com/keepsuit/laravel-opentelemetry/pull/16
+* Auto queue instrumentation by @cappuc in https://github.com/keepsuit/laravel-opentelemetry/pull/14
+* Follow OTEL env variables specifications by @cappuc in https://github.com/keepsuit/laravel-opentelemetry/pull/17
+* Add support for logs by @cappuc in https://github.com/keepsuit/laravel-opentelemetry/pull/20
+
+**Full Changelog**: https://github.com/keepsuit/laravel-opentelemetry/compare/0.4.0...1.0.0
+
 ## v0.4.1 - 2024-10-06
 
 ### What's changed
