@@ -2,6 +2,18 @@
 
 All notable changes to `laravel-opentelemetry` will be documented in this file.
 
+## v1.1.0 - 2025-01-16
+
+### What's Changed
+
+* Add support for timeout and maxRetries by @ilicmilan in https://github.com/keepsuit/laravel-opentelemetry/pull/28
+
+### New Contributors
+
+* @ilicmilan made their first contribution in https://github.com/keepsuit/laravel-opentelemetry/pull/28
+
+**Full Changelog**: https://github.com/keepsuit/laravel-opentelemetry/compare/1.0.0...1.1.0
+
 ## v1.0.0 - 2024-10-06
 
 ### Breaking changes
@@ -18,6 +30,7 @@ This release contains a lot of breaking changes
 Tracer::newSpan('name')->start(); // same as old start
 Tracer::newSpan('name')->measure(callback); // same as old measure
 Tracer::newSpan('name')->setSpanKind(SpanKind::KIND_PRODUCER)->measure(callback); // same as old measureAsync
+
 
 ```
 `Tracer::recordExceptionToSpan` has been removed and exception should be recorded directly to span: `$span->recordException($exception)`
@@ -39,6 +52,7 @@ This is the injected `otlp` channel:
         'level' => 'debug',
     ]
 ]
+
 
 ```
 ### What's Changed
