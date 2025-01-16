@@ -82,7 +82,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
          * Traces
          */
         $spanExporter = $this->buildSpanExporter();
-        $this->app->bind(SpanExporterInterface::class, fn() => $spanExporter);
+        $this->app->bind(SpanExporterInterface::class, fn () => $spanExporter);
         $spanProcessor = (new BatchSpanProcessorBuilder($spanExporter))->build();
 
         $samplerConfig = config('opentelemetry.traces.sampler', []);
@@ -102,7 +102,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
          * Logs
          */
         $logExporter = $this->buildLogsExporter();
-        $this->app->bind(LogRecordExporterInterface::class, fn() => $logExporter);
+        $this->app->bind(LogRecordExporterInterface::class, fn () => $logExporter);
         $logProcessor = new BatchLogRecordProcessor(
             exporter: $logExporter,
             clock: Clock::getDefault()
@@ -126,9 +126,9 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
             schemaUrl: TraceAttributes::SCHEMA_URL,
         );
 
-        $this->app->bind(TextMapPropagatorInterface::class, fn() => $propagator);
-        $this->app->bind(TracerInterface::class, fn() => $instrumentation->tracer());
-        $this->app->bind(LoggerInterface::class, fn() => $instrumentation->logger());
+        $this->app->bind(TextMapPropagatorInterface::class, fn () => $propagator);
+        $this->app->bind(TracerInterface::class, fn () => $instrumentation->tracer());
+        $this->app->bind(LoggerInterface::class, fn () => $instrumentation->logger());
 
         $this->app->terminating(function () use ($loggerProvider, $tracerProvider) {
             $tracerProvider->forceFlush();
@@ -200,11 +200,16 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
     {
         $protocol = $config['protocol'] ?? null;
         $endpoint = $config['endpoint'] ?? 'http://localhost:4318';
-        $timeoutMillis = $config['traces_timeout'] ?? $config['timeout'];
-        $maxRetries = $config['traces_max_retries'] ?? 3;
+
+        $maxRetries = $config['max_retries'] ?? 3;
+        $timeoutMillis = match ($signal) {
+            Signals::TRACE => $config['traces_timeout'] ?? 10000,
+            Signals::METRICS => $config['metrics_timeout'] ?? 10000,
+            Signals::LOGS => $config['logs_timeout'] ?? 10000,
+        };
 
         return match ($protocol) {
-            'grpc' => (new GrpcTransportFactory)->create($endpoint . OtlpUtil::method($signal)),
+            'grpc' => (new GrpcTransportFactory)->create($endpoint.OtlpUtil::method($signal)),
             'http/json', 'json' => (new OtlpHttpTransportFactory)->create(
                 endpoint: (new HttpEndpointResolver)->resolveToString($endpoint, $signal),
                 contentType: 'application/json',
