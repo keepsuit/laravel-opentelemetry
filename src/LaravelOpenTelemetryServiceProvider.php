@@ -163,6 +163,10 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         $tracesExporterConfig = config(sprintf('opentelemetry.exporters.%s', $tracesExporter));
         $tracesExporterDriver = is_array($tracesExporterConfig) ? $tracesExporterConfig['driver'] : $tracesExporter;
 
+        $endpoint = Str::of(Arr::get($tracesExporterConfig ?? [], 'endpoint'))->rtrim('/')->append('/api/v2/spans')->toString();
+        $maxRetries = $config['max_retries'] ?? 3;
+        $timeoutMillis = $config['timeout'] ?? 10000;
+
         return match ($tracesExporterDriver) {
             'zipkin' => new ZipkinExporter(
                 (new PsrTransportFactory(
@@ -170,8 +174,10 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
                     Psr17FactoryDiscovery::findRequestFactory(),
                     Psr17FactoryDiscovery::findStreamFactory(),
                 ))->create(
-                    Str::of(Arr::get($tracesExporterConfig ?? [], 'endpoint'))->rtrim('/')->append('/api/v2/spans')->toString(),
-                    'application/json'
+                    endpoint: $endpoint,
+                    contentType: 'application/json',
+                    timeout: $timeoutMillis / 1000,
+                    maxRetries: $maxRetries,
                 ),
             ),
             'otlp' => new OtlpSpanExporter($this->buildOtlpTransport($tracesExporterConfig ?? [], Signals::TRACE)),

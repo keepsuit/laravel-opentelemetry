@@ -98,6 +98,7 @@ return [
             'driver' => 'zipkin',
             'endpoint' => env('OTEL_EXPORTER_ZIPKIN_ENDPOINT', 'http://localhost:9411'),
             'timeout' => env('OTEL_EXPORTER_ZIPKIN_TIMEOUT', 10000),
+            'max_retries' => env('OTEL_EXPORTER_ZIPKIN_MAX_RETRIES', 3),
         ],
     ],
 
