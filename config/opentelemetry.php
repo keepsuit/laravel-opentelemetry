@@ -88,11 +88,17 @@ return [
             'endpoint' => env('OTEL_EXPORTER_OTLP_ENDPOINT', 'http://localhost:4318'),
             // Supported: "grpc", "http/protobuf", "http/json"
             'protocol' => env('OTEL_EXPORTER_OTLP_PROTOCOL', 'http/protobuf'),
+            'traces_timeout' => env('OTEL_EXPORTER_OTLP_TRACES_TIMEOUT', env('OTEL_EXPORTER_OTLP_TIMEOUT', 10000)),
+            'metrics_timeout' => env('OTEL_EXPORTER_OTLP_METRICS_TIMEOUT', env('OTEL_EXPORTER_OTLP_TIMEOUT', 10000)),
+            'logs_timeout' => env('OTEL_EXPORTER_OTLP_LOGS_TIMEOUT', env('OTEL_EXPORTER_OTLP_TIMEOUT', 10000)),
+            'max_retries' => env('OTEL_EXPORTER_OTLP_MAX_RETRIES', 3),
         ],
 
         'zipkin' => [
             'driver' => 'zipkin',
             'endpoint' => env('OTEL_EXPORTER_ZIPKIN_ENDPOINT', 'http://localhost:9411'),
+            'timeout' => env('OTEL_EXPORTER_ZIPKIN_TIMEOUT', 10000),
+            'max_retries' => env('OTEL_EXPORTER_ZIPKIN_MAX_RETRIES', 3),
         ],
     ],
 

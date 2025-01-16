@@ -164,16 +164,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         $tracesExporterDriver = is_array($tracesExporterConfig) ? $tracesExporterConfig['driver'] : $tracesExporter;
 
         return match ($tracesExporterDriver) {
-            'zipkin' => new ZipkinExporter(
-                (new PsrTransportFactory(
-                    Psr18ClientDiscovery::find(),
-                    Psr17FactoryDiscovery::findRequestFactory(),
-                    Psr17FactoryDiscovery::findStreamFactory(),
-                ))->create(
-                    Str::of(Arr::get($tracesExporterConfig ?? [], 'endpoint'))->rtrim('/')->append('/api/v2/spans')->toString(),
-                    'application/json'
-                ),
-            ),
+            'zipkin' => $this->buildZipkinExporter($tracesExporterConfig ?? []),
             'otlp' => new OtlpSpanExporter($this->buildOtlpTransport($tracesExporterConfig ?? [], Signals::TRACE)),
             'console' => (new ConsoleSpanExporterFactory)->create(),
             default => (new InMemorySpanExporterFactory)->create(),
@@ -201,17 +192,48 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         $protocol = $config['protocol'] ?? null;
         $endpoint = $config['endpoint'] ?? 'http://localhost:4318';
 
+        $maxRetries = $config['max_retries'] ?? 3;
+        $timeoutMillis = match ($signal) {
+            Signals::TRACE => $config['traces_timeout'] ?? 10000,
+            Signals::METRICS => $config['metrics_timeout'] ?? 10000,
+            Signals::LOGS => $config['logs_timeout'] ?? 10000,
+        };
+
         return match ($protocol) {
             'grpc' => (new GrpcTransportFactory)->create($endpoint.OtlpUtil::method($signal)),
             'http/json', 'json' => (new OtlpHttpTransportFactory)->create(
-                (new HttpEndpointResolver)->resolveToString($endpoint, $signal),
-                'application/json'
+                endpoint: (new HttpEndpointResolver)->resolveToString($endpoint, $signal),
+                contentType: 'application/json',
+                timeout: $timeoutMillis / 1000,
+                maxRetries: $maxRetries
             ),
             default => (new OtlpHttpTransportFactory)->create(
-                (new HttpEndpointResolver)->resolveToString($endpoint, $signal),
-                'application/x-protobuf'
+                endpoint: (new HttpEndpointResolver)->resolveToString($endpoint, $signal),
+                contentType: 'application/x-protobuf',
+                timeout: $timeoutMillis / 1000,
+                maxRetries: $maxRetries
             ),
         };
+    }
+
+    protected function buildZipkinExporter(array $config): ZipkinExporter
+    {
+        $endpoint = Str::of(Arr::get($config, 'endpoint', ''))->rtrim('/')->append('/api/v2/spans')->toString();
+        $maxRetries = $config['max_retries'] ?? 3;
+        $timeoutMillis = $config['timeout'] ?? 10000;
+
+        return new ZipkinExporter(
+            (new PsrTransportFactory(
+                Psr18ClientDiscovery::find(),
+                Psr17FactoryDiscovery::findRequestFactory(),
+                Psr17FactoryDiscovery::findStreamFactory(),
+            ))->create(
+                endpoint: $endpoint,
+                contentType: 'application/json',
+                timeout: $timeoutMillis / 1000,
+                maxRetries: $maxRetries,
+            ),
+        );
     }
 
     protected function injectConfig(): void
