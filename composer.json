@@ -19,6 +19,7 @@
         "php": "^8.1",
         "illuminate/contracts": "^10.0 || ^11.0",
         "illuminate/support": "^10.0 || ^11.0",
+        "open-telemetry/api": "^1.1",
         "open-telemetry/context": "^1.1",
         "open-telemetry/exporter-otlp": "^1.1",
         "open-telemetry/sdk": "^1.1",
@@ -82,7 +83,7 @@
         "allow-plugins": {
             "composer/package-versions-deprecated": true,
             "pestphp/pest-plugin": true,
-            "php-http/discovery": true,
+            "php-http/discovery": false,
             "phpstan/extension-installer": true,
             "tbachert/spi": true
         }
