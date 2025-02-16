@@ -5,6 +5,11 @@ use OpenTelemetry\SDK\Common\Configuration\Variables;
 
 return [
     /**
+     * Enable OpenTelemetry
+     */
+    'enabled' => env('OTEL_ENABLED', true),
+
+    /**
      * Service name
      */
     'service_name' => env(Variables::OTEL_SERVICE_NAME, \Illuminate\Support\Str::slug((string) env('APP_NAME', 'laravel-app'))),
@@ -14,6 +19,18 @@ return [
      * Supports any otel propagator, for example: "tracecontext", "baggage", "b3", "b3multi", "none"
      */
     'propagators' => env(Variables::OTEL_PROPAGATORS, 'tracecontext'),
+
+    /**
+     * OpenTelemetry Meter configuration
+     */
+    'metrics' => [
+        /**
+         * Metrics exporter
+         * This should be the key of one of the exporters defined in the exporters section
+         * Supported drivers: "otlp", "console", "null"
+         */
+        'exporter' => env('OTEL_INSTRUMENTATIONS_EXPORTER', 'otlp'),
+    ],
 
     /**
      * OpenTelemetry Traces configuration
@@ -77,7 +94,7 @@ return [
     /**
      * OpenTelemetry exporters
      *
-     * Here you can configure exports used by traces and logs.
+     * Here you can configure exports used by metrics, traces and logs.
      * If you want to use the same protocol with different endpoints,
      * you can copy the exporter with a different and change the endpoint
      *

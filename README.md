@@ -32,6 +32,11 @@ use Keepsuit\LaravelOpenTelemetry\Instrumentation;
 
 return [
     /**
+     * Enable OpenTelemetry
+     */
+    'enabled' => env('OTEL_ENABLED', true),
+
+    /**
      * Service name
      */
     'service_name' => env('OTEL_SERVICE_NAME', \Illuminate\Support\Str::slug(env('APP_NAME', 'laravel-app'))),
@@ -41,6 +46,18 @@ return [
      * Supports any otel propagator, for example: "tracecontext", "baggage", "b3", "b3multi", "none"
      */
     'propagators' => env('OTEL_PROPAGATORS', 'tracecontext'),
+
+    /**
+     * OpenTelemetry Meter configuration
+     */
+    'metrics' => [
+        /**
+         * Metrics exporter
+         * This should be the key of one of the exporters defined in the exporters section
+         * Supported drivers: "otlp", "console", "null"
+         */
+        'exporter' => env('OTEL_METRICS_EXPORTER', 'otlp'),
+    ],
 
     /**
      * OpenTelemetry Traces configuration
@@ -104,7 +121,7 @@ return [
     /**
      * OpenTelemetry exporters
      *
-     * Here you can configure exports used by traces and logs.
+     * Here you can configure exports used by metrics, traces and logs.
      * If you want to use the same protocol with different endpoints,
      * you can copy the exporter with a different and change the endpoint
      *
@@ -186,6 +203,7 @@ You can disable or customize each integration in the config file in the `instrum
 - [Redis](#redis)
 - [Queue jobs](#redis)
 - [Logs context](#logs-context)
+- [Custom meters](#custom-meters)
 - [Manual traces](#manual-traces)
 
 ### Http server requests
@@ -241,6 +259,29 @@ you should call `Tracer::updateLogContext()` to inject the trace id in the log c
 > [!NOTE]
 > When using the OpenTelemetry logs driver (`otlp`),
 > the trace id is automatically injected in the log context without the need to call `Tracer::updateLogContext()`.
+
+### Custom Meters
+
+You can create custom meters using the `Meter` facade:
+
+```php
+use Keepsuit\LaravelOpenTelemetry\Facades\Meter;
+
+// create a counter meter
+$meter = Meter::createCounter('my-meter', 'times', 'my custom meter');
+$meter->add(1);
+
+
+// create a histogram meter
+$meter = Meter::createHistogram('my-histogram', 'ms', 'my custom histogram');
+$meter->record(100, ['name' => 'value', 'app' => 'my-app']);
+
+
+// create a gauge meter
+$meter = Meter::createGauge('my-gauge', null, 'my custom gauge');
+$meter->record(100, ['name' => 'value', 'app' => 'my-app']);
+$meter->record(1.2, ['name' => 'percentage', 'app' => 'my-app']);
+```
 
 ### Manual traces
 
@@ -342,6 +383,7 @@ Please see [CHANGELOG](CHANGELOG.md) for more information on what has changed re
 ## Credits
 
 - [Fabio Capucci](https://github.com/keepsuit)
+- [Aurimas Niekis](https://github.com/aurimasniekis)
 - [All Contributors](../../contributors)
 
 ## License

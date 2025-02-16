@@ -17,12 +17,14 @@ use Keepsuit\LaravelOpenTelemetry\Support\SamplerBuilder;
 use OpenTelemetry\API\Common\Time\Clock;
 use OpenTelemetry\API\Instrumentation\CachedInstrumentation;
 use OpenTelemetry\API\Logs\LoggerInterface;
+use OpenTelemetry\API\Metrics\MeterInterface;
 use OpenTelemetry\API\Signals;
 use OpenTelemetry\API\Trace\TracerInterface;
 use OpenTelemetry\Context\Propagation\TextMapPropagatorInterface;
 use OpenTelemetry\Contrib\Grpc\GrpcTransportFactory;
 use OpenTelemetry\Contrib\Otlp\HttpEndpointResolver;
 use OpenTelemetry\Contrib\Otlp\LogsExporter;
+use OpenTelemetry\Contrib\Otlp\MetricExporter;
 use OpenTelemetry\Contrib\Otlp\OtlpHttpTransportFactory;
 use OpenTelemetry\Contrib\Otlp\OtlpUtil;
 use OpenTelemetry\Contrib\Otlp\SpanExporter as OtlpSpanExporter;
@@ -37,6 +39,12 @@ use OpenTelemetry\SDK\Logs\Exporter\InMemoryExporterFactory as LogsInMemoryExpor
 use OpenTelemetry\SDK\Logs\LoggerProvider;
 use OpenTelemetry\SDK\Logs\LogRecordExporterInterface;
 use OpenTelemetry\SDK\Logs\Processor\BatchLogRecordProcessor;
+use OpenTelemetry\SDK\Metrics\MeterProvider;
+use OpenTelemetry\SDK\Metrics\MetricExporter\ConsoleMetricExporterFactory;
+use OpenTelemetry\SDK\Metrics\MetricExporter\InMemoryExporterFactory;
+use OpenTelemetry\SDK\Metrics\MetricExporterInterface;
+use OpenTelemetry\SDK\Metrics\MetricReader\ExportingReader;
+use OpenTelemetry\SDK\Metrics\MetricReaderInterface;
 use OpenTelemetry\SDK\Resource\ResourceInfo;
 use OpenTelemetry\SDK\Resource\ResourceInfoFactory;
 use OpenTelemetry\SDK\Sdk;
@@ -54,6 +62,10 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 {
     public function packageBooted(): void
     {
+        if (!config('opentelemetry.enabled')) {
+            return;
+        }
+
         $this->configureEnvironmentVariables();
         $this->injectConfig();
         $this->init();
@@ -78,6 +90,17 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         );
 
         $propagator = PropagatorBuilder::new()->build(config('opentelemetry.propagators'));
+
+        /**
+         * Metrics
+         */
+        $metricsExporter = $this->buildMetricsExporter();
+        $metricsReader = new ExportingReader($metricsExporter);
+
+        $meterProvider = MeterProvider::builder()
+            ->setResource($resource)
+            ->addReader($metricsReader)
+            ->build();
 
         /**
          * Traces
@@ -117,6 +140,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         Sdk::builder()
             ->setTracerProvider($tracerProvider)
             ->setLoggerProvider($loggerProvider)
+            ->setMeterProvider($meterProvider)
             ->setPropagator($propagator)
             ->setAutoShutdown(true)
             ->buildAndRegisterGlobal();
@@ -128,12 +152,15 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         );
 
         $this->app->bind(TextMapPropagatorInterface::class, fn () => $propagator);
+        $this->app->bind(MeterInterface::class, fn () => $instrumentation->meter());
         $this->app->bind(TracerInterface::class, fn () => $instrumentation->tracer());
         $this->app->bind(LoggerInterface::class, fn () => $instrumentation->logger());
+        $this->app->bind(MetricReaderInterface::class, fn () => $metricsReader);
 
-        $this->app->terminating(function () use ($loggerProvider, $tracerProvider) {
+        $this->app->terminating(function () use ($loggerProvider, $tracerProvider, $meterProvider) {
             $tracerProvider->forceFlush();
             $loggerProvider->forceFlush();
+            $meterProvider->forceFlush();
         });
     }
 
@@ -156,6 +183,19 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 
         // Disable debug scopes wrapping
         $envRepository->set('OTEL_PHP_DEBUG_SCOPES_DISABLED', '1');
+    }
+
+    protected function buildMetricsExporter(): MetricExporterInterface
+    {
+        $metricsExporter = config('opentelemetry.metrics.exporter');
+        $metricsExporterConfig = config(sprintf('opentelemetry.exporters.%s', $metricsExporter));
+        $metricsExporterDriver = is_array($metricsExporterConfig) ? $metricsExporterConfig['driver'] : $metricsExporter;
+
+        return match ($metricsExporterDriver) {
+            'otlp' => new MetricExporter($this->buildOtlpTransport($metricsExporterConfig ?? [], Signals::METRICS)),
+            'console' => (new ConsoleMetricExporterFactory())->create(),
+            default => (new InMemoryExporterFactory())->create(),
+        };
     }
 
     protected function buildSpanExporter(): SpanExporterInterface
