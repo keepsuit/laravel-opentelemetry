@@ -16,7 +16,7 @@ it('can watch a redis call', function (string $client) {
         ->getName()->toBe('redis default get')
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
         ->getAttributes()->toArray()->toBe([
-            'db.system' => 'redis',
+            'db.system.name' => 'redis',
             'db.query.text' => 'get test',
             'server.address' => '127.0.0.1',
         ])

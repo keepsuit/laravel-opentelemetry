@@ -25,7 +25,7 @@ it('can watch a query', function () {
         ->getName()->toBe('sql SELECT')
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
         ->getAttributes()->toArray()->toBe([
-            'db.system' => 'sqlite',
+            'db.system.name' => 'sqlite',
             'db.namespace' => ':memory:',
             'db.operation.name' => 'SELECT',
             'db.query.text' => 'select * from "users"',
@@ -50,7 +50,7 @@ it('can watch a query with bindings', function () {
         ->getName()->toBe('sql SELECT')
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
         ->getAttributes()->toArray()->toBe([
-            'db.system' => 'sqlite',
+            'db.system.name' => 'sqlite',
             'db.namespace' => ':memory:',
             'db.operation.name' => 'SELECT',
             'db.query.text' => 'select * from "users" where "id" = ? and "name" like ?',
@@ -76,7 +76,7 @@ it('can watch a query with named bindings', function () {
         ->getName()->toBe('sql UPDATE')
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
         ->getAttributes()->toArray()->toBe([
-            'db.system' => 'sqlite',
+            'db.system.name' => 'sqlite',
             'db.namespace' => ':memory:',
             'db.operation.name' => 'UPDATE',
             'db.query.text' => 'update "users" set "name" = :name where admin = true',

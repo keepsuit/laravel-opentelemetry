@@ -36,7 +36,7 @@ class QueryInstrumentation implements Instrumentation
         $span = Tracer::newSpan(sprintf('sql %s', $operationName))
             ->setSpanKind(SpanKind::KIND_CLIENT)
             ->setStartTimestamp($this->getEventStartTimestampNs($event->time))
-            ->setAttribute(TraceAttributes::DB_SYSTEM, $event->connection->getDriverName())
+            ->setAttribute(TraceAttributes::DB_SYSTEM_NAME, $event->connection->getDriverName())
             ->setAttribute(TraceAttributes::DB_NAMESPACE, $event->connection->getDatabaseName())
             ->setAttribute(TraceAttributes::DB_OPERATION_NAME, $operationName)
             ->setAttribute(TraceAttributes::DB_QUERY_TEXT, $event->sql)
