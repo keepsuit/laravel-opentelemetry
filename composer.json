@@ -17,8 +17,8 @@
     ],
     "require": {
         "php": "^8.1",
-        "illuminate/contracts": "^10.0 || ^11.0",
-        "illuminate/support": "^10.0 || ^11.0",
+        "illuminate/contracts": "^10.0 || ^11.0 || ^12.0",
+        "illuminate/support": "^10.0 || ^11.0 || ^12.0",
         "open-telemetry/api": "^1.1",
         "open-telemetry/context": "^1.1",
         "open-telemetry/exporter-otlp": "^1.1",
@@ -33,11 +33,11 @@
         "larastan/larastan": "^2.9 || ^3.0",
         "laravel/pint": "^1.18",
         "nesbot/carbon": "^2.69 || ^3.0",
-        "nunomaduro/collision": "^7.0 || ^8.0",
+        "nunomaduro/collision": "^7.0 || ^8.0 || ^9.0",
         "open-telemetry/exporter-zipkin": "^1.1",
         "open-telemetry/extension-propagator-b3": "^1.1",
         "open-telemetry/transport-grpc": "^1.1",
-        "orchestra/testbench": "^8.22 || ^9.0",
+        "orchestra/testbench": "^8.22 || ^9.0 || ^10.0",
         "pestphp/pest": "^2.36 || ^3.0",
         "pestphp/pest-plugin-laravel": "^2.4 || ^3.0",
         "php-http/guzzle7-adapter": "^1.0",
@@ -94,6 +94,6 @@
             ]
         }
     },
-    "minimum-stability": "stable",
+    "minimum-stability": "dev",
     "prefer-stable": true
 }
