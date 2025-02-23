@@ -2,6 +2,16 @@
 
 All notable changes to `laravel-opentelemetry` will be documented in this file.
 
+## v1.2.0 - 2025-02-23
+
+### What's Changed
+
+* replaced deprecated `db.system` with `db.system.name`
+* Support laravel 12
+* Bump aglipanci/laravel-pint-action from 2.4 to 2.5 by @dependabot in https://github.com/keepsuit/laravel-opentelemetry/pull/30
+
+**Full Changelog**: https://github.com/keepsuit/laravel-opentelemetry/compare/1.1.0...1.2.0
+
 ## v1.1.0 - 2025-01-16
 
 ### What's Changed
@@ -32,6 +42,7 @@ Tracer::newSpan('name')->measure(callback); // same as old measure
 Tracer::newSpan('name')->setSpanKind(SpanKind::KIND_PRODUCER)->measure(callback); // same as old measureAsync
 
 
+
 ```
 `Tracer::recordExceptionToSpan` has been removed and exception should be recorded directly to span: `$span->recordException($exception)`
 
@@ -52,6 +63,7 @@ This is the injected `otlp` channel:
         'level' => 'debug',
     ]
 ]
+
 
 
 ```
