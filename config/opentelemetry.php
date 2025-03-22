@@ -1,18 +1,19 @@
 <?php
 
 use Keepsuit\LaravelOpenTelemetry\Instrumentation;
+use OpenTelemetry\SDK\Common\Configuration\Variables;
 
 return [
     /**
      * Service name
      */
-    'service_name' => env('OTEL_SERVICE_NAME', \Illuminate\Support\Str::slug((string) env('APP_NAME', 'laravel-app'))),
+    'service_name' => env(Variables::OTEL_SERVICE_NAME, \Illuminate\Support\Str::slug((string) env('APP_NAME', 'laravel-app'))),
 
     /**
      * Comma separated list of propagators to use.
      * Supports any otel propagator, for example: "tracecontext", "baggage", "b3", "b3multi", "none"
      */
-    'propagators' => env('OTEL_PROPAGATORS', 'tracecontext'),
+    'propagators' => env(Variables::OTEL_PROPAGATORS, 'tracecontext'),
 
     /**
      * OpenTelemetry Traces configuration
@@ -22,7 +23,7 @@ return [
          * Traces exporter
          * This should be the key of one of the exporters defined in the exporters section
          */
-        'exporter' => env('OTEL_TRACES_EXPORTER', 'otlp'),
+        'exporter' => env(Variables::OTEL_TRACES_EXPORTER, 'otlp'),
 
         /**
          * Traces sampler
@@ -57,7 +58,7 @@ return [
          * This should be the key of one of the exporters defined in the exporters section
          * Supported drivers: "otlp", "console", "null"
          */
-        'exporter' => env('OTEL_LOGS_EXPORTER', 'otlp'),
+        'exporter' => env(Variables::OTEL_LOGS_EXPORTER, 'otlp'),
 
         /**
          * Inject active trace id in log context
@@ -85,19 +86,21 @@ return [
     'exporters' => [
         'otlp' => [
             'driver' => 'otlp',
-            'endpoint' => env('OTEL_EXPORTER_OTLP_ENDPOINT', 'http://localhost:4318'),
-            // Supported: "grpc", "http/protobuf", "http/json"
-            'protocol' => env('OTEL_EXPORTER_OTLP_PROTOCOL', 'http/protobuf'),
-            'traces_timeout' => env('OTEL_EXPORTER_OTLP_TRACES_TIMEOUT', env('OTEL_EXPORTER_OTLP_TIMEOUT', 10000)),
-            'metrics_timeout' => env('OTEL_EXPORTER_OTLP_METRICS_TIMEOUT', env('OTEL_EXPORTER_OTLP_TIMEOUT', 10000)),
-            'logs_timeout' => env('OTEL_EXPORTER_OTLP_LOGS_TIMEOUT', env('OTEL_EXPORTER_OTLP_TIMEOUT', 10000)),
+            'endpoint' => env(Variables::OTEL_EXPORTER_OTLP_ENDPOINT, 'http://localhost:4318'),
+            'protocol' => env(Variables::OTEL_EXPORTER_OTLP_PROTOCOL, 'http/protobuf'),
+            'traces_timeout' => env(Variables::OTEL_EXPORTER_OTLP_TRACES_TIMEOUT, env(Variables::OTEL_EXPORTER_OTLP_TIMEOUT, 10000)),
+            'traces_headers' => (string) env(Variables::OTEL_EXPORTER_OTLP_TRACES_HEADERS, env(Variables::OTEL_EXPORTER_OTLP_HEADERS, '')),
+            'metrics_timeout' => env(Variables::OTEL_EXPORTER_OTLP_METRICS_TIMEOUT, env(Variables::OTEL_EXPORTER_OTLP_TIMEOUT, 10000)),
+            'metrics_headers' => (string) env(Variables::OTEL_EXPORTER_OTLP_METRICS_HEADERS, env(Variables::OTEL_EXPORTER_OTLP_HEADERS, '')),
+            'logs_timeout' => env(Variables::OTEL_EXPORTER_OTLP_LOGS_TIMEOUT, env(Variables::OTEL_EXPORTER_OTLP_TIMEOUT, 10000)),
+            'logs_headers' => (string) env(Variables::OTEL_EXPORTER_OTLP_LOGS_HEADERS, env(Variables::OTEL_EXPORTER_OTLP_HEADERS, '')),
             'max_retries' => env('OTEL_EXPORTER_OTLP_MAX_RETRIES', 3),
         ],
 
         'zipkin' => [
             'driver' => 'zipkin',
-            'endpoint' => env('OTEL_EXPORTER_ZIPKIN_ENDPOINT', 'http://localhost:9411'),
-            'timeout' => env('OTEL_EXPORTER_ZIPKIN_TIMEOUT', 10000),
+            'endpoint' => env(Variables::OTEL_EXPORTER_ZIPKIN_ENDPOINT, 'http://localhost:9411'),
+            'timeout' => env(Variables::OTEL_EXPORTER_ZIPKIN_TIMEOUT, 10000),
             'max_retries' => env('OTEL_EXPORTER_ZIPKIN_MAX_RETRIES', 3),
         ],
     ],

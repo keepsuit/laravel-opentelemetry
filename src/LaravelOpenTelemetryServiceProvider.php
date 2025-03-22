@@ -28,6 +28,7 @@ use OpenTelemetry\Contrib\Otlp\OtlpUtil;
 use OpenTelemetry\Contrib\Otlp\SpanExporter as OtlpSpanExporter;
 use OpenTelemetry\Contrib\Zipkin\Exporter as ZipkinExporter;
 use OpenTelemetry\SDK\Common\Attribute\Attributes;
+use OpenTelemetry\SDK\Common\Configuration\Parser\MapParser;
 use OpenTelemetry\SDK\Common\Configuration\Variables as OTELVariables;
 use OpenTelemetry\SDK\Common\Export\Http\PsrTransportFactory;
 use OpenTelemetry\SDK\Common\Export\TransportInterface;
@@ -193,25 +194,44 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         $endpoint = $config['endpoint'] ?? 'http://localhost:4318';
 
         $maxRetries = $config['max_retries'] ?? 3;
+
         $timeoutMillis = match ($signal) {
             Signals::TRACE => $config['traces_timeout'] ?? 10000,
             Signals::METRICS => $config['metrics_timeout'] ?? 10000,
             Signals::LOGS => $config['logs_timeout'] ?? 10000,
         };
 
+        $headers = match ($signal) {
+            Signals::TRACE => $config['traces_headers'] ?? [],
+            Signals::METRICS => $config['metrics_headers'] ?? [],
+            Signals::LOGS => $config['logs_headers'] ?? [],
+        };
+
+        $headers = rescue(
+            fn () => is_string($headers) ? MapParser::parse($headers) : $headers,
+            [],
+            report: false
+        );
+
         return match ($protocol) {
-            'grpc' => (new GrpcTransportFactory)->create($endpoint.OtlpUtil::method($signal)),
+            'grpc' => (new GrpcTransportFactory)->create(
+                endpoint: $endpoint.OtlpUtil::method($signal),
+                headers: $headers,
+                maxRetries: $maxRetries,
+            ),
             'http/json', 'json' => (new OtlpHttpTransportFactory)->create(
                 endpoint: (new HttpEndpointResolver)->resolveToString($endpoint, $signal),
                 contentType: 'application/json',
+                headers: $headers,
                 timeout: $timeoutMillis / 1000,
                 maxRetries: $maxRetries
             ),
             default => (new OtlpHttpTransportFactory)->create(
                 endpoint: (new HttpEndpointResolver)->resolveToString($endpoint, $signal),
                 contentType: 'application/x-protobuf',
+                headers: $headers,
                 timeout: $timeoutMillis / 1000,
-                maxRetries: $maxRetries
+                maxRetries: $maxRetries,
             ),
         };
     }
