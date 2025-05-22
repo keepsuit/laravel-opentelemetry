@@ -30,6 +30,8 @@ class TestCase extends Orchestra
         $app['config']->set('queue.failed.driver', null);
 
         $app['config']->set('logging.default', 'otlp');
+
+        $app['config']->set('cache.default', 'array');
     }
 
     protected function defineDatabaseMigrations(): void

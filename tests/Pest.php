@@ -4,7 +4,28 @@ use Illuminate\Support\Collection;
 use OpenTelemetry\API\Globals;
 use OpenTelemetry\SDK\Trace\TracerProviderInterface;
 
-uses(\Keepsuit\LaravelOpenTelemetry\Tests\TestCase::class)->in(__DIR__);
+uses(\Keepsuit\LaravelOpenTelemetry\Tests\TestCase::class)
+    ->in(__DIR__)
+    ->beforeEach(function () {
+        resetStorage();
+    });
+
+function resetStorage(): void
+{
+    $tracerProvider = Globals::tracerProvider();
+    assert($tracerProvider instanceof TracerProviderInterface);
+    $tracerProvider->forceFlush();
+    $tracerExporter = app(\OpenTelemetry\SDK\Trace\SpanExporterInterface::class);
+    assert($tracerExporter instanceof \OpenTelemetry\SDK\Trace\SpanExporter\InMemoryExporter);
+    $tracerExporter->getStorage()->exchangeArray([]);
+
+    $loggerProvider = Globals::loggerProvider();
+    assert($loggerProvider instanceof \OpenTelemetry\SDK\Logs\LoggerProvider);
+    $loggerProvider->forceFlush();
+    $loggerExporter = app(\OpenTelemetry\SDK\Logs\LogRecordExporterInterface::class);
+    assert($loggerExporter instanceof \OpenTelemetry\SDK\Logs\Exporter\InMemoryExporter);
+    $loggerExporter->getStorage()->exchangeArray([]);
+}
 
 /**
  * @return Collection<array-key,\OpenTelemetry\SDK\Trace\ImmutableSpan>
