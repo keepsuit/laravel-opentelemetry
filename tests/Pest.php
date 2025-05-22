@@ -5,10 +5,10 @@ use OpenTelemetry\API\Globals;
 use OpenTelemetry\SDK\Trace\TracerProviderInterface;
 
 uses(\Keepsuit\LaravelOpenTelemetry\Tests\TestCase::class)
-    ->in(__DIR__)
     ->beforeEach(function () {
         resetStorage();
-    });
+    })
+    ->in(__DIR__);
 
 function resetStorage(): void
 {
