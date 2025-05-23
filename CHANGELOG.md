@@ -2,6 +2,14 @@
 
 All notable changes to `laravel-opentelemetry` will be documented in this file.
 
+## v1.4.0 - 2025-05-23
+
+### What's Changed
+
+* Skip recording of internal spans when trace is not started by @cappuc in https://github.com/keepsuit/laravel-opentelemetry/pull/33
+
+**Full Changelog**: https://github.com/keepsuit/laravel-opentelemetry/compare/1.3.0...1.4.0
+
 ## v1.3.0 - 2025-03-22
 
 ### What's Changed
@@ -52,6 +60,7 @@ Tracer::newSpan('name')->setSpanKind(SpanKind::KIND_PRODUCER)->measure(callback)
 
 
 
+
 ```
 `Tracer::recordExceptionToSpan` has been removed and exception should be recorded directly to span: `$span->recordException($exception)`
 
@@ -72,6 +81,7 @@ This is the injected `otlp` channel:
         'level' => 'debug',
     ]
 ]
+
 
 
 
