@@ -1,18 +1,31 @@
 <?php
 
+use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use OpenTelemetry\API\Common\Time\Clock;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\SDK\Trace\ImmutableSpan;
 
-it('can watch a redis call', function (string $client) {
-    config()->set('database.redis.client', $client);
+test('redis span is not created when trace is not started', function () {
+    expect(Tracer::traceStarted())->toBeFalse();
 
     \Illuminate\Support\Facades\Redis::connection('default')->get('test');
 
-    $span = getRecordedSpans()->last();
-    assert($span instanceof ImmutableSpan);
+    $span = getRecordedSpans()->first();
+
+    expect($span)->toBeNull();
+});
+
+it('can watch a redis call', function (string $client) {
+    config()->set('database.redis.client', $client);
+
+    Tracer::newSpan('root')->measure(function () {
+        \Illuminate\Support\Facades\Redis::connection('default')->get('test');
+    });
+
+    $span = getRecordedSpans()->first();
 
     expect($span)
+        ->toBeInstanceOf(ImmutableSpan::class)
         ->getName()->toBe('redis default get')
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
         ->getAttributes()->toArray()->toBe([

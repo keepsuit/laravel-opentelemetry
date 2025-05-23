@@ -4,6 +4,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Tests\Support\TestJob;
 use OpenTelemetry\API\Trace\StatusCode;
 use OpenTelemetry\SDK\Trace\ImmutableSpan;
@@ -22,6 +23,32 @@ afterEach(function () {
     $this->valuestore->flush();
 });
 
+test('job enqueue span is not created when trace is not started', function () {
+    expect(Tracer::traceStarted())->toBeFalse();
+
+    dispatch(new TestJob($this->valuestore));
+
+    $span = getRecordedSpans()->first();
+
+    expect($span)->toBeNull();
+});
+
+test('job process span is created without parent', function () {
+    expect(Tracer::traceStarted())->toBeFalse();
+
+    dispatch(new TestJob($this->valuestore));
+
+    Artisan::call('queue:work', [
+        '--once' => true,
+    ]);
+
+    $root = getRecordedSpans()->last();
+
+    expect($root)
+        ->toBeInstanceOf(ImmutableSpan::class)
+        ->getName()->toBe(TestJob::class.' process');
+});
+
 it('can trace queue jobs', function () {
     withRootSpan(function () {
         dispatch(new TestJob($this->valuestore));
@@ -34,10 +61,6 @@ it('can trace queue jobs', function () {
     $root = getRecordedSpans()->first(fn (ImmutableSpan $span) => $span->getName() === 'root');
     $enqueueSpan = getRecordedSpans()->first(fn (ImmutableSpan $span) => $span->getName() === TestJob::class.' enqueue');
     $processSpan = getRecordedSpans()->first(fn (ImmutableSpan $span) => $span->getName() === TestJob::class.' process');
-
-    assert($root instanceof ImmutableSpan);
-    assert($enqueueSpan instanceof ImmutableSpan);
-    assert($processSpan instanceof ImmutableSpan);
 
     $traceId = $enqueueSpan->getTraceId();
     $spanId = $enqueueSpan->getSpanId();
@@ -57,6 +80,7 @@ it('can trace queue jobs', function () {
         ->get('logContextInJob')->toMatchArray(['traceid' => $traceId]);
 
     expect($enqueueSpan)
+        ->toBeInstanceOf(ImmutableSpan::class)
         ->getAttributes()->toMatchArray([
             TraceAttributes::MESSAGING_SYSTEM => 'redis',
             TraceAttributes::MESSAGING_OPERATION_TYPE => 'enqueue',
@@ -66,7 +90,8 @@ it('can trace queue jobs', function () {
         ]);
 
     expect($processSpan)
-        ->not->toBeNull()
+        ->toBeInstanceOf(ImmutableSpan::class)
+        ->getTraceId()->toBe($enqueueSpan->getTraceId())
         ->getAttributes()->toMatchArray([
             TraceAttributes::MESSAGING_SYSTEM => 'redis',
             TraceAttributes::MESSAGING_OPERATION_TYPE => 'process',

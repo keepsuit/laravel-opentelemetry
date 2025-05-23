@@ -19,6 +19,10 @@ class GuzzleTraceMiddleware
     {
         return static function (callable $handler): callable {
             return static function (RequestInterface $request, array $options) use ($handler) {
+                if (! Tracer::traceStarted()) {
+                    return $handler($request, $options);
+                }
+
                 $span = Tracer::newSpan(sprintf('HTTP %s', $request->getMethod()))
                     ->setSpanKind(SpanKind::KIND_CLIENT)
                     ->setAttribute(TraceAttributes::URL_FULL, sprintf('%s://%s%s', $request->getUri()->getScheme(), $request->getUri()->getHost(), $request->getUri()->getPath()))

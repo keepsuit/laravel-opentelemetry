@@ -1,31 +1,38 @@
 <?php
 
 use GuzzleHttp\Server\Server;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\HttpClientInstrumentation;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
 
-it('injects propagation headers to Http client request', function () {
-    $http = Http::fake([
+test('http client span is not created when trace is not started', function () {
+    expect(Tracer::traceStarted())->toBeFalse();
+
+    Http::fake([
         '*' => Http::response('', 200, ['Content-Length' => 0]),
     ]);
 
-    $root = Tracer::newSpan('root')->start();
-    $scope = $root->activate();
-
     Http::withTrace()->get(Server::$url);
 
-    $traceId = Tracer::traceId();
+    $span = getRecordedSpans()->first();
 
-    $scope->detach();
-    $root->end();
+    expect($span)->toBeNull();
+});
 
-    $spans = getRecordedSpans();
+it('injects propagation headers to Http client request', function () {
+    Http::fake([
+        '*' => Http::response('', 200, ['Content-Length' => 0]),
+    ]);
 
-    $httpSpan = Arr::get($spans, count($spans) - 2);
+    $traceId = Tracer::newSpan('root')->measure(function () {
+        Http::withTrace()->get(Server::$url);
+
+        return Tracer::traceId();
+    });
+
+    $httpSpan = getRecordedSpans()->first();
 
     $request = Http::recorded()->first()[0];
     assert($request instanceof \Illuminate\Http\Client\Request);
@@ -39,9 +46,11 @@ it('create http client span', function () {
         '*' => Http::response('', 200, ['Content-Length' => 0]),
     ]);
 
-    Http::withTrace()->get(Server::$url);
+    Tracer::newSpan('root')->measure(function () {
+        Http::withTrace()->get(Server::$url);
+    });
 
-    $httpSpan = getRecordedSpans()->last();
+    $httpSpan = getRecordedSpans()->first();
 
     expect($httpSpan)
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
@@ -65,9 +74,11 @@ it('set span status to error on 4xx and 5xx status code', function () {
         '*' => Http::response('', 500, ['Content-Length' => 0]),
     ]);
 
-    Http::withTrace()->get(Server::$url);
+    Tracer::newSpan('root')->measure(function () {
+        Http::withTrace()->get(Server::$url);
+    });
 
-    $httpSpan = getRecordedSpans()->last();
+    $httpSpan = getRecordedSpans()->first();
 
     expect($httpSpan)
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
@@ -89,12 +100,14 @@ it('trace allowed request headers', function () {
         '*' => Http::response('', 200, ['Content-Length' => 0]),
     ]);
 
-    Http::withHeaders([
-        'x-foo' => 'bar',
-        'x-bar' => 'baz',
-    ])->withTrace()->get(Server::$url);
+    Tracer::newSpan('root')->measure(function () {
+        Http::withHeaders([
+            'x-foo' => 'bar',
+            'x-bar' => 'baz',
+        ])->withTrace()->get(Server::$url);
+    });
 
-    $span = getRecordedSpans()[0];
+    $span = getRecordedSpans()->first();
 
     expect($span->getAttributes())
         ->toMatchArray([
@@ -114,9 +127,11 @@ it('trace allowed response headers', function () {
         '*' => Http::response('', 200, ['Content-Length' => 0, 'Content-Type' => 'text/html; charset=UTF-8']),
     ]);
 
-    Http::withTrace()->get(Server::$url);
+    Tracer::newSpan('root')->measure(function () {
+        Http::withTrace()->get(Server::$url);
+    });
 
-    $span = getRecordedSpans()[0];
+    $span = getRecordedSpans()->first();
 
     expect($span->getAttributes())
         ->toMatchArray([
@@ -139,9 +154,11 @@ it('trace sensitive headers with hidden value', function () {
         '*' => Http::response('', 200, ['Content-Length' => 0]),
     ]);
 
-    Http::withHeaders(['x-foo' => 'bar'])->withTrace()->get(Server::$url);
+    Tracer::newSpan('root')->measure(function () {
+        Http::withHeaders(['x-foo' => 'bar'])->withTrace()->get(Server::$url);
+    });
 
-    $span = getRecordedSpans()[0];
+    $span = getRecordedSpans()->first();
 
     expect($span->getAttributes())
         ->toMatchArray([
@@ -162,12 +179,14 @@ it('mark some headers as sensitive by default', function () {
         '*' => Http::response('', 200, ['Content-Length' => 0, 'Set-Cookie' => 'cookie']),
     ]);
 
-    Http::withHeaders([
-        'authorization' => 'Bearer token',
-        'cookie' => 'cookie',
-    ])->withTrace()->get(Server::$url);
+    Tracer::newSpan('root')->measure(function () {
+        Http::withHeaders([
+            'authorization' => 'Bearer token',
+            'cookie' => 'cookie',
+        ])->withTrace()->get(Server::$url);
+    });
 
-    $span = getRecordedSpans()[0];
+    $span = getRecordedSpans()->first();
 
     expect($span->getAttributes())
         ->toMatchArray([

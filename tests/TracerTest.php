@@ -245,3 +245,19 @@ it('set traceId to log context', function () {
     $scope->detach();
     $span->end();
 });
+
+test('trace started', function () {
+    expect(Tracer::traceStarted())->toBeFalse();
+
+    // Root span (not active)
+    $rootSpan = Tracer::newSpan('root')->start();
+    expect(Tracer::traceStarted())->toBeFalse();
+
+    // Root span (active)
+    $scope = $rootSpan->activate();
+    expect(Tracer::traceStarted())->toBeTrue();
+
+    $scope->detach();
+    $rootSpan->end();
+    expect(Tracer::traceStarted())->toBeFalse();
+});

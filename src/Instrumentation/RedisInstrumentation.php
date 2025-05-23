@@ -25,6 +25,10 @@ class RedisInstrumentation implements Instrumentation
 
     public function recordCommand(CommandExecuted $event): void
     {
+        if (! Tracer::traceStarted()) {
+            return;
+        }
+
         $traceName = sprintf('redis %s %s', $event->connection->getName(), $event->command);
 
         $span = Tracer::newSpan($traceName)
