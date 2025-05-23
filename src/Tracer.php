@@ -20,6 +20,11 @@ class Tracer
         protected TextMapPropagatorInterface $propagator
     ) {}
 
+    public function traceStarted(): bool
+    {
+        return $this->activeSpan()->getContext()->isValid();
+    }
+
     public function currentContext(): ContextInterface
     {
         return Context::getCurrent();
