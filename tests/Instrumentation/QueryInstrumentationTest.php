@@ -3,8 +3,9 @@
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
+use OpenTelemetry\API\Common\Time\Clock;
 use OpenTelemetry\API\Trace\SpanKind;
-use OpenTelemetry\SDK\Common\Time\ClockFactory;
 use OpenTelemetry\SDK\Trace\ImmutableSpan;
 
 beforeEach(function () {
@@ -15,13 +16,28 @@ beforeEach(function () {
     });
 });
 
-it('can watch a query', function () {
-    DB::table('users')->get();
+test('query span is not created when trace is not started', function () {
+    expect(Tracer::traceStarted())->toBeFalse();
 
-    $span = getRecordedSpans()->last();
-    assert($span instanceof ImmutableSpan);
+    DB::table('users')
+        ->where('id', 1)
+        ->where('name', 'like', 'John%')
+        ->get();
+
+    $span = getRecordedSpans()->first();
+
+    expect($span)->toBeNull();
+});
+
+it('can watch a query', function () {
+    Tracer::newSpan('root')->measure(function () {
+        DB::table('users')->get();
+    });
+
+    $span = getRecordedSpans()->first();
 
     expect($span)
+        ->toBeInstanceOf(ImmutableSpan::class)
         ->getName()->toBe('sql SELECT')
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
         ->getAttributes()->toArray()->toBe([
@@ -31,22 +47,24 @@ it('can watch a query', function () {
             'db.query.text' => 'select * from "users"',
         ])
         ->hasEnded()->toBeTrue()
-        ->getEndEpochNanos()->toBeLessThan(ClockFactory::getDefault()->now());
+        ->getEndEpochNanos()->toBeLessThan(Clock::getDefault()->now());
 
     expect($span->getEndEpochNanos() - $span->getStartEpochNanos())
         ->toBeGreaterThan(0);
 });
 
 it('can watch a query with bindings', function () {
-    DB::table('users')
-        ->where('id', 1)
-        ->where('name', 'like', 'John%')
-        ->get();
+    Tracer::newSpan('root')->measure(function () {
+        DB::table('users')
+            ->where('id', 1)
+            ->where('name', 'like', 'John%')
+            ->get();
+    });
 
-    $span = getRecordedSpans()->last();
-    assert($span instanceof ImmutableSpan);
+    $span = getRecordedSpans()->first();
 
     expect($span)
+        ->toBeInstanceOf(ImmutableSpan::class)
         ->getName()->toBe('sql SELECT')
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
         ->getAttributes()->toArray()->toBe([
@@ -63,16 +81,18 @@ it('can watch a query with named bindings', function () {
         'admin' => true,
     ]);
 
-    DB::statement(<<<'SQL'
+    Tracer::newSpan('root')->measure(function () {
+        DB::statement(<<<'SQL'
     update "users" set "name" = :name where admin = true
     SQL, [
-        'name' => 'Admin',
-    ]);
+            'name' => 'Admin',
+        ]);
+    });
 
-    $span = getRecordedSpans()->last();
-    assert($span instanceof ImmutableSpan);
+    $span = getRecordedSpans()->first();
 
     expect($span)
+        ->toBeInstanceOf(ImmutableSpan::class)
         ->getName()->toBe('sql UPDATE')
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
         ->getAttributes()->toArray()->toBe([

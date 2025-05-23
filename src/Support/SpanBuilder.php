@@ -105,8 +105,8 @@ class SpanBuilder
 
             throw $exception;
         } finally {
-            $span->end();
             $scope->detach();
+            $span->end();
         }
     }
 }

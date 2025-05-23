@@ -58,6 +58,10 @@ class QueueInstrumentation implements Instrumentation
     {
         try {
             $queue->createPayloadUsing(function (string $connection, ?string $queue, array $payload) {
+                if (! Tracer::traceStarted()) {
+                    return $payload;
+                }
+
                 $uuid = $payload['uuid'];
 
                 if (! is_string($uuid)) {

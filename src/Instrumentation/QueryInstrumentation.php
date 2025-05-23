@@ -20,6 +20,10 @@ class QueryInstrumentation implements Instrumentation
 
     public function recordQuery(QueryExecuted $event): void
     {
+        if (! Tracer::traceStarted()) {
+            return;
+        }
+
         $operationName = Str::of($event->sql)
             ->before(' ')
             ->upper()
