@@ -32,6 +32,8 @@ class TestCase extends Orchestra
         $app['config']->set('logging.default', 'otlp');
 
         $app['config']->set('cache.default', 'array');
+
+        $app['config']->set('view.paths', [__DIR__.'/views']);
     }
 
     protected function defineDatabaseMigrations(): void
