@@ -159,6 +159,8 @@ return [
             'enabled' => env('OTEL_INSTRUMENTATION_EVENT', true),
             'ignored' => [],
         ],
+        
+        Instrumentation\ViewInstrumentation::class => env('OTEL_INSTRUMENTATION_VIEW', true),
     ],
 ];
 ```
