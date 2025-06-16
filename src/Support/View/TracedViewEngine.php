@@ -27,4 +27,9 @@ class TracedViewEngine implements Engine
             ->setAttribute('template.engine', $this->name)
             ->measure(fn () => $this->engine->get($path, $data));
     }
+
+    public function __call(string $name, array $arguments): mixed
+    {
+        return $this->engine->{$name}(...$arguments);
+    }
 }
