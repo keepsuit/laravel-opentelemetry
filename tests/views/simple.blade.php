@@ -1,0 +1,3 @@
+<div>
+    simple view
+</div>
