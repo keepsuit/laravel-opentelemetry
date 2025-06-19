@@ -2,6 +2,20 @@
 
 All notable changes to `laravel-opentelemetry` will be documented in this file.
 
+## v1.6.0 - 2025-06-19
+
+### What's Changed
+
+* Bump stefanzweifel/git-auto-commit-action from 5 to 6 by @dependabot in https://github.com/keepsuit/laravel-opentelemetry/pull/35
+* Livewire v3 instrumentation by @cappuc in https://github.com/keepsuit/laravel-opentelemetry/pull/36
+* added app boostrap span by @cappuc in https://github.com/keepsuit/laravel-opentelemetry/pull/37
+
+#### Upgrade guide
+
+If you have published the config file, add `Instrumentation\LivewireInstrumentation::class => env('OTEL_INSTRUMENTATION_LIVEWIRE', true)` to instrumentation array of the config.
+
+**Full Changelog**: https://github.com/keepsuit/laravel-opentelemetry/compare/1.5.0...1.6.0
+
 ## v1.5.0 - 2025-06-16
 
 ### What's Changed
@@ -74,6 +88,7 @@ Tracer::newSpan('name')->setSpanKind(SpanKind::KIND_PRODUCER)->measure(callback)
 
 
 
+
 ```
 `Tracer::recordExceptionToSpan` has been removed and exception should be recorded directly to span: `$span->recordException($exception)`
 
@@ -94,6 +109,7 @@ This is the injected `otlp` channel:
         'level' => 'debug',
     ]
 ]
+
 
 
 
