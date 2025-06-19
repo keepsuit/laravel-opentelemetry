@@ -4,6 +4,7 @@ namespace Keepsuit\LaravelOpenTelemetry\Tests;
 
 use Illuminate\Support\Str;
 use Keepsuit\LaravelOpenTelemetry\LaravelOpenTelemetryServiceProvider;
+use Livewire\LivewireServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
 
 use function Orchestra\Testbench\load_migration_paths;
@@ -13,6 +14,7 @@ class TestCase extends Orchestra
     protected function getPackageProviders($app): array
     {
         return [
+            LivewireServiceProvider::class,
             LaravelOpenTelemetryServiceProvider::class,
         ];
     }
