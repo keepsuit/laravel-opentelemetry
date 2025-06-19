@@ -21,10 +21,19 @@ class TraceRequestMiddleware
             return $next($request);
         }
 
-        $span = $this->startTracing($request);
+        $bootedTimestamp = $this->bootedTimestamp($request);
+
+        $span = $this->startTracing($request, $bootedTimestamp);
         $scope = $span->activate();
 
         Tracer::updateLogContext();
+
+        if ($bootedTimestamp) {
+            Tracer::newSpan('app boostrap')
+                ->setStartTimestamp($bootedTimestamp)
+                ->start()
+                ->end();
+        }
 
         try {
             $response = $next($request);
@@ -45,7 +54,7 @@ class TraceRequestMiddleware
         }
     }
 
-    protected function startTracing(Request $request): SpanInterface
+    protected function startTracing(Request $request, ?int $startTimestamp = null): SpanInterface
     {
         $context = Tracer::extractContextFromPropagationHeaders($request->headers->all());
 
@@ -53,7 +62,7 @@ class TraceRequestMiddleware
         $route = rescue(fn () => Route::getRoutes()->match($request)->uri(), $request->path(), false);
         $route = str_starts_with($route, '/') ? $route : '/'.$route;
 
-        $span = Tracer::newSpan($route)
+        $builder = Tracer::newSpan($route)
             ->setSpanKind(SpanKind::KIND_SERVER)
             ->setParent($context)
             ->setAttribute(TraceAttributes::URL_FULL, $request->fullUrl())
@@ -67,8 +76,13 @@ class TraceRequestMiddleware
             ->setAttribute(TraceAttributes::SERVER_PORT, $request->getPort())
             ->setAttribute(TraceAttributes::USER_AGENT_ORIGINAL, $request->userAgent())
             ->setAttribute(TraceAttributes::NETWORK_PROTOCOL_VERSION, $request->getProtocolVersion())
-            ->setAttribute(TraceAttributes::NETWORK_PEER_ADDRESS, $request->ip())
-            ->start();
+            ->setAttribute(TraceAttributes::NETWORK_PEER_ADDRESS, $request->ip());
+
+        if ($startTimestamp) {
+            $builder->setStartTimestamp($startTimestamp);
+        }
+
+        $span = $builder->start();
 
         $this->recordHeaders($span, $request);
 
@@ -114,5 +128,21 @@ class TraceRequestMiddleware
         }
 
         return $span;
+    }
+
+    /**
+     * @return int|null Timestamp in nanoseconds when the application booted
+     */
+    protected function bootedTimestamp(Request $request): ?int
+    {
+        if ($request->server->has('REQUEST_TIME_FLOAT')) {
+            return (int) (floatval($request->server('REQUEST_TIME_FLOAT')) * 1_000_000_000); // Convert seconds to nanoseconds
+        }
+
+        if (defined('LARAVEL_START')) {
+            return (int) (LARAVEL_START * 1_000_000_000); // Convert seconds to nanoseconds
+        }
+
+        return null;
     }
 }
