@@ -62,3 +62,12 @@ function getRecordedLogs(): Collection
 
     return collect($exporter->getStorage()->getArrayCopy());
 }
+
+function registerInstrumentation(string $instrumentation, array $options = [])
+{
+    if (! isset($options['enabled'])) {
+        $options['enabled'] = true;
+    }
+
+    app()->make($instrumentation)->register($options);
+}

@@ -1,11 +1,15 @@
 <?php
 
-use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
+use Keepsuit\LaravelOpenTelemetry\Instrumentation\ViewInstrumentation;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\SDK\Trace\ImmutableSpan;
 
+beforeEach(function () {
+    registerInstrumentation(ViewInstrumentation::class);
+});
+
 it('can watch view rendering', function () {
-    Tracer::newSpan('root')->measure(function () {
+    withRootSpan(function () {
         view('simple')->render();
     });
 
@@ -22,7 +26,7 @@ it('can watch view rendering', function () {
 });
 
 it('can watch view with partials', function () {
-    Tracer::newSpan('root')->measure(function () {
+    withRootSpan(function () {
         view('with-partials')->render();
     });
 

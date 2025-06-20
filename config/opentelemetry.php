@@ -118,6 +118,7 @@ return [
 
         Instrumentation\HttpClientInstrumentation::class => [
             'enabled' => env('OTEL_INSTRUMENTATION_HTTP_CLIENT', true),
+            'manual' => false, // When set to true, you need to call `withTrace()` on the request to enable tracing
             'allowed_headers' => [],
             'sensitive_headers' => [],
         ],

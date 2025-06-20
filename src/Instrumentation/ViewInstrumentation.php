@@ -5,17 +5,16 @@ namespace Keepsuit\LaravelOpenTelemetry\Instrumentation;
 use Illuminate\Contracts\View\Engine;
 use Illuminate\Contracts\View\View;
 use Illuminate\View\Engines\EngineResolver;
+use Keepsuit\LaravelOpenTelemetry\Support\InstrumentationUtilities;
 use Keepsuit\LaravelOpenTelemetry\Support\View\TracedViewEngine;
 
 class ViewInstrumentation implements Instrumentation
 {
+    use InstrumentationUtilities;
+
     public function register(array $options): void
     {
-        if (app()->resolved('view.engine.resolver')) {
-            $this->wrapViewEngines(app()->make('view.engine.resolver'));
-        } else {
-            app()->afterResolving('view.engine.resolver', $this->wrapViewEngines(...));
-        }
+        $this->callAfterResolving('view.engine.resolver', $this->wrapViewEngines(...));
     }
 
     protected function wrapViewEngines(EngineResolver $engineResolver): void

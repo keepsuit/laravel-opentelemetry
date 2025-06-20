@@ -8,6 +8,8 @@ use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
 
 test('http client span is not created when trace is not started', function () {
+    registerInstrumentation(HttpClientInstrumentation::class);
+
     expect(Tracer::traceStarted())->toBeFalse();
 
     Http::fake([
@@ -21,12 +23,58 @@ test('http client span is not created when trace is not started', function () {
     expect($span)->toBeNull();
 });
 
-it('injects propagation headers to Http client request', function () {
+it('injects propagation headers to all client requests', function () {
+    registerInstrumentation(HttpClientInstrumentation::class);
+
     Http::fake([
         '*' => Http::response('', 200, ['Content-Length' => 0]),
     ]);
 
-    $traceId = Tracer::newSpan('root')->measure(function () {
+    $traceId = withRootSpan(function () {
+        Http::get(Server::$url);
+
+        return Tracer::traceId();
+    });
+
+    $httpSpan = getRecordedSpans()->first();
+
+    $request = Http::recorded()->first()[0];
+    assert($request instanceof \Illuminate\Http\Client\Request);
+
+    expect($request)
+        ->header('traceparent')->toBe([sprintf('00-%s-%s-01', $traceId, $httpSpan->getSpanId())]);
+});
+
+test('doesnt auto inject propagation headers when manual', function () {
+    registerInstrumentation(HttpClientInstrumentation::class, [
+        'manual' => true,
+    ]);
+
+    Http::fake([
+        '*' => Http::response('', 200, ['Content-Length' => 0]),
+    ]);
+
+    withRootSpan(function () {
+        Http::get(Server::$url);
+
+        return Tracer::traceId();
+    });
+
+    expect(getRecordedSpans())
+        ->toHaveCount(1)
+        ->first()->getName()->toBe('root');
+});
+
+it('injects propagation headers manually to client request', function () {
+    registerInstrumentation(HttpClientInstrumentation::class, [
+        'manual' => true,
+    ]);
+
+    Http::fake([
+        '*' => Http::response('', 200, ['Content-Length' => 0]),
+    ]);
+
+    $traceId = withRootSpan(function () {
         Http::withTrace()->get(Server::$url);
 
         return Tracer::traceId();
@@ -42,12 +90,14 @@ it('injects propagation headers to Http client request', function () {
 });
 
 it('create http client span', function () {
+    registerInstrumentation(HttpClientInstrumentation::class);
+
     Http::fake([
         '*' => Http::response('', 200, ['Content-Length' => 0]),
     ]);
 
-    Tracer::newSpan('root')->measure(function () {
-        Http::withTrace()->get(Server::$url);
+    withRootSpan(function () {
+        Http::get(Server::$url);
     });
 
     $httpSpan = getRecordedSpans()->first();
@@ -70,12 +120,14 @@ it('create http client span', function () {
 });
 
 it('set span status to error on 4xx and 5xx status code', function () {
+    registerInstrumentation(HttpClientInstrumentation::class);
+
     Http::fake([
         '*' => Http::response('', 500, ['Content-Length' => 0]),
     ]);
 
-    Tracer::newSpan('root')->measure(function () {
-        Http::withTrace()->get(Server::$url);
+    withRootSpan(function () {
+        Http::get(Server::$url);
     });
 
     $httpSpan = getRecordedSpans()->first();
@@ -90,7 +142,7 @@ it('set span status to error on 4xx and 5xx status code', function () {
 });
 
 it('trace allowed request headers', function () {
-    app()->make(HttpClientInstrumentation::class)->register([
+    registerInstrumentation(HttpClientInstrumentation::class, [
         'allowed_headers' => [
             'x-foo',
         ],
@@ -100,11 +152,11 @@ it('trace allowed request headers', function () {
         '*' => Http::response('', 200, ['Content-Length' => 0]),
     ]);
 
-    Tracer::newSpan('root')->measure(function () {
+    withRootSpan(function () {
         Http::withHeaders([
             'x-foo' => 'bar',
             'x-bar' => 'baz',
-        ])->withTrace()->get(Server::$url);
+        ])->get(Server::$url);
     });
 
     $span = getRecordedSpans()->first();
@@ -117,7 +169,7 @@ it('trace allowed request headers', function () {
 });
 
 it('trace allowed response headers', function () {
-    app()->make(HttpClientInstrumentation::class)->register([
+    registerInstrumentation(HttpClientInstrumentation::class, [
         'allowed_headers' => [
             'content-type',
         ],
@@ -127,8 +179,8 @@ it('trace allowed response headers', function () {
         '*' => Http::response('', 200, ['Content-Length' => 0, 'Content-Type' => 'text/html; charset=UTF-8']),
     ]);
 
-    Tracer::newSpan('root')->measure(function () {
-        Http::withTrace()->get(Server::$url);
+    withRootSpan(function () {
+        Http::get(Server::$url);
     });
 
     $span = getRecordedSpans()->first();
@@ -141,7 +193,7 @@ it('trace allowed response headers', function () {
 });
 
 it('trace sensitive headers with hidden value', function () {
-    app()->make(HttpClientInstrumentation::class)->register([
+    registerInstrumentation(HttpClientInstrumentation::class, [
         'allowed_headers' => [
             'x-foo',
         ],
@@ -154,8 +206,8 @@ it('trace sensitive headers with hidden value', function () {
         '*' => Http::response('', 200, ['Content-Length' => 0]),
     ]);
 
-    Tracer::newSpan('root')->measure(function () {
-        Http::withHeaders(['x-foo' => 'bar'])->withTrace()->get(Server::$url);
+    withRootSpan(function () {
+        Http::withHeaders(['x-foo' => 'bar'])->get(Server::$url);
     });
 
     $span = getRecordedSpans()->first();
@@ -167,7 +219,7 @@ it('trace sensitive headers with hidden value', function () {
 });
 
 it('mark some headers as sensitive by default', function () {
-    app()->make(HttpClientInstrumentation::class)->register([
+    registerInstrumentation(HttpClientInstrumentation::class, [
         'allowed_headers' => [
             'authorization',
             'cookie',
@@ -179,11 +231,11 @@ it('mark some headers as sensitive by default', function () {
         '*' => Http::response('', 200, ['Content-Length' => 0, 'Set-Cookie' => 'cookie']),
     ]);
 
-    Tracer::newSpan('root')->measure(function () {
+    withRootSpan(function () {
         Http::withHeaders([
             'authorization' => 'Bearer token',
             'cookie' => 'cookie',
-        ])->withTrace()->get(Server::$url);
+        ])->get(Server::$url);
     });
 
     $span = getRecordedSpans()->first();
