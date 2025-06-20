@@ -40,10 +40,6 @@ class HttpClientInstrumentation implements Instrumentation
 
     protected function registerGlobalMiddleware(Factory $factory): void
     {
-        if (! method_exists($factory, 'globalMiddleware')) {
-            return;
-        }
-
         $factory->globalMiddleware(GuzzleTraceMiddleware::make());
     }
 }
