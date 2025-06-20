@@ -2,6 +2,18 @@
 
 All notable changes to `laravel-opentelemetry` will be documented in this file.
 
+## v1.7.0 - 2025-06-20
+
+### What's Changed
+
+* Http client global by @cappuc in https://github.com/keepsuit/laravel-opentelemetry/pull/38
+
+#### Upgrade guide
+
+In order to disable http client global tracing and keep the old behaviour, add `'manual' => true` to the instrumentation config
+
+**Full Changelog**: https://github.com/keepsuit/laravel-opentelemetry/compare/1.6.0...1.7.0
+
 ## v1.6.0 - 2025-06-19
 
 ### What's Changed
@@ -89,6 +101,7 @@ Tracer::newSpan('name')->setSpanKind(SpanKind::KIND_PRODUCER)->measure(callback)
 
 
 
+
 ```
 `Tracer::recordExceptionToSpan` has been removed and exception should be recorded directly to span: `$span->recordException($exception)`
 
@@ -109,6 +122,7 @@ This is the injected `otlp` channel:
         'level' => 'debug',
     ]
 ]
+
 
 
 
