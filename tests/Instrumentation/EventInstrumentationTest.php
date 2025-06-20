@@ -5,6 +5,8 @@ use Keepsuit\LaravelOpenTelemetry\Instrumentation\EventInstrumentation;
 use Keepsuit\LaravelOpenTelemetry\Tests\Support\TestEvent;
 
 it('records string event', function () {
+    registerInstrumentation(EventInstrumentation::class);
+
     withRootSpan(function () {
         event('test-event', 'value');
     });
@@ -23,6 +25,8 @@ it('records string event', function () {
 });
 
 it('records class event', function () {
+    registerInstrumentation(EventInstrumentation::class);
+
     withRootSpan(function () {
         event(new TestEvent('test'));
     });
@@ -41,7 +45,7 @@ it('records class event', function () {
 });
 
 it('can ignore events', function () {
-    app()->make(EventInstrumentation::class)->register([
+    registerInstrumentation(EventInstrumentation::class, [
         'ignored' => ['test-event'],
     ]);
 

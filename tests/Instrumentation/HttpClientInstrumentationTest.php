@@ -30,7 +30,7 @@ it('injects propagation headers to all client requests', function () {
         '*' => Http::response('', 200, ['Content-Length' => 0]),
     ]);
 
-    $traceId = Tracer::newSpan('root')->measure(function () {
+    $traceId = withRootSpan(function () {
         Http::get(Server::$url);
 
         return Tracer::traceId();
@@ -54,7 +54,7 @@ test('doesnt auto inject propagation headers when manual', function () {
         '*' => Http::response('', 200, ['Content-Length' => 0]),
     ]);
 
-    Tracer::newSpan('root')->measure(function () {
+    withRootSpan(function () {
         Http::get(Server::$url);
 
         return Tracer::traceId();
@@ -74,7 +74,7 @@ it('injects propagation headers manually to client request', function () {
         '*' => Http::response('', 200, ['Content-Length' => 0]),
     ]);
 
-    $traceId = Tracer::newSpan('root')->measure(function () {
+    $traceId = withRootSpan(function () {
         Http::withTrace()->get(Server::$url);
 
         return Tracer::traceId();
@@ -96,7 +96,7 @@ it('create http client span', function () {
         '*' => Http::response('', 200, ['Content-Length' => 0]),
     ]);
 
-    Tracer::newSpan('root')->measure(function () {
+    withRootSpan(function () {
         Http::get(Server::$url);
     });
 
@@ -126,7 +126,7 @@ it('set span status to error on 4xx and 5xx status code', function () {
         '*' => Http::response('', 500, ['Content-Length' => 0]),
     ]);
 
-    Tracer::newSpan('root')->measure(function () {
+    withRootSpan(function () {
         Http::get(Server::$url);
     });
 
@@ -152,7 +152,7 @@ it('trace allowed request headers', function () {
         '*' => Http::response('', 200, ['Content-Length' => 0]),
     ]);
 
-    Tracer::newSpan('root')->measure(function () {
+    withRootSpan(function () {
         Http::withHeaders([
             'x-foo' => 'bar',
             'x-bar' => 'baz',
@@ -179,7 +179,7 @@ it('trace allowed response headers', function () {
         '*' => Http::response('', 200, ['Content-Length' => 0, 'Content-Type' => 'text/html; charset=UTF-8']),
     ]);
 
-    Tracer::newSpan('root')->measure(function () {
+    withRootSpan(function () {
         Http::get(Server::$url);
     });
 
@@ -206,7 +206,7 @@ it('trace sensitive headers with hidden value', function () {
         '*' => Http::response('', 200, ['Content-Length' => 0]),
     ]);
 
-    Tracer::newSpan('root')->measure(function () {
+    withRootSpan(function () {
         Http::withHeaders(['x-foo' => 'bar'])->get(Server::$url);
     });
 
@@ -231,7 +231,7 @@ it('mark some headers as sensitive by default', function () {
         '*' => Http::response('', 200, ['Content-Length' => 0, 'Set-Cookie' => 'cookie']),
     ]);
 
-    Tracer::newSpan('root')->measure(function () {
+    withRootSpan(function () {
         Http::withHeaders([
             'authorization' => 'Bearer token',
             'cookie' => 'cookie',

@@ -3,12 +3,15 @@
 namespace Keepsuit\LaravelOpenTelemetry\Instrumentation;
 
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
+use Keepsuit\LaravelOpenTelemetry\Support\InstrumentationUtilities;
 use Livewire\Component;
 use Livewire\EventBus;
 use Livewire\LivewireManager;
 
 class LivewireInstrumentation implements Instrumentation
 {
+    use InstrumentationUtilities;
+
     protected \WeakMap $components;
 
     public function register(array $options): void
@@ -20,11 +23,7 @@ class LivewireInstrumentation implements Instrumentation
         }
 
         if (class_exists(EventBus::class)) {
-            if (app()->resolved(LivewireManager::class)) {
-                $this->registerLivewireV3(app()->make(LivewireManager::class));
-            } else {
-                app()->afterResolving(LivewireManager::class, $this->registerLivewireV3(...));
-            }
+            $this->callAfterResolving(LivewireManager::class, $this->registerLivewireV3(...));
         }
     }
 

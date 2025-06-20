@@ -5,6 +5,8 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
+use Keepsuit\LaravelOpenTelemetry\Instrumentation\QueryInstrumentation;
+use Keepsuit\LaravelOpenTelemetry\Instrumentation\QueueInstrumentation;
 use Keepsuit\LaravelOpenTelemetry\Tests\Support\TestJob;
 use OpenTelemetry\API\Trace\StatusCode;
 use OpenTelemetry\SDK\Trace\ImmutableSpan;
@@ -12,6 +14,9 @@ use OpenTelemetry\SemConv\TraceAttributes;
 use Spatie\Valuestore\Valuestore;
 
 beforeEach(function () {
+    registerInstrumentation(QueueInstrumentation::class);
+    registerInstrumentation(QueryInstrumentation::class);
+
     $this->valuestore = Valuestore::make(__DIR__.'/testJob.json')->flush();
 
     Schema::create('users', function (Blueprint $table) {

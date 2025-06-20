@@ -10,6 +10,7 @@ use Illuminate\Queue\QueueManager;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
+use Keepsuit\LaravelOpenTelemetry\Support\InstrumentationUtilities;
 use OpenTelemetry\API\Trace\SpanInterface;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
@@ -18,6 +19,7 @@ use Throwable;
 
 class QueueInstrumentation implements Instrumentation
 {
+    use InstrumentationUtilities;
     use SpanTimeAdapter;
 
     /**
@@ -33,11 +35,7 @@ class QueueInstrumentation implements Instrumentation
 
     protected function recordJobQueueing(): void
     {
-        if (app()->resolved('queue')) {
-            $this->registerQueueInterceptor(app('queue'));
-        } else {
-            app()->afterResolving('queue', fn ($queue) => $this->registerQueueInterceptor($queue));
-        }
+        $this->callAfterResolving('queue', $this->registerQueueInterceptor(...));
 
         app('events')->listen(JobQueued::class, function (JobQueued $event) {
             $uuid = $event->payload()['uuid'] ?? null;

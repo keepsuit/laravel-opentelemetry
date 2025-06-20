@@ -1,12 +1,16 @@
 <?php
 
-use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
+use Keepsuit\LaravelOpenTelemetry\Instrumentation\LivewireInstrumentation;
+use Keepsuit\LaravelOpenTelemetry\Instrumentation\ViewInstrumentation;
 use Keepsuit\LaravelOpenTelemetry\Tests\Support\LivewireTestComponent;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\SDK\Trace\ImmutableSpan;
 
 it('can watch livewire component rendering', function () {
-    Tracer::newSpan('root')->measure(function () {
+    registerInstrumentation(LivewireInstrumentation::class);
+    registerInstrumentation(ViewInstrumentation::class);
+
+    withRootSpan(function () {
         \Livewire\Livewire::test(LivewireTestComponent::class);
     });
 

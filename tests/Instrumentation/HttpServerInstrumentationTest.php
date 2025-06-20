@@ -26,6 +26,8 @@ beforeEach(function () {
 });
 
 it('can trace a request', function () {
+    registerInstrumentation(HttpServerInstrumentation::class);
+
     $response = $this->get('test-ok');
 
     $response->assertOk();
@@ -63,6 +65,8 @@ it('can trace a request', function () {
 });
 
 it('can trace a request with route model binding', function () {
+    registerInstrumentation(HttpServerInstrumentation::class);
+
     $product = Product::create(['name' => 'test']);
     $response = withoutExceptionHandling()->get('products/'.$product->id);
 
@@ -102,6 +106,8 @@ it('can trace a request with route model binding', function () {
 });
 
 it('can record route exception', function () {
+    registerInstrumentation(HttpServerInstrumentation::class);
+
     $response = $this->get('test-exception');
 
     $response->assertServerError();
@@ -128,6 +134,8 @@ it('can record route exception', function () {
 });
 
 it('set generic span name when route has parameters', function () {
+    registerInstrumentation(HttpServerInstrumentation::class);
+
     $response = $this->get('test/user1');
 
     $response->assertOk();
@@ -150,6 +158,8 @@ it('set generic span name when route has parameters', function () {
 });
 
 it('continue trace', function () {
+    registerInstrumentation(HttpServerInstrumentation::class);
+
     $response = $this->get('test-ok', [
         'traceparent' => '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01',
     ]);
@@ -167,7 +177,7 @@ it('continue trace', function () {
 });
 
 it('skip tracing for excluded paths', function () {
-    app()->make(HttpServerInstrumentation::class)->register([
+    registerInstrumentation(HttpServerInstrumentation::class, [
         'excluded_paths' => [
             'test-ok',
         ],
@@ -186,7 +196,7 @@ it('skip tracing for excluded paths', function () {
 });
 
 it('trace allowed request headers', function () {
-    app()->make(HttpServerInstrumentation::class)->register([
+    registerInstrumentation(HttpServerInstrumentation::class, [
         'allowed_headers' => [
             'x-foo',
         ],
@@ -212,7 +222,7 @@ it('trace allowed request headers', function () {
 });
 
 it('trace allowed response headers', function () {
-    app()->make(HttpServerInstrumentation::class)->register([
+    registerInstrumentation(HttpServerInstrumentation::class, [
         'allowed_headers' => [
             'content-type',
         ],
@@ -235,7 +245,7 @@ it('trace allowed response headers', function () {
 });
 
 it('trace sensitive headers with hidden value', function () {
-    app()->make(HttpServerInstrumentation::class)->register([
+    registerInstrumentation(HttpServerInstrumentation::class, [
         'allowed_headers' => [
             'x-foo',
         ],
@@ -262,7 +272,7 @@ it('trace sensitive headers with hidden value', function () {
 });
 
 it('mark some headers as sensitive by default', function () {
-    app()->make(HttpServerInstrumentation::class)->register([
+    registerInstrumentation(HttpServerInstrumentation::class, [
         'allowed_headers' => [
             'authorization',
             'cookie',

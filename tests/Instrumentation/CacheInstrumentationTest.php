@@ -2,9 +2,12 @@
 
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
+use Keepsuit\LaravelOpenTelemetry\Instrumentation\CacheInstrumentation;
 
 beforeEach(function () {
     \Spatie\TestTime\TestTime::freeze();
+
+    registerInstrumentation(CacheInstrumentation::class);
 });
 
 it('records cache hits', function () {

@@ -5,9 +5,9 @@ namespace Keepsuit\LaravelOpenTelemetry\Support;
 trait InstrumentationUtilities
 {
     /**
-     * @template  T of object
+     * @template  T
      *
-     * @param  class-string<T>  $name
+     * @param  class-string<T>|string  $name
      * @param  \Closure(T): void  $callback
      */
     protected function callAfterResolving(string $name, \Closure $callback): void

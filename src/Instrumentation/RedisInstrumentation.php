@@ -5,22 +5,20 @@ namespace Keepsuit\LaravelOpenTelemetry\Instrumentation;
 use Illuminate\Redis\Events\CommandExecuted;
 use Illuminate\Redis\RedisManager;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
+use Keepsuit\LaravelOpenTelemetry\Support\InstrumentationUtilities;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\SemConv\TraceAttributes;
 
 class RedisInstrumentation implements Instrumentation
 {
+    use InstrumentationUtilities;
     use SpanTimeAdapter;
 
     public function register(array $options): void
     {
         app('events')->listen(CommandExecuted::class, [$this, 'recordCommand']);
 
-        if (app()->resolved('redis')) {
-            $this->registerRedisEvents(app()->make('redis'));
-        } else {
-            app()->afterResolving('redis', fn ($redis) => $this->registerRedisEvents($redis));
-        }
+        $this->callAfterResolving('redis', $this->registerRedisEvents(...));
     }
 
     public function recordCommand(CommandExecuted $event): void
