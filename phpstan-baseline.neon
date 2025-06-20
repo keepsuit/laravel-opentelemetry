@@ -1,0 +1,7 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Call to function method_exists\(\) with Illuminate\\Http\\Client\\Factory and ''globalMiddleware'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Instrumentation/HttpClientInstrumentation.php
