@@ -123,6 +123,11 @@ return [
             'sensitive_headers' => [],
         ],
 
+        Instrumentation\ConsoleInstrumentation::class => [
+            'enabled' => env('OTEL_INSTRUMENTATION_CONSOLE', true),
+            'excluded' => [],
+        ],
+
         Instrumentation\QueryInstrumentation::class => env('OTEL_INSTRUMENTATION_QUERY', true),
 
         Instrumentation\RedisInstrumentation::class => env('OTEL_INSTRUMENTATION_REDIS', true),
