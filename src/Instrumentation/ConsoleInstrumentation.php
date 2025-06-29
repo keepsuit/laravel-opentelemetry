@@ -8,6 +8,7 @@ use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use OpenTelemetry\API\Trace\SpanInterface;
 use OpenTelemetry\API\Trace\StatusCode;
 use OpenTelemetry\Context\ScopeInterface;
+use Symfony\Component\Console\Input\InputInterface;
 
 class ConsoleInstrumentation implements Instrumentation
 {
@@ -27,7 +28,12 @@ class ConsoleInstrumentation implements Instrumentation
             return;
         }
 
-        $span = Tracer::newSpan($event->command)->start();
+        $span = Tracer::newSpan($event->command)
+            ->setAttribute('console.command', $event->command)
+            ->start();
+
+        $this->recordCommandArguments($span, $event->input);
+
         $scope = $span->activate();
 
         $this->commands[$event->input] = [$span, $scope];
@@ -55,5 +61,24 @@ class ConsoleInstrumentation implements Instrumentation
 
         $scope->detach();
         $span->end();
+    }
+
+    protected function recordCommandArguments(SpanInterface $span, InputInterface $input): void
+    {
+        foreach ($input->getArguments() as $key => $value) {
+            if ($key === 'command') {
+                continue;
+            }
+
+            $span->setAttribute('console.argument.'.$key, $value);
+        }
+
+        foreach ($input->getOptions() as $key => $value) {
+            if ($value === false) {
+                continue;
+            }
+
+            $span->setAttribute('console.option.'.$key, $value);
+        }
     }
 }
