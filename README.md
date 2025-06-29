@@ -164,6 +164,11 @@ return [
         Instrumentation\ViewInstrumentation::class => env('OTEL_INSTRUMENTATION_VIEW', true),
 
         Instrumentation\LivewireInstrumentation::class => env('OTEL_INSTRUMENTATION_LIVEWIRE', true),
+        
+         Instrumentation\ConsoleInstrumentation::class => [
+            'enabled' => env('OTEL_INSTRUMENTATION_CONSOLE', true),
+            'excluded' => [],
+        ],
     ],
 ];
 ```
