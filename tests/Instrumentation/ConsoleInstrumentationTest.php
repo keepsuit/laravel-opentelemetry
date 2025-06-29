@@ -6,11 +6,9 @@ use Keepsuit\LaravelOpenTelemetry\Instrumentation\ConsoleInstrumentation;
 use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Output\BufferedOutput;
 
-beforeEach(function () {
-    registerInstrumentation(ConsoleInstrumentation::class);
-});
-
 test('trace console command', function () {
+    registerInstrumentation(ConsoleInstrumentation::class);
+
     simulateTestConsoleCommand();
 
     $spans = getRecordedSpans();
@@ -26,6 +24,8 @@ test('trace console command', function () {
 });
 
 test('trace console command with failing status', function () {
+    registerInstrumentation(ConsoleInstrumentation::class);
+
     simulateTestConsoleCommand(exitCode: 1);
 
     $spans = getRecordedSpans();
@@ -38,6 +38,30 @@ test('trace console command with failing status', function () {
         ->toBeInstanceOf(\OpenTelemetry\SDK\Trace\ImmutableSpan::class)
         ->getName()->toBe('test:command')
         ->getStatus()->getCode()->toBe(\OpenTelemetry\API\Trace\StatusCode::STATUS_ERROR);
+});
+
+test('exclude commands from tracing', function () {
+    registerInstrumentation(ConsoleInstrumentation::class, [
+        'excluded' => ['test:command'],
+    ]);
+
+    simulateTestConsoleCommand();
+
+    $spans = getRecordedSpans();
+
+    expect($spans)->toHaveCount(0);
+});
+
+test('exclude commands with class from tracing', function () {
+    registerInstrumentation(ConsoleInstrumentation::class, [
+        'excluded' => [\Keepsuit\LaravelOpenTelemetry\Tests\Support\TestCommand::class],
+    ]);
+
+    simulateTestConsoleCommand();
+
+    $spans = getRecordedSpans();
+
+    expect($spans)->toHaveCount(0);
 });
 
 function simulateTestConsoleCommand(int $exitCode = 0): void

@@ -4,6 +4,7 @@ namespace Keepsuit\LaravelOpenTelemetry\Instrumentation;
 
 use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Console\Events\CommandStarting;
+use Illuminate\Support\Arr;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use OpenTelemetry\API\Trace\SpanInterface;
 use OpenTelemetry\API\Trace\StatusCode;
@@ -14,9 +15,22 @@ class ConsoleInstrumentation implements Instrumentation
 {
     protected \WeakMap $commands;
 
+    protected array $excluded = [];
+
     public function register(array $options): void
     {
         $this->commands = new \WeakMap;
+        $this->excluded = Arr::map($options['excluded'] ?? [], function (string $command) {
+            if (class_exists($command)) {
+                try {
+                    return app($command)->getName();
+                } catch (\Throwable) {
+                    return null;
+                }
+            }
+
+            return $command;
+        });
 
         app('events')->listen(CommandStarting::class, [$this, 'commandStarting']);
         app('events')->listen(CommandFinished::class, [$this, 'commandFinished']);
@@ -25,6 +39,10 @@ class ConsoleInstrumentation implements Instrumentation
     public function commandStarting(CommandStarting $event): void
     {
         if (! $event->command) {
+            return;
+        }
+
+        if (in_array($event->command, $this->excluded, true)) {
             return;
         }
 
