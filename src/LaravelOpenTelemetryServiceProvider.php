@@ -90,12 +90,15 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         );
 
         $propagator = PropagatorBuilder::new()->build(config('opentelemetry.propagators'));
+        $this->app->bind(TextMapPropagatorInterface::class, fn () => $propagator);
 
         /**
          * Metrics
          */
         $metricsExporter = $this->buildMetricsExporter();
+        $this->app->bind(MetricExporterInterface::class, fn () => $metricsExporter);
         $metricsReader = new ExportingReader($metricsExporter);
+        $this->app->bind(MetricReaderInterface::class, fn () => $metricsReader);
 
         $meterProvider = MeterProvider::builder()
             ->setResource($resource)
@@ -151,11 +154,9 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
             schemaUrl: TraceAttributes::SCHEMA_URL,
         );
 
-        $this->app->bind(TextMapPropagatorInterface::class, fn () => $propagator);
         $this->app->bind(MeterInterface::class, fn () => $instrumentation->meter());
         $this->app->bind(TracerInterface::class, fn () => $instrumentation->tracer());
         $this->app->bind(LoggerInterface::class, fn () => $instrumentation->logger());
-        $this->app->bind(MetricReaderInterface::class, fn () => $metricsReader);
 
         $this->app->terminating(function () use ($loggerProvider, $tracerProvider, $meterProvider) {
             $tracerProvider->forceFlush();

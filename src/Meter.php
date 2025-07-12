@@ -43,14 +43,13 @@ class Meter
      * @param  string  $name  name of the instrument
      * @param  ?string  $unit  unit of measure
      * @param  ?string  $description  description of the instrument
-     * @param  array|callable  $advisory  an optional set of recommendations, or
-     *                                    deprecated: the first callback to report measurements
+     * @param  array  $advisory  an optional set of recommendations
      * @param  callable  ...$callbacks  responsible for reporting measurements
      * @return ObservableCounterInterface created instrument
      *
      * @see https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/api.md#asynchronous-counter-creation
      */
-    public function createObservableCounter(string $name, ?string $unit = null, ?string $description = null, callable|array $advisory = [], callable ...$callbacks): ObservableCounterInterface
+    public function createObservableCounter(string $name, ?string $unit = null, ?string $description = null, array $advisory = [], callable ...$callbacks): ObservableCounterInterface
     {
         return $this->meter->createObservableCounter($name, $unit, $description, $advisory, ...$callbacks);
     }
@@ -94,8 +93,7 @@ class Meter
      * @param  string  $name  name of the instrument
      * @param  string|null  $unit  unit of measure
      * @param  string|null  $description  description of the instrument
-     * @param  array  $advisory  an optional set of recommendations, e.g.
-     *                           <code>['ExplicitBucketBoundaries' => [0.25, 0.5, 1, 5]]</code>
+     * @param  array  $advisory  an optional set of recommendations
      * @return HistogramInterface created instrument
      *
      * @see https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/api.md#histogram-creation
@@ -129,14 +127,13 @@ class Meter
      * @param  string  $name  name of the instrument
      * @param  string|null  $unit  unit of measure
      * @param  string|null  $description  description of the instrument
-     * @param  array|callable  $advisory  an optional set of recommendations, or
-     *                                    deprecated: the first callback to report measurements
+     * @param  array  $advisory  an optional set of recommendations
      * @param  callable  ...$callbacks  responsible for reporting measurements
      * @return ObservableGaugeInterface created instrument
      *
      * @see https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/api.md#asynchronous-gauge-creation
      */
-    public function createObservableGauge(string $name, ?string $unit = null, ?string $description = null, callable|array $advisory = [], callable ...$callbacks): ObservableGaugeInterface
+    public function createObservableGauge(string $name, ?string $unit = null, ?string $description = null, array $advisory = [], callable ...$callbacks): ObservableGaugeInterface
     {
         return $this->meter->createObservableGauge($name, $unit, $description, $advisory, ...$callbacks);
     }
@@ -163,14 +160,13 @@ class Meter
      * @param  string  $name  name of the instrument
      * @param  string|null  $unit  unit of measure
      * @param  string|null  $description  description of the instrument
-     * @param  array|callable  $advisory  an optional set of recommendations, or
-     *                                    deprecated: the first callback to report measurements
+     * @param  array  $advisory  an optional set of recommendations
      * @param  callable  ...$callbacks  responsible for reporting measurements
      * @return ObservableUpDownCounterInterface created instrument
      *
      * @see https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/api.md#asynchronous-updowncounter-creation
      */
-    public function createObservableUpDownCounter(string $name, ?string $unit = null, ?string $description = null, callable|array $advisory = [], callable ...$callbacks): ObservableUpDownCounterInterface
+    public function createObservableUpDownCounter(string $name, ?string $unit = null, ?string $description = null, array $advisory = [], callable ...$callbacks): ObservableUpDownCounterInterface
     {
         return $this->meter->createObservableUpDownCounter($name, $unit, $description, $advisory, ...$callbacks);
     }
