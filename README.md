@@ -32,11 +32,6 @@ use Keepsuit\LaravelOpenTelemetry\Instrumentation;
 
 return [
     /**
-     * Enable OpenTelemetry
-     */
-    'enabled' => env('OTEL_ENABLED', true),
-
-    /**
      * Service name
      */
     'service_name' => env('OTEL_SERVICE_NAME', \Illuminate\Support\Str::slug(env('APP_NAME', 'laravel-app'))),
@@ -189,6 +184,9 @@ return [
     ],
 ];
 ```
+
+> [!NOTE]  
+> OpenTelemetry instrumentation can be completely disabled by setting the `OTEL_SDK_DISABLED` environment variable to `true`.
 
 ## Traces
 

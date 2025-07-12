@@ -62,7 +62,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 {
     public function packageBooted(): void
     {
-        if (! config('opentelemetry.enabled')) {
+        if (Sdk::isDisabled()) {
             return;
         }
 
@@ -166,10 +166,6 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 
     protected function registerInstrumentation(): void
     {
-        if (Sdk::isDisabled()) {
-            return;
-        }
-
         $this->app->booted(function (Application $app) {
             $app->register(InstrumentationServiceProvider::class);
         });
