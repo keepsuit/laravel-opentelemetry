@@ -76,15 +76,14 @@ class Meter
      * ```
      *
      * @param  callable  $callback  function responsible for reporting the measurements
-     * @param  AsynchronousInstrument  $instrument  first instrument to report measurements for
-     * @param  AsynchronousInstrument  ...$instruments  additional instruments to report measurements for
+     * @param  AsynchronousInstrument  ...$instruments  instruments to report measurements for
      * @return ObservableCallbackInterface token to detach callback
      *
      * @see https://opentelemetry.io/docs/specs/otel/metrics/api/#multiple-instrument-callbacks
      */
-    public function batchObserve(callable $callback, AsynchronousInstrument $instrument, AsynchronousInstrument ...$instruments): ObservableCallbackInterface
+    public function batchObserve(callable $callback, AsynchronousInstrument ...$instruments): ObservableCallbackInterface
     {
-        return $this->meter->batchObserve($callback, $instrument, ...$instruments);
+        return $this->meter->batchObserve($callback, ...$instruments);
     }
 
     /**

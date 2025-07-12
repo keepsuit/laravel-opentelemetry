@@ -20,6 +20,13 @@ function resetStorage(): void
     assert($tracerExporter instanceof \OpenTelemetry\SDK\Trace\SpanExporter\InMemoryExporter);
     $tracerExporter->getStorage()->exchangeArray([]);
 
+    $meterProvider = Globals::meterProvider();
+    assert($meterProvider instanceof \OpenTelemetry\SDK\Metrics\MeterProvider);
+    $meterProvider->forceFlush();
+    $meterExporter = app(\OpenTelemetry\SDK\Metrics\MetricExporterInterface::class);
+    assert($meterExporter instanceof \OpenTelemetry\SDK\Metrics\MetricExporter\InMemoryExporter);
+    $meterExporter->collect(reset: true);
+
     $loggerProvider = Globals::loggerProvider();
     assert($loggerProvider instanceof \OpenTelemetry\SDK\Logs\LoggerProvider);
     $loggerProvider->forceFlush();
@@ -46,6 +53,18 @@ function getRecordedSpans(): Collection
 function withRootSpan(Closure $callback): mixed
 {
     return Tracer::newSpan('root')->measure($callback);
+}
+
+function getRecordedMetrics()
+{
+    $meterProvider = Globals::meterProvider();
+    assert($meterProvider instanceof \OpenTelemetry\SDK\Metrics\MeterProvider);
+    $meterProvider->forceFlush();
+
+    $meterExporter = app(\OpenTelemetry\SDK\Metrics\MetricExporterInterface::class);
+    assert($meterExporter instanceof \OpenTelemetry\SDK\Metrics\MetricExporter\InMemoryExporter);
+
+    return collect($meterExporter->collect());
 }
 
 /**
