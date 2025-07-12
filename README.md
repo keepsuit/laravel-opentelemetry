@@ -201,7 +201,6 @@ You can disable or customize each integration in the config file in the `instrum
 - [Redis](#redis)
 - [Queue jobs](#redis)
 - [Logs context](#logs-context)
-- [Custom meters](#custom-meters)
 - [Manual traces](#manual-traces)
 
 ### Http server requests
@@ -258,29 +257,6 @@ you should call `Tracer::updateLogContext()` to inject the trace id in the log c
 > When using the OpenTelemetry logs driver (`otlp`),
 > the trace id is automatically injected in the log context without the need to call `Tracer::updateLogContext()`.
 
-### Custom Meters
-
-You can create custom meters using the `Meter` facade:
-
-```php
-use Keepsuit\LaravelOpenTelemetry\Facades\Meter;
-
-// create a counter meter
-$meter = Meter::createCounter('my-meter', 'times', 'my custom meter');
-$meter->add(1);
-
-
-// create a histogram meter
-$meter = Meter::createHistogram('my-histogram', 'ms', 'my custom histogram');
-$meter->record(100, ['name' => 'value', 'app' => 'my-app']);
-
-
-// create a gauge meter
-$meter = Meter::createGauge('my-gauge', null, 'my custom gauge');
-$meter->record(100, ['name' => 'value', 'app' => 'my-app']);
-$meter->record(1.2, ['name' => 'percentage', 'app' => 'my-app']);
-```
-
 ### Manual traces
 
 Spans can be manually created with the `newSpan` method on the `Tracer` facade.
@@ -334,6 +310,27 @@ Tracer::activeScope(); // get the active scope
 Tracer::currentContext(); // get the current trace context (useful for advanced use cases)
 Tracer::propagationHeaders(); // get the propagation headers required to propagate the trace to other services
 Tracer::extractContextFromPropagationHeaders(array $headers); // extract the trace context from propagation headers
+```
+
+## Metrics
+
+You can create custom meters using the `Meter` facade:
+
+```php
+use Keepsuit\LaravelOpenTelemetry\Facades\Meter;
+
+// create a counter meter
+$meter = Meter::createCounter('my-meter', 'times', 'my custom meter');
+$meter->add(1);
+
+// create a histogram meter
+$meter = Meter::createHistogram('my-histogram', 'ms', 'my custom histogram');
+$meter->record(100, ['name' => 'value', 'app' => 'my-app']);
+
+// create a gauge meter
+$meter = Meter::createGauge('my-gauge', null, 'my custom gauge');
+$meter->record(100, ['name' => 'value', 'app' => 'my-app']);
+$meter->record(1.2, ['name' => 'percentage', 'app' => 'my-app']);
 ```
 
 ## Logs
