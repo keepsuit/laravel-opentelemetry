@@ -55,7 +55,10 @@ function withRootSpan(Closure $callback): mixed
     return Tracer::newSpan('root')->measure($callback);
 }
 
-function getRecordedMetrics()
+/**
+ * @return Collection<array-key,\OpenTelemetry\SDK\Metrics\Data\Metric>
+ */
+function getRecordedMetrics(): Collection
 {
     $meterProvider = Globals::meterProvider();
     assert($meterProvider instanceof \OpenTelemetry\SDK\Metrics\MeterProvider);
