@@ -24,7 +24,7 @@ return [
          * This should be the key of one of the exporters defined in the exporters section
          * Supported drivers: "otlp", "console", "null"
          */
-        'exporter' => env('OTEL_INSTRUMENTATIONS_EXPORTER', 'otlp'),
+        'exporter' => env(Variables::OTEL_METRICS_EXPORTER, 'otlp'),
     ],
 
     /**
