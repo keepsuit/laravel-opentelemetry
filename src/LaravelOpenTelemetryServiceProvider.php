@@ -62,7 +62,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 {
     public function packageBooted(): void
     {
-        if (!config('opentelemetry.enabled')) {
+        if (! config('opentelemetry.enabled')) {
             return;
         }
 
@@ -193,8 +193,8 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 
         return match ($metricsExporterDriver) {
             'otlp' => new MetricExporter($this->buildOtlpTransport($metricsExporterConfig ?? [], Signals::METRICS)),
-            'console' => (new ConsoleMetricExporterFactory())->create(),
-            default => (new InMemoryExporterFactory())->create(),
+            'console' => (new ConsoleMetricExporterFactory)->create(),
+            default => (new InMemoryExporterFactory)->create(),
         };
     }
 
