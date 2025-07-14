@@ -7,7 +7,6 @@ use Http\Discovery\Psr17FactoryDiscovery;
 use Http\Discovery\Psr18ClientDiscovery;
 use Illuminate\Config\Repository;
 use Illuminate\Foundation\Application;
-use Illuminate\Queue\Events\JobAttempted;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Env;
 use Illuminate\Support\Facades\Queue;
