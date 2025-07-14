@@ -29,7 +29,7 @@ class TraceRequestMiddleware
         Tracer::updateLogContext();
 
         if ($bootedTimestamp) {
-            Tracer::newSpan('app boostrap')
+            Tracer::newSpan('app bootstrap')
                 ->setStartTimestamp($bootedTimestamp)
                 ->start()
                 ->end();
