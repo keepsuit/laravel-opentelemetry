@@ -9,6 +9,7 @@ use Illuminate\Config\Repository;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Env;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Keepsuit\LaravelOpenTelemetry\Support\CarbonClock;
 use Keepsuit\LaravelOpenTelemetry\Support\OpenTelemetryMonologHandler;
@@ -158,11 +159,15 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         $this->app->bind(TracerInterface::class, fn () => $instrumentation->tracer());
         $this->app->bind(LoggerInterface::class, fn () => $instrumentation->logger());
 
-        $this->app->terminating(function () use ($loggerProvider, $tracerProvider, $meterProvider) {
+        $flushCallback = function () use ($loggerProvider, $tracerProvider, $meterProvider) {
             $tracerProvider->forceFlush();
             $loggerProvider->forceFlush();
             $meterProvider->forceFlush();
-        });
+        };
+
+        Queue::looping($flushCallback);
+
+        $this->app->terminating($flushCallback);
     }
 
     protected function registerInstrumentation(): void
