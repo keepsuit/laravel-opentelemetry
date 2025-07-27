@@ -43,11 +43,6 @@ class TraceRequestMiddleware
             }
 
             return $response;
-        } catch (\Throwable $exception) {
-            $span->recordException($exception)
-                ->setStatus(StatusCode::STATUS_ERROR);
-
-            throw $exception;
         } finally {
             $scope->detach();
             $span->end();

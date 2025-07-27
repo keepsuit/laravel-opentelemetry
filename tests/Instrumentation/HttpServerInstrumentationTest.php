@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\HttpServerInstrumentation;
+use Keepsuit\LaravelOpenTelemetry\Tests\Support\KeepsuitException;
 use Keepsuit\LaravelOpenTelemetry\Tests\Support\Product;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
@@ -15,7 +16,7 @@ uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
 beforeEach(function () {
     Route::middleware('web')->group(function () {
         Route::any('test-ok', fn () => Tracer::traceId())->middleware(['web']);
-        Route::any('test-exception', fn () => throw new Exception('test exception'));
+        Route::any('test-exception', fn () => throw KeepsuitException::create());
         Route::any('test/{parameter}', fn () => Tracer::traceId());
         Route::get('products/{product}', function (Product $product) {
             Tracer::activeSpan()->setAttribute('product', $product->id);
@@ -131,6 +132,34 @@ it('can record route exception', function () {
             'network.peer.address' => '127.0.0.1',
             'http.response.status_code' => 500,
         ]);
+});
+
+it('saves route exception as open telemetry event', function () {
+    registerInstrumentation(HttpServerInstrumentation::class);
+
+    $this
+        ->get('test-exception')
+        ->assertServerError();
+
+    $lastSpanEvents = getRecordedSpans()->last()->getEvents();
+    /** @var OpenTelemetry\SDK\Trace\Event $lastEvent */
+    $lastEvent = last($lastSpanEvents);
+
+
+    expect($lastSpanEvents)->not->toBeEmpty();
+    expect($lastEvent)->toBeInstanceOf(OpenTelemetry\SDK\Trace\Event::class);
+    expect($lastEvent->getAttributes()->get('exception.type'))->toBe(KeepsuitException::class);
+});
+
+it('skips route exception when it is not reportable', function () {
+    registerInstrumentation(HttpServerInstrumentation::class);
+    app(Illuminate\Contracts\Debug\ExceptionHandler::class)->dontReport(KeepsuitException::class);
+
+    $this
+        ->get('test-exception')
+        ->assertServerError();
+
+    expect(getRecordedSpans()->last()->getEvents())->toBeEmpty();
 });
 
 it('set generic span name when route has parameters', function () {
