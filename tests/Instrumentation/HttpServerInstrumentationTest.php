@@ -141,11 +141,13 @@ it('saves route exception as open telemetry event', function () {
         ->get('test-exception')
         ->assertServerError();
 
-    $lastSpanEvents = getRecordedSpans()->last()->getEvents();
+    $lastSpan = getRecordedSpans()->last();
+    $lastSpanEvents = $lastSpan->getEvents();
     /** @var OpenTelemetry\SDK\Trace\Event $lastEvent */
     $lastEvent = last($lastSpanEvents);
 
 
+    expect($lastSpan)->getStatus()->getCode()->toBe(StatusCode::STATUS_ERROR);
     expect($lastSpanEvents)->not->toBeEmpty();
     expect($lastEvent)->toBeInstanceOf(OpenTelemetry\SDK\Trace\Event::class);
     expect($lastEvent->getAttributes()->get('exception.type'))->toBe(KeepsuitException::class);
@@ -153,13 +155,16 @@ it('saves route exception as open telemetry event', function () {
 
 it('skips route exception when it is not reportable', function () {
     registerInstrumentation(HttpServerInstrumentation::class);
-    app(Illuminate\Contracts\Debug\ExceptionHandler::class)->dontReport(KeepsuitException::class);
+    app(Illuminate\Contracts\Debug\ExceptionHandler::class)->ignore(KeepsuitException::class);
 
     $this
         ->get('test-exception')
         ->assertServerError();
 
-    expect(getRecordedSpans()->last()->getEvents())->toBeEmpty();
+    $lastSpan = getRecordedSpans()->last();
+
+    expect($lastSpan)->getStatus()->getCode()->toBe(StatusCode::STATUS_ERROR);
+    expect($lastSpan->getEvents())->toBeEmpty();
 });
 
 it('set generic span name when route has parameters', function () {
