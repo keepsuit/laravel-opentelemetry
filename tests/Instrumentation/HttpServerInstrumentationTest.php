@@ -17,6 +17,12 @@ beforeEach(function () {
     Route::middleware('web')->group(function () {
         Route::any('test-ok', fn () => Tracer::traceId())->middleware(['web']);
         Route::any('test-exception', fn () => throw TestException::create());
+        Route::any('test-nested-exception', function () {
+            $span = Tracer::newSpan('nested')->start();
+            $span->activate();
+
+            return throw TestException::create();
+        });
         Route::any('test/{parameter}', fn () => Tracer::traceId());
         Route::get('products/{product}', function (Product $product) {
             Tracer::activeSpan()->setAttribute('product', $product->id);
@@ -132,6 +138,29 @@ it('can record route exception', function () {
             'network.peer.address' => '127.0.0.1',
             'http.response.status_code' => 500,
         ])
+        ->getEvents()->not->toBeEmpty();
+
+    expect(collect($span->getEvents())->last())
+        ->toBeInstanceOf(OpenTelemetry\SDK\Trace\Event::class)
+        ->getAttributes()->get('exception.type')->toBe(TestException::class)
+        ->getAttributes()->get('exception.message')->toBe('Exception thrown!');
+});
+
+it('can record a route exception in a nested span', function () {
+    registerInstrumentation(HttpServerInstrumentation::class);
+
+    $response = $this->get('test-nested-exception');
+
+    $response->assertServerError();
+
+    expect(getRecordedSpans())->toHaveCount(2);
+
+    $span = getRecordedSpans()->last();
+
+    expect($span)
+        ->getName()->toBe('/test-nested-exception')
+        ->getKind()->toBe(SpanKind::KIND_SERVER)
+        ->getStatus()->getCode()->toBe(StatusCode::STATUS_ERROR)
         ->getEvents()->not->toBeEmpty();
 
     expect(collect($span->getEvents())->last())
