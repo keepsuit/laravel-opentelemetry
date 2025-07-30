@@ -60,7 +60,8 @@ class HttpServerInstrumentation implements Instrumentation
         if ($handler instanceof FoundationExceptionHandler) {
             $handler->reportable(fn (Throwable $e) => Tracer::activeSpan()
                 ->recordException($e)
-                ->setStatus(StatusCode::STATUS_ERROR),
+                ->setStatus(StatusCode::STATUS_ERROR)
+                ->end(),
             );
         }
     }
