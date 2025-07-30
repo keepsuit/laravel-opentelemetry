@@ -55,7 +55,6 @@ class HttpServerInstrumentation implements Instrumentation
         }
     }
 
-
     protected function recordExceptionInSpan(ExceptionHandlerContract $handler): void
     {
         if ($handler instanceof FoundationExceptionHandler) {

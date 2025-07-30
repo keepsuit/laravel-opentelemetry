@@ -4,8 +4,8 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\HttpServerInstrumentation;
-use Keepsuit\LaravelOpenTelemetry\Tests\Support\KeepsuitException;
 use Keepsuit\LaravelOpenTelemetry\Tests\Support\Product;
+use Keepsuit\LaravelOpenTelemetry\Tests\Support\TestException;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
 
@@ -16,7 +16,7 @@ uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
 beforeEach(function () {
     Route::middleware('web')->group(function () {
         Route::any('test-ok', fn () => Tracer::traceId())->middleware(['web']);
-        Route::any('test-exception', fn () => throw KeepsuitException::create());
+        Route::any('test-exception', fn () => throw TestException::create());
         Route::any('test/{parameter}', fn () => Tracer::traceId());
         Route::get('products/{product}', function (Product $product) {
             Tracer::activeSpan()->setAttribute('product', $product->id);
@@ -113,9 +113,9 @@ it('can record route exception', function () {
 
     $response->assertServerError();
 
-    $spans = getRecordedSpans();
+    $span = getRecordedSpans()->last();
 
-    expect($spans->last())
+    expect($span)
         ->getName()->toBe('/test-exception')
         ->getKind()->toBe(SpanKind::KIND_SERVER)
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_ERROR)
@@ -131,31 +131,18 @@ it('can record route exception', function () {
             'network.protocol.version' => 'HTTP/1.1',
             'network.peer.address' => '127.0.0.1',
             'http.response.status_code' => 500,
-        ]);
-});
+        ])
+        ->getEvents()->not->toBeEmpty();
 
-it('saves route exception as open telemetry event', function () {
-    registerInstrumentation(HttpServerInstrumentation::class);
-
-    $this
-        ->get('test-exception')
-        ->assertServerError();
-
-    $lastSpan = getRecordedSpans()->last();
-    $lastSpanEvents = $lastSpan->getEvents();
-    /** @var OpenTelemetry\SDK\Trace\Event $lastEvent */
-    $lastEvent = last($lastSpanEvents);
-
-
-    expect($lastSpan)->getStatus()->getCode()->toBe(StatusCode::STATUS_ERROR);
-    expect($lastSpanEvents)->not->toBeEmpty();
-    expect($lastEvent)->toBeInstanceOf(OpenTelemetry\SDK\Trace\Event::class);
-    expect($lastEvent->getAttributes()->get('exception.type'))->toBe(KeepsuitException::class);
+    expect(collect($span->getEvents())->last())
+        ->toBeInstanceOf(OpenTelemetry\SDK\Trace\Event::class)
+        ->getAttributes()->get('exception.type')->toBe(TestException::class)
+        ->getAttributes()->get('exception.message')->toBe('Exception thrown!');
 });
 
 it('skips route exception when it is not reportable', function () {
     registerInstrumentation(HttpServerInstrumentation::class);
-    app(Illuminate\Contracts\Debug\ExceptionHandler::class)->ignore(KeepsuitException::class);
+    app(Illuminate\Contracts\Debug\ExceptionHandler::class)->ignore(TestException::class);
 
     $this
         ->get('test-exception')

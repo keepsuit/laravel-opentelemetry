@@ -4,10 +4,10 @@ namespace Keepsuit\LaravelOpenTelemetry\Tests\Support;
 
 use Exception;
 
-class KeepsuitException extends Exception
+class TestException extends Exception
 {
     public static function create(): self
     {
-        return new self('Keepsuit Exception thrown!');
+        return new self('Exception thrown!');
     }
 }
