@@ -335,11 +335,15 @@ To simplify development, a `Makefile` is provided. The project runs in a Docker 
 
 #### Available Makefile Commands
 
-| Command       | Description                                                      |
-|---------------|------------------------------------------------------------------|
-| `make build`  | Builds the Docker image with your UID/GID for permission safety. |
-| `make start`  | Starts the container interactively and mounts the project code.  |
-| `make shell`  | Opens a Bash shell **inside the running container**.             |
+| Command        | Description                                                                 |
+|----------------|-----------------------------------------------------------------------------|
+| `make build`   | Builds the Docker image with your UID/GID for proper file permissions.     |
+| `make start`   | Starts the containers in the background using Docker Compose.              |
+| `make stop`    | Stops and removes the containers.                                           |
+| `make shell`   | Starts the containers (if needed) and opens a Bash shell in the `app` one. |
+| `make test`    | Runs the test suite via Composer inside the `app` container.               |
+| `make lint`    | Runs the linter via Composer inside the `app` container.                   |
+
 
 > 📝 Before using `make shell`, ensure the container is running (`make start` in another terminal).
 

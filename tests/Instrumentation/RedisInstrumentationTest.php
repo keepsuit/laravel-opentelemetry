@@ -22,9 +22,11 @@ test('redis span is not created when trace is not started', function () {
 
 it('can watch a redis call', function (string $client) {
     config()->set('database.redis.client', $client);
+    $connection = 'default';
+    $config = config("database.redis.$connection");
 
-    withRootSpan(function () {
-        \Illuminate\Support\Facades\Redis::connection('default')->get('test');
+    withRootSpan(function () use ($connection) {
+        \Illuminate\Support\Facades\Redis::connection($connection)->get('test');
     });
 
     $span = getRecordedSpans()->first();
@@ -36,7 +38,7 @@ it('can watch a redis call', function (string $client) {
         ->getAttributes()->toArray()->toBe([
             'db.system.name' => 'redis',
             'db.query.text' => 'get test',
-            'server.address' => '127.0.0.1',
+            'server.address' => $config['host'],
         ])
         ->hasEnded()->toBeTrue()
         ->getEndEpochNanos()->toBeLessThan(Clock::getDefault()->now());

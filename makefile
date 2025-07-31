@@ -1,12 +1,23 @@
-IMAGE_NAME = laravel-opentelemetry-development
-CONTAINER_NAME = $(IMAGE_NAME)
+USER_ID = $(shell id -u)
+GROUP_ID = $(shell id -g)
 
 build:
-	docker build -t $(IMAGE_NAME) --build-arg USER_ID=$(shell id -u) --build-arg GROUP_ID=$(shell id -g) .
+	USER_ID=$(USER_ID) GROUP_ID=$(GROUP_ID) docker compose build
 
 start:
-	docker run --rm -it --name $(CONTAINER_NAME) -v $(CURDIR):/var/www/html $(IMAGE_NAME)
+	docker compose up -d
+
+stop:
+	docker compose down
 
 shell:
-	docker exec -it $(CONTAINER_NAME) /bin/bash || \
-	echo "Container '$(CONTAINER_NAME)' is not running. Start it with 'make start', or build it with 'make build' if you didn't yet."
+	make start
+	docker compose exec -it app /bin/bash
+
+test:
+	make start
+	docker compose exec -it app /usr/bin/composer test
+
+lint:
+	make start
+	docker compose exec -it app /usr/bin/composer lint
