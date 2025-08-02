@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\HttpServerInstrumentation;
 use Keepsuit\LaravelOpenTelemetry\Tests\Support\Product;
+use Keepsuit\LaravelOpenTelemetry\Tests\Support\TestException;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
 
@@ -15,7 +16,13 @@ uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
 beforeEach(function () {
     Route::middleware('web')->group(function () {
         Route::any('test-ok', fn () => Tracer::traceId())->middleware(['web']);
-        Route::any('test-exception', fn () => throw new Exception('test exception'));
+        Route::any('test-exception', fn () => throw TestException::create());
+        Route::any('test-nested-exception', function () {
+            $span = Tracer::newSpan('nested')->start();
+            $span->activate();
+
+            throw TestException::create();
+        });
         Route::any('test/{parameter}', fn () => Tracer::traceId());
         Route::get('products/{product}', function (Product $product) {
             Tracer::activeSpan()->setAttribute('product', $product->id);
@@ -112,9 +119,9 @@ it('can record route exception', function () {
 
     $response->assertServerError();
 
-    $spans = getRecordedSpans();
+    $span = getRecordedSpans()->last();
 
-    expect($spans->last())
+    expect($span)
         ->getName()->toBe('/test-exception')
         ->getKind()->toBe(SpanKind::KIND_SERVER)
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_ERROR)
@@ -130,7 +137,57 @@ it('can record route exception', function () {
             'network.protocol.version' => 'HTTP/1.1',
             'network.peer.address' => '127.0.0.1',
             'http.response.status_code' => 500,
-        ]);
+        ])
+        ->getEvents()->not->toBeEmpty();
+
+    expect(collect($span->getEvents())->last())
+        ->toBeInstanceOf(OpenTelemetry\SDK\Trace\Event::class)
+        ->getAttributes()->get('exception.type')->toBe(TestException::class)
+        ->getAttributes()->get('exception.message')->toBe('Exception thrown!');
+});
+
+it('can record a route exception in a nested span', function () {
+    registerInstrumentation(HttpServerInstrumentation::class);
+
+    $response = $this->get('test-nested-exception');
+
+    $response->assertServerError();
+
+    expect(getRecordedSpans())->toHaveCount(3);
+
+    $nestedSpan = getRecordedSpans()[1];
+    $routeSpan = getRecordedSpans()[2];
+
+    expect($nestedSpan)
+        ->getName()->toBe('nested')
+        ->getKind()->toBe(SpanKind::KIND_INTERNAL)
+        ->getStatus()->getCode()->toBe(StatusCode::STATUS_ERROR)
+        ->getEvents()->not->toBeEmpty();
+
+    expect(collect($nestedSpan->getEvents())->last())
+        ->toBeInstanceOf(OpenTelemetry\SDK\Trace\Event::class)
+        ->getAttributes()->get('exception.type')->toBe(TestException::class)
+        ->getAttributes()->get('exception.message')->toBe('Exception thrown!');
+
+    expect($routeSpan)
+        ->getName()->toBe('/test-nested-exception')
+        ->getKind()->toBe(SpanKind::KIND_SERVER)
+        ->getStatus()->getCode()->toBe(StatusCode::STATUS_ERROR)
+        ->getEvents()->toBeEmpty();
+});
+
+it('skips route exception when it is not reportable', function () {
+    registerInstrumentation(HttpServerInstrumentation::class);
+    app(Illuminate\Contracts\Debug\ExceptionHandler::class)->ignore(TestException::class);
+
+    $this
+        ->get('test-exception')
+        ->assertServerError();
+
+    $lastSpan = getRecordedSpans()->last();
+
+    expect($lastSpan)->getStatus()->getCode()->toBe(StatusCode::STATUS_ERROR);
+    expect($lastSpan->getEvents())->toBeEmpty();
 });
 
 it('set generic span name when route has parameters', function () {

@@ -6,11 +6,13 @@ use Composer\InstalledVersions;
 use Http\Discovery\Psr17FactoryDiscovery;
 use Http\Discovery\Psr18ClientDiscovery;
 use Illuminate\Config\Repository;
+use Illuminate\Contracts\Debug\ExceptionHandler as ExceptionHandlerContract;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Env;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
+use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Support\CarbonClock;
 use Keepsuit\LaravelOpenTelemetry\Support\OpenTelemetryMonologHandler;
 use Keepsuit\LaravelOpenTelemetry\Support\PropagatorBuilder;
@@ -19,6 +21,7 @@ use OpenTelemetry\API\Common\Time\Clock;
 use OpenTelemetry\API\Instrumentation\CachedInstrumentation;
 use OpenTelemetry\API\Logs\LoggerInterface;
 use OpenTelemetry\API\Signals;
+use OpenTelemetry\API\Trace\StatusCode;
 use OpenTelemetry\API\Trace\TracerInterface;
 use OpenTelemetry\Context\Propagation\TextMapPropagatorInterface;
 use OpenTelemetry\Contrib\Grpc\GrpcTransportFactory;
@@ -50,6 +53,7 @@ use OpenTelemetry\SemConv\ResourceAttributes;
 use OpenTelemetry\SemConv\TraceAttributes;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
+use Throwable;
 
 class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 {
@@ -150,6 +154,19 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 
         $this->app->booted(function (Application $app) {
             $app->register(InstrumentationServiceProvider::class);
+        });
+
+        $this->callAfterResolving(ExceptionHandlerContract::class, function (ExceptionHandlerContract $handler) {
+            /** @phpstan-ignore-next-line */
+            if (! method_exists($handler, 'reportable')) {
+                return;
+            }
+
+            $handler->reportable(function (Throwable $e) {
+                Tracer::activeSpan()
+                    ->recordException($e)
+                    ->setStatus(StatusCode::STATUS_ERROR);
+            });
         });
     }
 

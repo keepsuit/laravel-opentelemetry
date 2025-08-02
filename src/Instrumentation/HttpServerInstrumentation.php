@@ -2,7 +2,8 @@
 
 namespace Keepsuit\LaravelOpenTelemetry\Instrumentation;
 
-use Illuminate\Contracts\Http\Kernel;
+use Illuminate\Contracts\Http\Kernel as HttpKernelContract;
+use Illuminate\Foundation\Http\Kernel as FoundationHttpKernel;
 use Illuminate\Support\Arr;
 use Keepsuit\LaravelOpenTelemetry\Support\HttpServer\TraceRequestMiddleware;
 
@@ -24,22 +25,22 @@ class HttpServerInstrumentation implements Instrumentation
     {
         static::$excludedPaths = array_map(
             fn (string $path) => ltrim($path, '/'),
-            Arr::get($options, 'excluded_paths', [])
+            Arr::get($options, 'excluded_paths', []),
         );
 
         static::$allowedHeaders = $this->normalizeHeaders(Arr::get($options, 'allowed_headers', []));
 
         static::$sensitiveHeaders = array_merge(
             $this->normalizeHeaders(Arr::get($options, 'sensitive_headers', [])),
-            $this->defaultSensitiveHeaders
+            $this->defaultSensitiveHeaders,
         );
 
-        $this->injectMiddleware(app(Kernel::class));
+        $this->injectMiddleware(app(HttpKernelContract::class));
     }
 
-    protected function injectMiddleware(Kernel $kernel): void
+    protected function injectMiddleware(HttpKernelContract $kernel): void
     {
-        if (! $kernel instanceof \Illuminate\Foundation\Http\Kernel) {
+        if (! $kernel instanceof FoundationHttpKernel) {
             return;
         }
 
