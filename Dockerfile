@@ -1,7 +1,11 @@
 FROM serversideup/php:8.2-cli
 
-ARG USER_ID
-ARG GROUP_ID
+# see: https://serversideup.net/open-source/docker-php/docs/guide/understanding-file-permissions#how-it-works
+ARG USER_ID=33
+ARG GROUP_ID=33
+
+# see: https://serversideup.net/open-source/docker-php/docs/reference/environment-variable-specification
+ENV SHOW_WELCOME_MESSAGE=false
 
 USER root
 

@@ -1,11 +1,14 @@
-USER_ID = $(shell id -u)
-GROUP_ID = $(shell id -g)
+.PHONY: $(MAKECMDGOALS)
 
 build:
-	USER_ID=$(USER_ID) GROUP_ID=$(GROUP_ID) docker compose build
+	docker compose build \
+		--build-arg USER_ID=$(shell id -u) \
+		--build-arg GROUP_ID=$(shell id -g)
 
 start:
-	docker compose up -d
+	@if ! docker compose ps --format '{{.Service}} {{.State}}' | grep -q '^app running$$'; then \
+		docker compose up -d; \
+	fi
 
 stop:
 	docker compose down

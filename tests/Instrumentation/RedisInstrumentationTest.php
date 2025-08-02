@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Facades\Redis;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\RedisInstrumentation;
 use OpenTelemetry\API\Common\Time\Clock;
@@ -13,7 +14,7 @@ beforeEach(function () {
 test('redis span is not created when trace is not started', function () {
     expect(Tracer::traceStarted())->toBeFalse();
 
-    \Illuminate\Support\Facades\Redis::connection('default')->get('test');
+    Redis::connection('default')->get('test');
 
     $span = getRecordedSpans()->first();
 
@@ -22,12 +23,9 @@ test('redis span is not created when trace is not started', function () {
 
 it('can watch a redis call', function (string $client) {
     config()->set('database.redis.client', $client);
-    $connection = 'default';
-    $config = config("database.redis.$connection");
+    $config = config("database.redis.default");
 
-    withRootSpan(function () use ($connection) {
-        \Illuminate\Support\Facades\Redis::connection($connection)->get('test');
-    });
+    withRootSpan(fn () => Redis::connection('default')->get('test'));
 
     $span = getRecordedSpans()->first();
 
