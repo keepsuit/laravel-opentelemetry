@@ -23,8 +23,8 @@ class TraceRequestMiddleware
 
         $bootedTimestamp = $this->bootedTimestamp($request);
 
-        $rootSpan = $this->startTracing($request, $bootedTimestamp);
-        $rootSpanScope = $rootSpan->activate();
+        $span = $this->startTracing($request, $bootedTimestamp);
+        $scope = $span->activate();
 
         Tracer::updateLogContext();
 
@@ -39,21 +39,15 @@ class TraceRequestMiddleware
             $response = $next($request);
 
             if ($response instanceof Response) {
-                $this->recordHttpResponseToSpan($rootSpan, $response);
+                $this->recordHttpResponseToSpan($span, $response);
             }
 
             return $response;
         } finally {
-            $rootSpanScope->detach();
+            Tracer::terminateActiveSpansUpToRoot($span);
 
-            // in the case of nested span, end it first
-            Tracer::activeSpan()->end();
-
-            // then if the root span is still recording,
-            // end it as well
-            if ($rootSpan->isRecording()) {
-                $rootSpan->end();
-            }
+            $scope->detach();
+            $span->end();
         }
     }
 

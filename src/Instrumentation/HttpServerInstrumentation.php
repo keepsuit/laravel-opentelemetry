@@ -2,15 +2,10 @@
 
 namespace Keepsuit\LaravelOpenTelemetry\Instrumentation;
 
-use Illuminate\Contracts\Debug\ExceptionHandler as ExceptionHandlerContract;
 use Illuminate\Contracts\Http\Kernel as HttpKernelContract;
-use Illuminate\Foundation\Exceptions\Handler as FoundationExceptionHandler;
 use Illuminate\Foundation\Http\Kernel as FoundationHttpKernel;
 use Illuminate\Support\Arr;
-use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Support\HttpServer\TraceRequestMiddleware;
-use OpenTelemetry\API\Trace\StatusCode;
-use Throwable;
 
 class HttpServerInstrumentation implements Instrumentation
 {
@@ -40,7 +35,6 @@ class HttpServerInstrumentation implements Instrumentation
             $this->defaultSensitiveHeaders,
         );
 
-        $this->recordExceptionInSpan(app(ExceptionHandlerContract::class));
         $this->injectMiddleware(app(HttpKernelContract::class));
     }
 
@@ -52,16 +46,6 @@ class HttpServerInstrumentation implements Instrumentation
 
         if (! $kernel->hasMiddleware(TraceRequestMiddleware::class)) {
             $kernel->prependMiddleware(TraceRequestMiddleware::class);
-        }
-    }
-
-    protected function recordExceptionInSpan(ExceptionHandlerContract $handler): void
-    {
-        if ($handler instanceof FoundationExceptionHandler) {
-            $handler->reportable(fn (Throwable $e) => Tracer::activeSpan()
-                ->recordException($e)
-                ->setStatus(StatusCode::STATUS_ERROR),
-            );
         }
     }
 }
