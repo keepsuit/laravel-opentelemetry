@@ -23,7 +23,7 @@ test('redis span is not created when trace is not started', function () {
 
 it('can watch a redis call', function (string $client) {
     config()->set('database.redis.client', $client);
-    $config = config("database.redis.default");
+    $config = config('database.redis.default');
 
     withRootSpan(fn () => Redis::connection('default')->get('test'));
 
