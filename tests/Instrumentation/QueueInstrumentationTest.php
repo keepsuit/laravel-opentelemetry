@@ -10,7 +10,7 @@ use Keepsuit\LaravelOpenTelemetry\Instrumentation\QueueInstrumentation;
 use Keepsuit\LaravelOpenTelemetry\Tests\Support\TestJob;
 use OpenTelemetry\API\Trace\StatusCode;
 use OpenTelemetry\SDK\Trace\ImmutableSpan;
-use OpenTelemetry\SemConv\TraceAttributes;
+use OpenTelemetry\SemConv\Incubating\Attributes\MessagingIncubatingAttributes;
 use Spatie\Valuestore\Valuestore;
 
 beforeEach(function () {
@@ -87,22 +87,22 @@ it('can trace queue jobs', function () {
     expect($enqueueSpan)
         ->toBeInstanceOf(ImmutableSpan::class)
         ->getAttributes()->toMatchArray([
-            TraceAttributes::MESSAGING_SYSTEM => 'redis',
-            TraceAttributes::MESSAGING_OPERATION_TYPE => 'enqueue',
-            TraceAttributes::RPC_MESSAGE_ID => $this->valuestore->get('uuid'),
-            TraceAttributes::MESSAGING_DESTINATION_NAME => 'default',
-            TraceAttributes::MESSAGING_DESTINATION_TEMPLATE => TestJob::class,
+            MessagingIncubatingAttributes::MESSAGING_SYSTEM => 'redis',
+            MessagingIncubatingAttributes::MESSAGING_OPERATION_TYPE => 'enqueue',
+            MessagingIncubatingAttributes::MESSAGING_MESSAGE_ID => $this->valuestore->get('uuid'),
+            MessagingIncubatingAttributes::MESSAGING_DESTINATION_NAME => 'default',
+            MessagingIncubatingAttributes::MESSAGING_DESTINATION_TEMPLATE => TestJob::class,
         ]);
 
     expect($processSpan)
         ->toBeInstanceOf(ImmutableSpan::class)
         ->getTraceId()->toBe($enqueueSpan->getTraceId())
         ->getAttributes()->toMatchArray([
-            TraceAttributes::MESSAGING_SYSTEM => 'redis',
-            TraceAttributes::MESSAGING_OPERATION_TYPE => 'process',
-            TraceAttributes::RPC_MESSAGE_ID => $this->valuestore->get('uuid'),
-            TraceAttributes::MESSAGING_DESTINATION_NAME => 'default',
-            TraceAttributes::MESSAGING_DESTINATION_TEMPLATE => TestJob::class,
+            MessagingIncubatingAttributes::MESSAGING_SYSTEM => 'redis',
+            MessagingIncubatingAttributes::MESSAGING_OPERATION_TYPE => 'process',
+            MessagingIncubatingAttributes::MESSAGING_MESSAGE_ID => $this->valuestore->get('uuid'),
+            MessagingIncubatingAttributes::MESSAGING_DESTINATION_NAME => 'default',
+            MessagingIncubatingAttributes::MESSAGING_DESTINATION_TEMPLATE => TestJob::class,
         ]);
 });
 
@@ -174,11 +174,11 @@ it('can trace queue failing jobs', function () {
     expect($enqueueSpan)
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_UNSET)
         ->getAttributes()->toMatchArray([
-            TraceAttributes::MESSAGING_SYSTEM => 'redis',
-            TraceAttributes::MESSAGING_OPERATION_TYPE => 'enqueue',
-            TraceAttributes::RPC_MESSAGE_ID => $this->valuestore->get('uuid'),
-            TraceAttributes::MESSAGING_DESTINATION_NAME => 'default',
-            TraceAttributes::MESSAGING_DESTINATION_TEMPLATE => TestJob::class,
+            MessagingIncubatingAttributes::MESSAGING_SYSTEM => 'redis',
+            MessagingIncubatingAttributes::MESSAGING_OPERATION_TYPE => 'enqueue',
+            MessagingIncubatingAttributes::MESSAGING_MESSAGE_ID => $this->valuestore->get('uuid'),
+            MessagingIncubatingAttributes::MESSAGING_DESTINATION_NAME => 'default',
+            MessagingIncubatingAttributes::MESSAGING_DESTINATION_TEMPLATE => TestJob::class,
         ]);
 
     expect($processSpan)
@@ -187,10 +187,10 @@ it('can trace queue failing jobs', function () {
         ->getEvents()->toHaveCount(1)
         ->getEvents()->{0}->getName()->toBe('exception')
         ->getAttributes()->toMatchArray([
-            TraceAttributes::MESSAGING_SYSTEM => 'redis',
-            TraceAttributes::MESSAGING_OPERATION_TYPE => 'process',
-            TraceAttributes::RPC_MESSAGE_ID => $this->valuestore->get('uuid'),
-            TraceAttributes::MESSAGING_DESTINATION_NAME => 'default',
-            TraceAttributes::MESSAGING_DESTINATION_TEMPLATE => TestJob::class,
+            MessagingIncubatingAttributes::MESSAGING_SYSTEM => 'redis',
+            MessagingIncubatingAttributes::MESSAGING_OPERATION_TYPE => 'process',
+            MessagingIncubatingAttributes::MESSAGING_MESSAGE_ID => $this->valuestore->get('uuid'),
+            MessagingIncubatingAttributes::MESSAGING_DESTINATION_NAME => 'default',
+            MessagingIncubatingAttributes::MESSAGING_DESTINATION_TEMPLATE => TestJob::class,
         ]);
 });

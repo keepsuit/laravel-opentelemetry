@@ -49,7 +49,7 @@ use OpenTelemetry\SDK\Trace\SpanExporter\InMemorySpanExporterFactory;
 use OpenTelemetry\SDK\Trace\SpanExporterInterface;
 use OpenTelemetry\SDK\Trace\SpanProcessor\BatchSpanProcessorBuilder;
 use OpenTelemetry\SDK\Trace\TracerProvider;
-use OpenTelemetry\SemConv\ResourceAttributes;
+use OpenTelemetry\SemConv\Attributes\ServiceAttributes;
 use OpenTelemetry\SemConv\TraceAttributes;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
@@ -78,7 +78,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 
         $resource = ResourceInfoFactory::defaultResource()->merge(
             ResourceInfo::create(Attributes::create([
-                ResourceAttributes::SERVICE_NAME => config('opentelemetry.service_name'),
+                ServiceAttributes::SERVICE_NAME => config('opentelemetry.service_name'),
             ]))
         );
 

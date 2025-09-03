@@ -7,7 +7,8 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Stringable;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use OpenTelemetry\API\Trace\SpanKind;
-use OpenTelemetry\SemConv\TraceAttributes;
+use OpenTelemetry\SemConv\Attributes\DbAttributes;
+use OpenTelemetry\SemConv\Attributes\ServerAttributes;
 
 class QueryInstrumentation implements Instrumentation
 {
@@ -40,12 +41,12 @@ class QueryInstrumentation implements Instrumentation
         $span = Tracer::newSpan(sprintf('sql %s', $operationName))
             ->setSpanKind(SpanKind::KIND_CLIENT)
             ->setStartTimestamp($this->getEventStartTimestampNs($event->time))
-            ->setAttribute(TraceAttributes::DB_SYSTEM_NAME, $event->connection->getDriverName())
-            ->setAttribute(TraceAttributes::DB_NAMESPACE, $event->connection->getDatabaseName())
-            ->setAttribute(TraceAttributes::DB_OPERATION_NAME, $operationName)
-            ->setAttribute(TraceAttributes::DB_QUERY_TEXT, $event->sql)
-            ->setAttribute(TraceAttributes::SERVER_ADDRESS, $event->connection->getConfig('host'))
-            ->setAttribute(TraceAttributes::SERVER_PORT, $event->connection->getConfig('port'))
+            ->setAttribute(DbAttributes::DB_SYSTEM_NAME, $event->connection->getDriverName())
+            ->setAttribute(DbAttributes::DB_NAMESPACE, $event->connection->getDatabaseName())
+            ->setAttribute(DbAttributes::DB_OPERATION_NAME, $operationName)
+            ->setAttribute(DbAttributes::DB_QUERY_TEXT, $event->sql)
+            ->setAttribute(ServerAttributes::SERVER_ADDRESS, $event->connection->getConfig('host'))
+            ->setAttribute(ServerAttributes::SERVER_PORT, $event->connection->getConfig('port'))
             ->start();
 
         $span->end();

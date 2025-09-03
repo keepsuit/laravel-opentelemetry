@@ -10,7 +10,12 @@ use Keepsuit\LaravelOpenTelemetry\Instrumentation\HttpServerInstrumentation;
 use OpenTelemetry\API\Trace\SpanInterface;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
-use OpenTelemetry\SemConv\TraceAttributes;
+use OpenTelemetry\SemConv\Attributes\HttpAttributes;
+use OpenTelemetry\SemConv\Attributes\NetworkAttributes;
+use OpenTelemetry\SemConv\Attributes\ServerAttributes;
+use OpenTelemetry\SemConv\Attributes\UrlAttributes;
+use OpenTelemetry\SemConv\Attributes\UserAgentAttributes;
+use OpenTelemetry\SemConv\Incubating\Attributes\HttpIncubatingAttributes;
 use Symfony\Component\HttpFoundation\Response;
 
 class TraceRequestMiddleware
@@ -62,18 +67,18 @@ class TraceRequestMiddleware
         $builder = Tracer::newSpan($route)
             ->setSpanKind(SpanKind::KIND_SERVER)
             ->setParent($context)
-            ->setAttribute(TraceAttributes::URL_FULL, $request->fullUrl())
-            ->setAttribute(TraceAttributes::URL_PATH, $request->path() === '/' ? $request->path() : '/'.$request->path())
-            ->setAttribute(TraceAttributes::URL_QUERY, $request->getQueryString())
-            ->setAttribute(TraceAttributes::URL_SCHEME, $request->getScheme())
-            ->setAttribute(TraceAttributes::HTTP_ROUTE, $route)
-            ->setAttribute(TraceAttributes::HTTP_REQUEST_METHOD, $request->method())
-            ->setAttribute(TraceAttributes::HTTP_REQUEST_BODY_SIZE, $request->header('Content-Length'))
-            ->setAttribute(TraceAttributes::SERVER_ADDRESS, $request->getHttpHost())
-            ->setAttribute(TraceAttributes::SERVER_PORT, $request->getPort())
-            ->setAttribute(TraceAttributes::USER_AGENT_ORIGINAL, $request->userAgent())
-            ->setAttribute(TraceAttributes::NETWORK_PROTOCOL_VERSION, $request->getProtocolVersion())
-            ->setAttribute(TraceAttributes::NETWORK_PEER_ADDRESS, $request->ip());
+            ->setAttribute(UrlAttributes::URL_FULL, $request->fullUrl())
+            ->setAttribute(UrlAttributes::URL_PATH, $request->path() === '/' ? $request->path() : '/'.$request->path())
+            ->setAttribute(UrlAttributes::URL_QUERY, $request->getQueryString())
+            ->setAttribute(UrlAttributes::URL_SCHEME, $request->getScheme())
+            ->setAttribute(HttpAttributes::HTTP_ROUTE, $route)
+            ->setAttribute(HttpAttributes::HTTP_REQUEST_METHOD, $request->method())
+            ->setAttribute(HttpIncubatingAttributes::HTTP_REQUEST_BODY_SIZE, $request->header('Content-Length'))
+            ->setAttribute(ServerAttributes::SERVER_ADDRESS, $request->getHttpHost())
+            ->setAttribute(ServerAttributes::SERVER_PORT, $request->getPort())
+            ->setAttribute(UserAgentAttributes::USER_AGENT_ORIGINAL, $request->userAgent())
+            ->setAttribute(NetworkAttributes::NETWORK_PROTOCOL_VERSION, $request->getProtocolVersion())
+            ->setAttribute(NetworkAttributes::NETWORK_PEER_ADDRESS, $request->ip());
 
         if ($startTimestamp) {
             $builder->setStartTimestamp($startTimestamp);
@@ -88,10 +93,10 @@ class TraceRequestMiddleware
 
     protected function recordHttpResponseToSpan(SpanInterface $span, Response $response): void
     {
-        $span->setAttribute(TraceAttributes::HTTP_RESPONSE_STATUS_CODE, $response->getStatusCode());
+        $span->setAttribute(HttpAttributes::HTTP_RESPONSE_STATUS_CODE, $response->getStatusCode());
 
         if (($content = $response->getContent()) !== false) {
-            $span->setAttribute(TraceAttributes::HTTP_RESPONSE_BODY_SIZE, strlen($content));
+            $span->setAttribute(HttpIncubatingAttributes::HTTP_RESPONSE_BODY_SIZE, strlen($content));
         }
 
         $this->recordHeaders($span, $response);

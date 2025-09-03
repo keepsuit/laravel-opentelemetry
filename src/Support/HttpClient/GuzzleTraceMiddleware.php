@@ -9,7 +9,10 @@ use Keepsuit\LaravelOpenTelemetry\Instrumentation\HttpClientInstrumentation;
 use OpenTelemetry\API\Trace\SpanInterface;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
-use OpenTelemetry\SemConv\TraceAttributes;
+use OpenTelemetry\SemConv\Attributes\HttpAttributes;
+use OpenTelemetry\SemConv\Attributes\ServerAttributes;
+use OpenTelemetry\SemConv\Attributes\UrlAttributes;
+use OpenTelemetry\SemConv\Incubating\Attributes\HttpIncubatingAttributes;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 
@@ -25,14 +28,14 @@ class GuzzleTraceMiddleware
 
                 $span = Tracer::newSpan(sprintf('HTTP %s', $request->getMethod()))
                     ->setSpanKind(SpanKind::KIND_CLIENT)
-                    ->setAttribute(TraceAttributes::URL_FULL, sprintf('%s://%s%s', $request->getUri()->getScheme(), $request->getUri()->getHost(), $request->getUri()->getPath()))
-                    ->setAttribute(TraceAttributes::URL_PATH, $request->getUri()->getPath())
-                    ->setAttribute(TraceAttributes::URL_QUERY, $request->getUri()->getQuery())
-                    ->setAttribute(TraceAttributes::HTTP_REQUEST_METHOD, $request->getMethod())
-                    ->setAttribute(TraceAttributes::HTTP_REQUEST_BODY_SIZE, $request->getBody()->getSize())
-                    ->setAttribute(TraceAttributes::URL_SCHEME, $request->getUri()->getScheme())
-                    ->setAttribute(TraceAttributes::SERVER_ADDRESS, $request->getUri()->getHost())
-                    ->setAttribute(TraceAttributes::SERVER_PORT, $request->getUri()->getPort())
+                    ->setAttribute(UrlAttributes::URL_FULL, sprintf('%s://%s%s', $request->getUri()->getScheme(), $request->getUri()->getHost(), $request->getUri()->getPath()))
+                    ->setAttribute(UrlAttributes::URL_PATH, $request->getUri()->getPath())
+                    ->setAttribute(UrlAttributes::URL_QUERY, $request->getUri()->getQuery())
+                    ->setAttribute(UrlAttributes::URL_SCHEME, $request->getUri()->getScheme())
+                    ->setAttribute(HttpAttributes::HTTP_REQUEST_METHOD, $request->getMethod())
+                    ->setAttribute(HttpIncubatingAttributes::HTTP_REQUEST_BODY_SIZE, $request->getBody()->getSize())
+                    ->setAttribute(ServerAttributes::SERVER_ADDRESS, $request->getUri()->getHost())
+                    ->setAttribute(ServerAttributes::SERVER_PORT, $request->getUri()->getPort())
                     ->start();
 
                 static::recordHeaders($span, $request);
@@ -47,10 +50,10 @@ class GuzzleTraceMiddleware
                 assert($promise instanceof PromiseInterface);
 
                 return $promise->then(function (ResponseInterface $response) use ($span) {
-                    $span->setAttribute(TraceAttributes::HTTP_RESPONSE_STATUS_CODE, $response->getStatusCode());
+                    $span->setAttribute(HttpAttributes::HTTP_RESPONSE_STATUS_CODE, $response->getStatusCode());
 
                     if (($contentLength = $response->getHeader('Content-Length')[0] ?? null) !== null) {
-                        $span->setAttribute(TraceAttributes::HTTP_RESPONSE_BODY_SIZE, $contentLength);
+                        $span->setAttribute(HttpIncubatingAttributes::HTTP_RESPONSE_BODY_SIZE, $contentLength);
                     }
 
                     static::recordHeaders($span, $response);
