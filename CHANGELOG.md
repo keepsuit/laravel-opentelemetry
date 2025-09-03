@@ -2,6 +2,16 @@
 
 All notable changes to `laravel-opentelemetry` will be documented in this file.
 
+## v1.10.0 - 2025-09-03
+
+### What's Changed
+
+* Updated opentelemetry sdk and sem-conv
+* Bump aglipanci/laravel-pint-action from 2.5 to 2.6 by @dependabot[bot] in https://github.com/keepsuit/laravel-opentelemetry/pull/45
+* Bump actions/checkout from 4 to 5 by @dependabot[bot] in https://github.com/keepsuit/laravel-opentelemetry/pull/46
+
+**Full Changelog**: https://github.com/keepsuit/laravel-opentelemetry/compare/1.9.0...1.10.0
+
 ## v1.9.0 - 2025-08-02
 
 ### What's Changed
@@ -42,6 +52,7 @@ Instrumentation\ConsoleInstrumentation::class => [
     'enabled' => env('OTEL_INSTRUMENTATION_CONSOLE', true),
     'excluded' => [],
 ],
+
 
 
 
@@ -151,6 +162,7 @@ Tracer::newSpan('name')->setSpanKind(SpanKind::KIND_PRODUCER)->measure(callback)
 
 
 
+
 ```
 `Tracer::recordExceptionToSpan` has been removed and exception should be recorded directly to span: `$span->recordException($exception)`
 
@@ -171,6 +183,7 @@ This is the injected `otlp` channel:
         'level' => 'debug',
     ]
 ]
+
 
 
 
