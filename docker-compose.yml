@@ -1,0 +1,28 @@
+services:
+  app:
+    image: laravel-opentelemetry-development
+    tty: true
+    stdin_open: true
+    entrypoint: /bin/bash
+    environment:
+      REDIS_HOST: 'redis'
+    build:
+      context: .
+      args:
+        USER_ID: "${USER_ID:-33}"
+        GROUP_ID: "${GROUP_ID:-33}"
+    volumes:
+      - .:/var/www/html
+    depends_on:
+      - redis
+    networks:
+      - dev
+
+  redis:
+    image: 'redis:alpine'
+    networks:
+      - dev
+
+networks:
+  dev:
+    driver: bridge

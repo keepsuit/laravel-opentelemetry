@@ -87,4 +87,14 @@ class Tracer
             $field => $traceId,
         ]);
     }
+
+    public function terminateActiveSpansUpToRoot(?SpanInterface $root = null): void
+    {
+        $span = $this->activeSpan();
+        while ($span->isRecording() && $span !== $root) {
+            $this->activeScope()?->detach();
+            $span->end();
+            $span = $this->activeSpan();
+        }
+    }
 }

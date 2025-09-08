@@ -14,7 +14,7 @@ use Keepsuit\LaravelOpenTelemetry\Support\InstrumentationUtilities;
 use OpenTelemetry\API\Trace\SpanInterface;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
-use OpenTelemetry\SemConv\TraceAttributes;
+use OpenTelemetry\SemConv\Incubating\Attributes\MessagingIncubatingAttributes;
 use Throwable;
 
 class QueueInstrumentation implements Instrumentation
@@ -71,11 +71,11 @@ class QueueInstrumentation implements Instrumentation
 
                 $span = Tracer::newSpan(sprintf('%s enqueue', $jobName))
                     ->setSpanKind(SpanKind::KIND_PRODUCER)
-                    ->setAttribute(TraceAttributes::MESSAGING_SYSTEM, $this->connectionDriver($connection))
-                    ->setAttribute(TraceAttributes::MESSAGING_OPERATION_TYPE, 'enqueue')
-                    ->setAttribute(TraceAttributes::RPC_MESSAGE_ID, $uuid)
-                    ->setAttribute(TraceAttributes::MESSAGING_DESTINATION_NAME, $queueName)
-                    ->setAttribute(TraceAttributes::MESSAGING_DESTINATION_TEMPLATE, $jobName)
+                    ->setAttribute(MessagingIncubatingAttributes::MESSAGING_SYSTEM, $this->connectionDriver($connection))
+                    ->setAttribute(MessagingIncubatingAttributes::MESSAGING_OPERATION_TYPE, 'enqueue')
+                    ->setAttribute(MessagingIncubatingAttributes::MESSAGING_MESSAGE_ID, $uuid)
+                    ->setAttribute(MessagingIncubatingAttributes::MESSAGING_DESTINATION_NAME, $queueName)
+                    ->setAttribute(MessagingIncubatingAttributes::MESSAGING_DESTINATION_TEMPLATE, $jobName)
                     ->start();
 
                 $context = $span->storeInContext(Tracer::currentContext());
@@ -97,11 +97,11 @@ class QueueInstrumentation implements Instrumentation
             $span = Tracer::newSpan(sprintf('%s process', $event->job->resolveName()))
                 ->setSpanKind(SpanKind::KIND_CONSUMER)
                 ->setParent($context)
-                ->setAttribute(TraceAttributes::MESSAGING_SYSTEM, $this->connectionDriver($event->connectionName))
-                ->setAttribute(TraceAttributes::MESSAGING_OPERATION_TYPE, 'process')
-                ->setAttribute(TraceAttributes::RPC_MESSAGE_ID, $event->job->uuid())
-                ->setAttribute(TraceAttributes::MESSAGING_DESTINATION_NAME, $event->job->getQueue())
-                ->setAttribute(TraceAttributes::MESSAGING_DESTINATION_TEMPLATE, $event->job->resolveName())
+                ->setAttribute(MessagingIncubatingAttributes::MESSAGING_SYSTEM, $this->connectionDriver($event->connectionName))
+                ->setAttribute(MessagingIncubatingAttributes::MESSAGING_OPERATION_TYPE, 'process')
+                ->setAttribute(MessagingIncubatingAttributes::MESSAGING_MESSAGE_ID, $event->job->uuid())
+                ->setAttribute(MessagingIncubatingAttributes::MESSAGING_DESTINATION_NAME, $event->job->getQueue())
+                ->setAttribute(MessagingIncubatingAttributes::MESSAGING_DESTINATION_TEMPLATE, $event->job->resolveName())
                 ->start();
 
             $span->activate();

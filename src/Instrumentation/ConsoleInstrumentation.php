@@ -71,6 +71,8 @@ class ConsoleInstrumentation implements Instrumentation
          */
         [$span, $scope] = $trace;
 
+        Tracer::terminateActiveSpansUpToRoot($span);
+
         if ($event->exitCode !== 0) {
             $span->setStatus(StatusCode::STATUS_ERROR);
         } else {

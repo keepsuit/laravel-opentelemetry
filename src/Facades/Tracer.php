@@ -19,6 +19,7 @@ use OpenTelemetry\Context\ScopeInterface;
  * @method static Context|null extractContextFromPropagationHeaders(array $headers)
  * @method static SpanBuilder newSpan(string $name)
  * @method static void updateLogContext()
+ * @method static void terminateActiveSpansUpToRoot(?SpanInterface $root = null)
  */
 class Tracer extends Facade
 {

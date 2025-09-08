@@ -2,6 +2,41 @@
 
 All notable changes to `laravel-opentelemetry` will be documented in this file.
 
+## v1.10.0 - 2025-09-03
+
+### What's Changed
+
+* Updated opentelemetry sdk and sem-conv
+* Bump aglipanci/laravel-pint-action from 2.5 to 2.6 by @dependabot[bot] in https://github.com/keepsuit/laravel-opentelemetry/pull/45
+* Bump actions/checkout from 4 to 5 by @dependabot[bot] in https://github.com/keepsuit/laravel-opentelemetry/pull/46
+
+**Full Changelog**: https://github.com/keepsuit/laravel-opentelemetry/compare/1.9.0...1.10.0
+
+## v1.9.0 - 2025-08-02
+
+### What's Changed
+
+* fix: enhance exception tracing in http server instrumentation by @plumthedev in https://github.com/keepsuit/laravel-opentelemetry/pull/44
+
+### New Contributors
+
+* @plumthedev made their first contribution in https://github.com/keepsuit/laravel-opentelemetry/pull/44
+
+**Full Changelog**: https://github.com/keepsuit/laravel-opentelemetry/compare/1.8.1...1.9.0
+
+## v1.8.1 - 2025-07-14
+
+### What's Changed
+
+* fix: correct spelling for app bootstrap span by @andrewbroberg in https://github.com/keepsuit/laravel-opentelemetry/pull/41
+* flush otel recordings between jobs processing by @cappuc in https://github.com/keepsuit/laravel-opentelemetry/pull/42
+
+### New Contributors
+
+* @andrewbroberg made their first contribution in https://github.com/keepsuit/laravel-opentelemetry/pull/41
+
+**Full Changelog**: https://github.com/keepsuit/laravel-opentelemetry/compare/1.8.0...1.8.1
+
 ## v1.8.0 - 2025-06-29
 
 ### What's Changed
@@ -17,6 +52,9 @@ Instrumentation\ConsoleInstrumentation::class => [
     'enabled' => env('OTEL_INSTRUMENTATION_CONSOLE', true),
     'excluded' => [],
 ],
+
+
+
 
 ```
 **Full Changelog**: https://github.com/keepsuit/laravel-opentelemetry/compare/1.7.0...1.8.0
@@ -122,6 +160,9 @@ Tracer::newSpan('name')->setSpanKind(SpanKind::KIND_PRODUCER)->measure(callback)
 
 
 
+
+
+
 ```
 `Tracer::recordExceptionToSpan` has been removed and exception should be recorded directly to span: `$span->recordException($exception)`
 
@@ -142,6 +183,9 @@ This is the injected `otlp` channel:
         'level' => 'debug',
     ]
 ]
+
+
+
 
 
 
