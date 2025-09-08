@@ -22,6 +22,7 @@ class TestCase extends Orchestra
     public function getEnvironmentSetUp($app): void
     {
         $app['config']->set('opentelemetry.traces.exporter', null);
+        $app['config']->set('opentelemetry.metrics.exporter', null);
         $app['config']->set('opentelemetry.logs.exporter', null);
         $app['config']->set('opentelemetry.instrumentation', []);
 
