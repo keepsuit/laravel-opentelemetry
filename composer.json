@@ -30,6 +30,7 @@
     "require-dev": {
         "guzzlehttp/guzzle": "^7.3",
         "guzzlehttp/test-server": "^0.1.0",
+        "guzzlehttp/psr7": "^2.0",
         "larastan/larastan": "^2.9 || ^3.0",
         "laravel/pint": "^1.18",
         "livewire/livewire": "^3.6",
