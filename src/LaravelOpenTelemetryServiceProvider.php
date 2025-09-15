@@ -156,6 +156,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         $instrumentation = new CachedInstrumentation(
             name: 'laravel-opentelemetry',
             version: class_exists(InstalledVersions::class) ? InstalledVersions::getPrettyVersion('keepsuit/laravel-opentelemetry') : null,
+            // @phpstan-ignore-next-line
             schemaUrl: TraceAttributes::SCHEMA_URL,
         );
 
