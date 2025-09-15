@@ -2,6 +2,20 @@
 
 All notable changes to `laravel-opentelemetry` will be documented in this file.
 
+## v1.11.0 - 2025-09-15
+
+### What's Changed
+
+* feat: add Meter/Metrics support by @aurimasniekis in https://github.com/keepsuit/laravel-opentelemetry/pull/40
+
+A `metrics` options has been added to the config to configure Otel meter, check the default configuration for reference.
+
+### New Contributors
+
+* @aurimasniekis made their first contribution in https://github.com/keepsuit/laravel-opentelemetry/pull/40
+
+**Full Changelog**: https://github.com/keepsuit/laravel-opentelemetry/compare/1.10.0...1.11.0
+
 ## v1.10.0 - 2025-09-03
 
 ### What's Changed
@@ -52,6 +66,7 @@ Instrumentation\ConsoleInstrumentation::class => [
     'enabled' => env('OTEL_INSTRUMENTATION_CONSOLE', true),
     'excluded' => [],
 ],
+
 
 
 
@@ -163,6 +178,7 @@ Tracer::newSpan('name')->setSpanKind(SpanKind::KIND_PRODUCER)->measure(callback)
 
 
 
+
 ```
 `Tracer::recordExceptionToSpan` has been removed and exception should be recorded directly to span: `$span->recordException($exception)`
 
@@ -183,6 +199,7 @@ This is the injected `otlp` channel:
         'level' => 'debug',
     ]
 ]
+
 
 
 
