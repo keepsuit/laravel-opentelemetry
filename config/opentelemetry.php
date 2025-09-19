@@ -33,7 +33,7 @@ return [
          * Delta: Reports only the change since the last export
          * Cumulative: Reports the total value since the beginning of the time series
          */
-        'temporality' => env('OTEL_METRICS_TEMPORALITY', 'Delta'),
+        'temporality' => env(Variables::OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE),
     ],
 
     /**
