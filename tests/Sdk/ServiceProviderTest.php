@@ -16,7 +16,7 @@ test('metrics exporter is bound to container', function () {
 test('temporality configuration is readable', function () {
     // Test default configuration
     expect(config('opentelemetry.metrics.temporality'))->toBe('Delta');
-    
+
     // Test configuration can be changed
     config(['opentelemetry.metrics.temporality' => 'Cumulative']);
     expect(config('opentelemetry.metrics.temporality'))->toBe('Cumulative');
