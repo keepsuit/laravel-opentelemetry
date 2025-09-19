@@ -1,6 +1,6 @@
 # Laravel OpenTelemetry Package
 
-Laravel OpenTelemetry is a PHP package that provides comprehensive OpenTelemetry integration for Laravel applications, supporting traces, metrics, and logs with various exporters (OTLP, Zipkin, Console).
+Laravel OpenTelemetry is a PHP package that provides comprehensive OpenTelemetry integration for Laravel applications, supporting traces, metrics, and logs with various exporters (OTLP, Zipkin, Console). **This is a library/package, not a standalone application** - it integrates into Laravel projects.
 
 Always reference these instructions first and fallback to search or bash commands only when you encounter unexpected information that does not match the info here.
 
@@ -28,10 +28,12 @@ Always reference these instructions first and fallback to search or bash command
 - Direct binaries available after full install: `vendor/bin/pest`, `vendor/bin/pint`, `vendor/bin/phpstan`
 
 ### Docker Build Troubleshooting
-- If `make build` fails with GRPC installation errors, this is due to network connectivity issues with PECL repositories
-- The GRPC extension is optional for basic development and testing
-- CI/CD environments have the GRPC extension pre-installed for full functionality testing
+- **Common failure**: `make build` fails with "No releases available for package pecl.php.net/grpc" due to PECL network connectivity
+- **Error message**: `install-php-extensions grpc` returns exit code 1 with PECL connection failures
+- **Solution**: The GRPC extension is optional for basic development and testing
 - **Alternative**: Use local development with `composer install --ignore-platform-req=ext-grpc`
+- **CI Environment**: GitHub Actions and production environments have GRPC extension pre-installed
+- **Network dependency**: Docker build success depends on external PECL repository availability
 
 ### Common Installation Issues
 - **Network timeouts**: Composer may timeout downloading packages from GitHub. Increase timeout and retry.
@@ -62,8 +64,10 @@ ls -la config/opentelemetry.php  # Package configuration
 Since this is a Laravel package (not a standalone application), testing involves:
 
 1. **Unit Test Validation**: Always run the full test suite to verify functionality
-   - `make test` or `vendor/bin/pest`
+   - `make test` or `composer test`
    - Test suite covers all instrumentation classes, SDK components, and integration points
+   - Uses Pest framework with in-memory exporters for isolation
+   - Helper functions: `getRecordedSpans()`, `getRecordedMetrics()`, `getRecordedLogs()`
 
 2. **Static Analysis Validation**: Ensure code quality standards
    - `make lint` or `vendor/bin/phpstan`
@@ -72,6 +76,25 @@ Since this is a Laravel package (not a standalone application), testing involves
 3. **Code Style Validation**: Maintain consistent formatting
    - `vendor/bin/pint` for automatic code formatting
    - Laravel Pint configuration is included in the repository
+
+### Package Functionality Testing
+Since this is an instrumentation library, you cannot "run" it standalone. Instead validate by:
+- **Trace Testing**: Check spans are recorded for HTTP, DB, Redis, Queue operations
+- **Metrics Testing**: Verify custom meters work with Counter, Histogram, Gauge
+- **Logs Testing**: Confirm OpenTelemetry log integration captures Laravel logs
+- **Integration Testing**: Test with real Laravel application using the package
+
+### Example Test Commands
+```bash
+# Run specific test suites
+composer test -- --filter=Tracer
+composer test -- --filter=HttpServerInstrumentation
+composer test -- tests/Instrumentation/
+
+# Check specific functionality
+php artisan route:list  # Not applicable - this is a package, not app
+cat tests/Pest.php      # See test helper functions
+```
 
 ### Integration Testing
 - The package integrates with Laravel's HTTP server, database, Redis, queue, cache, and logging systems
@@ -207,3 +230,21 @@ find tests/ -name "*.php" | head -10
 - HTTP client testing with Guzzle test server
 
 Always ensure changes maintain backward compatibility and follow the existing architectural patterns.
+
+## Validated Commands and Timings
+
+### Successfully Tested Commands
+- `composer install --no-dev --ignore-platform-req=ext-grpc` -- ✅ 1min 45sec
+- `composer run-script --list` -- ✅ Lists: test, test-coverage, lint
+- `ls src/Instrumentation/*.php` -- ✅ Shows 13 instrumentation files
+- `find tests/ -name "*.php"` -- ✅ Shows test structure
+- `make build` -- ❌ Fails at GRPC installation (network dependent)
+
+### Commands Requiring Full Dependencies
+- `composer test` -- Requires dev dependencies (Pest framework)
+- `vendor/bin/phpstan` -- Requires dev dependencies  
+- `vendor/bin/pint` -- Requires dev dependencies
+- `make test`, `make lint` -- Require Docker build to complete
+
+### Network-Dependent Operations  
+All package manager operations (Composer, Docker) depend on external network connectivity and may timeout in restricted environments. Always use extended timeouts (10-15 minutes) and be prepared to retry.
