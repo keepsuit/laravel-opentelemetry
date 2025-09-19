@@ -25,6 +25,15 @@ return [
          * Supported drivers: "otlp", "console", "null"
          */
         'exporter' => env(Variables::OTEL_METRICS_EXPORTER, 'otlp'),
+
+        /**
+         * Metrics temporality
+         * Determines how metric data points are aggregated over time
+         * Supported values: "Delta", "Cumulative"
+         * Delta: Reports only the change since the last export
+         * Cumulative: Reports the total value since the beginning of the time series
+         */
+        'temporality' => env('OTEL_METRICS_TEMPORALITY', 'Delta'),
     ],
 
     /**

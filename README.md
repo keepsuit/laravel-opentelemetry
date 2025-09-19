@@ -333,6 +333,31 @@ $meter->record(100, ['name' => 'value', 'app' => 'my-app']);
 $meter->record(1.2, ['name' => 'percentage', 'app' => 'my-app']);
 ```
 
+### Metrics Temporality
+
+This package supports configuring the temporality for metrics when using OTLP exporters. Temporality determines how metric data points are aggregated over time:
+
+- **Delta**: Reports only the change since the last export (default)
+- **Cumulative**: Reports the total value since the beginning of the time series
+
+To configure temporality, set the `OTEL_METRICS_TEMPORALITY` environment variable or update the config:
+
+```php
+// config/opentelemetry.php
+'metrics' => [
+    'exporter' => env('OTEL_METRICS_EXPORTER', 'otlp'),
+    'temporality' => env('OTEL_METRICS_TEMPORALITY', 'Delta'), // 'Delta' or 'Cumulative'
+],
+```
+
+Or in your `.env` file:
+
+```env
+OTEL_METRICS_TEMPORALITY=Cumulative
+```
+
+This is particularly useful when working with monitoring systems like Grafana Mimir that may have specific temporality requirements.
+
 ## Logs
 
 This package provides a custom log channel that allows to process logs with OpenTelemetry instrumentation.

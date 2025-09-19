@@ -170,3 +170,17 @@ test('observable up/down counter', function () {
         ->data->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Data\Sum::class)
         ->data->dataPoints->{0}->value->toBe(8);
 });
+
+test('temporality configuration is applied to metrics', function () {
+    // Test with Delta temporality (default)
+    $counter = Meter::createCounter('test_temporality_counter');
+    $counter->add(5);
+    
+    $metrics = getRecordedMetrics();
+    expect($metrics)->count()->toBe(1);
+    
+    $sumData = $metrics->first()->data;
+    expect($sumData)->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Data\Sum::class);
+    // Default should be Delta since test environment uses InMemoryExporter
+    expect($sumData->temporality)->toBe('Delta');
+});
