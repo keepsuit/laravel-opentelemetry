@@ -2,6 +2,18 @@
 
 All notable changes to `laravel-opentelemetry` will be documented in this file.
 
+## v1.12.0 - 2025-09-21
+
+### What's Changed
+
+* Add comprehensive GitHub Copilot instructions for Laravel OpenTelemetry development by @Copilot in https://github.com/keepsuit/laravel-opentelemetry/pull/50
+* Add metrics temporality exporter configuration by @cappuc  in https://github.com/keepsuit/laravel-opentelemetry/pull/48
+* allow to set custom service instance id by @cappuc in https://github.com/keepsuit/laravel-opentelemetry/pull/51
+
+`service_instance_id` and `exporters.otlp.metrics_telemetry` config keys has been added. Check the default configuration for reference.
+
+**Full Changelog**: https://github.com/keepsuit/laravel-opentelemetry/compare/1.11.0...1.12.0
+
 ## v1.11.0 - 2025-09-15
 
 ### What's Changed
@@ -66,6 +78,7 @@ Instrumentation\ConsoleInstrumentation::class => [
     'enabled' => env('OTEL_INSTRUMENTATION_CONSOLE', true),
     'excluded' => [],
 ],
+
 
 
 
@@ -179,6 +192,7 @@ Tracer::newSpan('name')->setSpanKind(SpanKind::KIND_PRODUCER)->measure(callback)
 
 
 
+
 ```
 `Tracer::recordExceptionToSpan` has been removed and exception should be recorded directly to span: `$span->recordException($exception)`
 
@@ -199,6 +213,7 @@ This is the injected `otlp` channel:
         'level' => 'debug',
     ]
 ]
+
 
 
 
