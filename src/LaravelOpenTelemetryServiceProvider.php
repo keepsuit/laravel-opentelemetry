@@ -16,6 +16,7 @@ use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Support\CarbonClock;
 use Keepsuit\LaravelOpenTelemetry\Support\OpenTelemetryMonologHandler;
 use Keepsuit\LaravelOpenTelemetry\Support\PropagatorBuilder;
+use Keepsuit\LaravelOpenTelemetry\Support\ResourceBuilder;
 use Keepsuit\LaravelOpenTelemetry\Support\SamplerBuilder;
 use OpenTelemetry\API\Common\Time\Clock;
 use OpenTelemetry\API\Instrumentation\CachedInstrumentation;
@@ -33,7 +34,6 @@ use OpenTelemetry\Contrib\Otlp\OtlpHttpTransportFactory;
 use OpenTelemetry\Contrib\Otlp\OtlpUtil;
 use OpenTelemetry\Contrib\Otlp\SpanExporter as OtlpSpanExporter;
 use OpenTelemetry\Contrib\Zipkin\Exporter as ZipkinExporter;
-use OpenTelemetry\SDK\Common\Attribute\Attributes;
 use OpenTelemetry\SDK\Common\Configuration\Parser\MapParser;
 use OpenTelemetry\SDK\Common\Configuration\Variables as OTELVariables;
 use OpenTelemetry\SDK\Common\Export\Http\PsrTransportFactory;
@@ -49,16 +49,13 @@ use OpenTelemetry\SDK\Metrics\MetricExporter\InMemoryExporterFactory;
 use OpenTelemetry\SDK\Metrics\MetricExporterInterface;
 use OpenTelemetry\SDK\Metrics\MetricReader\ExportingReader;
 use OpenTelemetry\SDK\Metrics\MetricReaderInterface;
-use OpenTelemetry\SDK\Resource\ResourceInfo;
-use OpenTelemetry\SDK\Resource\ResourceInfoFactory;
 use OpenTelemetry\SDK\Sdk;
 use OpenTelemetry\SDK\Trace\SpanExporter\ConsoleSpanExporterFactory;
 use OpenTelemetry\SDK\Trace\SpanExporter\InMemorySpanExporterFactory;
 use OpenTelemetry\SDK\Trace\SpanExporterInterface;
 use OpenTelemetry\SDK\Trace\SpanProcessor\BatchSpanProcessorBuilder;
 use OpenTelemetry\SDK\Trace\TracerProvider;
-use OpenTelemetry\SemConv\Attributes\ServiceAttributes;
-use OpenTelemetry\SemConv\TraceAttributes;
+use OpenTelemetry\SemConv\ResourceAttributes;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 use Throwable;
@@ -88,11 +85,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
     {
         Clock::setDefault(new CarbonClock);
 
-        $resource = ResourceInfoFactory::defaultResource()->merge(
-            ResourceInfo::create(Attributes::create([
-                ServiceAttributes::SERVICE_NAME => config('opentelemetry.service_name'),
-            ]))
-        );
+        $resource = ResourceBuilder::build();
 
         $propagator = PropagatorBuilder::new()->build(config('opentelemetry.propagators'));
         $this->app->bind(TextMapPropagatorInterface::class, fn () => $propagator);
@@ -156,8 +149,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         $instrumentation = new CachedInstrumentation(
             name: 'laravel-opentelemetry',
             version: class_exists(InstalledVersions::class) ? InstalledVersions::getPrettyVersion('keepsuit/laravel-opentelemetry') : null,
-            // @phpstan-ignore-next-line
-            schemaUrl: TraceAttributes::SCHEMA_URL,
+            schemaUrl: ResourceAttributes::SCHEMA_URL,
         );
 
         $this->app->bind(MeterInterface::class, fn () => $instrumentation->meter());

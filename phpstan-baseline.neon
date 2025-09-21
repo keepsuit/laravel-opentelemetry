@@ -2,9 +2,18 @@ parameters:
 	ignoreErrors:
 		-
 			message: '''
-				#^Fetching class constant SCHEMA_URL of deprecated interface OpenTelemetry\\SemConv\\TraceAttributes\:
+				#^Fetching class constant SCHEMA_URL of deprecated interface OpenTelemetry\\SemConv\\ResourceAttributes\:
 				Use \{@see OpenTelemetry\\SemConv\\Attributes\}\\\* or \{@see OpenTelemetry\\SemConv\\Unstable\\Attributes\}\\\* instead\.$#
 			'''
 			identifier: classConstant.deprecatedInterface
 			count: 1
 			path: src/LaravelOpenTelemetryServiceProvider.php
+
+		-
+			message: '''
+				#^Fetching class constant SERVICE_INSTANCE_ID of deprecated interface OpenTelemetry\\SemConv\\ResourceAttributes\:
+				Use \{@see OpenTelemetry\\SemConv\\Attributes\}\\\* or \{@see OpenTelemetry\\SemConv\\Unstable\\Attributes\}\\\* instead\.$#
+			'''
+			identifier: classConstant.deprecatedInterface
+			count: 1
+			path: src/Support/ResourceBuilder.php
