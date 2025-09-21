@@ -38,6 +38,13 @@ return [
     'service_name' => env(Variables::OTEL_SERVICE_NAME, \Illuminate\Support\Str::slug((string) env('APP_NAME', 'laravel-app'))),
 
     /**
+     * Service instance id
+     * Should be unique for each instance of your service.
+     * If not set, a random id will be generated on each request.
+     */
+    'service_instance_id' => env('OTEL_SERVICE_INSTANCE_ID'),
+
+    /**
      * Comma separated list of propagators to use.
      * Supports any otel propagator, for example: "tracecontext", "baggage", "b3", "b3multi", "none"
      */
