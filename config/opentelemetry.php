@@ -25,15 +25,6 @@ return [
          * Supported drivers: "otlp", "console", "null"
          */
         'exporter' => env(Variables::OTEL_METRICS_EXPORTER, 'otlp'),
-
-        /**
-         * Metrics temporality
-         * Determines how metric data points are aggregated over time
-         * Supported values: "Delta", "Cumulative"
-         * Delta: Reports only the change since the last export
-         * Cumulative: Reports the total value since the beginning of the time series
-         */
-        'temporality' => env(Variables::OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE),
     ],
 
     /**
@@ -108,14 +99,22 @@ return [
         'otlp' => [
             'driver' => 'otlp',
             'endpoint' => env(Variables::OTEL_EXPORTER_OTLP_ENDPOINT, 'http://localhost:4318'),
+            /**
+             * Supported protocols: "grpc", "http/protobuf", "http/json"
+             */
             'protocol' => env(Variables::OTEL_EXPORTER_OTLP_PROTOCOL, 'http/protobuf'),
+            'max_retries' => env('OTEL_EXPORTER_OTLP_MAX_RETRIES', 3),
             'traces_timeout' => env(Variables::OTEL_EXPORTER_OTLP_TRACES_TIMEOUT, env(Variables::OTEL_EXPORTER_OTLP_TIMEOUT, 10000)),
             'traces_headers' => (string) env(Variables::OTEL_EXPORTER_OTLP_TRACES_HEADERS, env(Variables::OTEL_EXPORTER_OTLP_HEADERS, '')),
             'metrics_timeout' => env(Variables::OTEL_EXPORTER_OTLP_METRICS_TIMEOUT, env(Variables::OTEL_EXPORTER_OTLP_TIMEOUT, 10000)),
             'metrics_headers' => (string) env(Variables::OTEL_EXPORTER_OTLP_METRICS_HEADERS, env(Variables::OTEL_EXPORTER_OTLP_HEADERS, '')),
+            /**
+             * Preferred metrics temporality
+             * Supported values: "Delta", "Cumulative"
+             */
+            'metrics_temporality' => env(Variables::OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE),
             'logs_timeout' => env(Variables::OTEL_EXPORTER_OTLP_LOGS_TIMEOUT, env(Variables::OTEL_EXPORTER_OTLP_TIMEOUT, 10000)),
             'logs_headers' => (string) env(Variables::OTEL_EXPORTER_OTLP_LOGS_HEADERS, env(Variables::OTEL_EXPORTER_OTLP_HEADERS, '')),
-            'max_retries' => env('OTEL_EXPORTER_OTLP_MAX_RETRIES', 3),
         ],
 
         'zipkin' => [

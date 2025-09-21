@@ -214,7 +214,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         return match ($metricsExporterDriver) {
             'otlp' => new MetricExporter(
                 $this->buildOtlpTransport($metricsExporterConfig ?? [], Signals::METRICS),
-                config('opentelemetry.metrics.temporality')
+                Arr::get($metricsExporterConfig, 'metrics_temporality')
             ),
             'console' => (new ConsoleMetricExporterFactory)->create(),
             default => (new InMemoryExporterFactory)->create(),

@@ -29,18 +29,19 @@ This is the contents of the published config file:
 <?php
 
 use Keepsuit\LaravelOpenTelemetry\Instrumentation;
+use OpenTelemetry\SDK\Common\Configuration\Variables;
 
 return [
     /**
      * Service name
      */
-    'service_name' => env('OTEL_SERVICE_NAME', \Illuminate\Support\Str::slug(env('APP_NAME', 'laravel-app'))),
+    'service_name' => env(Variables::OTEL_SERVICE_NAME, \Illuminate\Support\Str::slug((string) env('APP_NAME', 'laravel-app'))),
 
     /**
      * Comma separated list of propagators to use.
      * Supports any otel propagator, for example: "tracecontext", "baggage", "b3", "b3multi", "none"
      */
-    'propagators' => env('OTEL_PROPAGATORS', 'tracecontext'),
+    'propagators' => env(Variables::OTEL_PROPAGATORS, 'tracecontext'),
 
     /**
      * OpenTelemetry Meter configuration
@@ -51,7 +52,7 @@ return [
          * This should be the key of one of the exporters defined in the exporters section
          * Supported drivers: "otlp", "console", "null"
          */
-        'exporter' => env('OTEL_METRICS_EXPORTER', 'otlp'),
+        'exporter' => env(Variables::OTEL_METRICS_EXPORTER, 'otlp'),
     ],
 
     /**
@@ -62,7 +63,7 @@ return [
          * Traces exporter
          * This should be the key of one of the exporters defined in the exporters section
          */
-        'exporter' => env('OTEL_TRACES_EXPORTER', 'otlp'),
+        'exporter' => env(Variables::OTEL_TRACES_EXPORTER, 'otlp'),
 
         /**
          * Traces sampler
@@ -97,7 +98,7 @@ return [
          * This should be the key of one of the exporters defined in the exporters section
          * Supported drivers: "otlp", "console", "null"
          */
-        'exporter' => env('OTEL_LOGS_EXPORTER', 'otlp'),
+        'exporter' => env(Variables::OTEL_LOGS_EXPORTER, 'otlp'),
 
         /**
          * Inject active trace id in log context
@@ -125,19 +126,29 @@ return [
     'exporters' => [
         'otlp' => [
             'driver' => 'otlp',
-            'endpoint' => env('OTEL_EXPORTER_OTLP_ENDPOINT', 'http://localhost:4318'),
-            // Supported: "grpc", "http/protobuf", "http/json"
-            'protocol' => env('OTEL_EXPORTER_OTLP_PROTOCOL', 'http/protobuf'),
-            'traces_timeout' => env('OTEL_EXPORTER_OTLP_TRACES_TIMEOUT', env('OTEL_EXPORTER_OTLP_TIMEOUT', 10000)),
-            'metrics_timeout' => env('OTEL_EXPORTER_OTLP_METRICS_TIMEOUT', env('OTEL_EXPORTER_OTLP_TIMEOUT', 10000)),
-            'logs_timeout' => env('OTEL_EXPORTER_OTLP_LOGS_TIMEOUT', env('OTEL_EXPORTER_OTLP_TIMEOUT', 10000)),
+            'endpoint' => env(Variables::OTEL_EXPORTER_OTLP_ENDPOINT, 'http://localhost:4318'),
+            /**
+             * Supported protocols: "grpc", "http/protobuf", "http/json"
+             */
+            'protocol' => env(Variables::OTEL_EXPORTER_OTLP_PROTOCOL, 'http/protobuf'),
             'max_retries' => env('OTEL_EXPORTER_OTLP_MAX_RETRIES', 3),
+            'traces_timeout' => env(Variables::OTEL_EXPORTER_OTLP_TRACES_TIMEOUT, env(Variables::OTEL_EXPORTER_OTLP_TIMEOUT, 10000)),
+            'traces_headers' => (string) env(Variables::OTEL_EXPORTER_OTLP_TRACES_HEADERS, env(Variables::OTEL_EXPORTER_OTLP_HEADERS, '')),
+            'metrics_timeout' => env(Variables::OTEL_EXPORTER_OTLP_METRICS_TIMEOUT, env(Variables::OTEL_EXPORTER_OTLP_TIMEOUT, 10000)),
+            'metrics_headers' => (string) env(Variables::OTEL_EXPORTER_OTLP_METRICS_HEADERS, env(Variables::OTEL_EXPORTER_OTLP_HEADERS, '')),
+            /**
+             * Preferred metrics temporality
+             * Supported values: "Delta", "Cumulative"
+             */
+            'metrics_temporality' => env(Variables::OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE),
+            'logs_timeout' => env(Variables::OTEL_EXPORTER_OTLP_LOGS_TIMEOUT, env(Variables::OTEL_EXPORTER_OTLP_TIMEOUT, 10000)),
+            'logs_headers' => (string) env(Variables::OTEL_EXPORTER_OTLP_LOGS_HEADERS, env(Variables::OTEL_EXPORTER_OTLP_HEADERS, '')),
         ],
 
         'zipkin' => [
             'driver' => 'zipkin',
-            'endpoint' => env('OTEL_EXPORTER_ZIPKIN_ENDPOINT', 'http://localhost:9411'),
-            'timeout' => env('OTEL_EXPORTER_ZIPKIN_TIMEOUT', 10000),
+            'endpoint' => env(Variables::OTEL_EXPORTER_ZIPKIN_ENDPOINT, 'http://localhost:9411'),
+            'timeout' => env(Variables::OTEL_EXPORTER_ZIPKIN_TIMEOUT, 10000),
             'max_retries' => env('OTEL_EXPORTER_ZIPKIN_MAX_RETRIES', 3),
         ],
     ],
@@ -176,8 +187,8 @@ return [
         Instrumentation\ViewInstrumentation::class => env('OTEL_INSTRUMENTATION_VIEW', true),
 
         Instrumentation\LivewireInstrumentation::class => env('OTEL_INSTRUMENTATION_LIVEWIRE', true),
-        
-         Instrumentation\ConsoleInstrumentation::class => [
+
+        Instrumentation\ConsoleInstrumentation::class => [
             'enabled' => env('OTEL_INSTRUMENTATION_CONSOLE', true),
             'excluded' => [],
         ],
@@ -335,28 +346,9 @@ $meter->record(1.2, ['name' => 'percentage', 'app' => 'my-app']);
 
 ### Metrics Temporality
 
-This package supports configuring the temporality for metrics when using OTLP exporters. Temporality determines how metric data points are aggregated over time:
-
-- **Delta**: Reports only the change since the last export (default)
-- **Cumulative**: Reports the total value since the beginning of the time series
-
-To configure temporality, set the `OTEL_METRICS_TEMPORALITY` environment variable or update the config:
-
-```php
-// config/opentelemetry.php
-'metrics' => [
-    'exporter' => env('OTEL_METRICS_EXPORTER', 'otlp'),
-    'temporality' => env('OTEL_METRICS_TEMPORALITY', 'Delta'), // 'Delta' or 'Cumulative'
-],
-```
-
-Or in your `.env` file:
-
-```env
-OTEL_METRICS_TEMPORALITY=Cumulative
-```
-
-This is particularly useful when working with monitoring systems like Grafana Mimir that may have specific temporality requirements.
+The OTLP exporter supports setting a preferred temporality for exported metrics with `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE` env variable.
+The supported values are `Delta` and `Cumulative`.
+If not set, the default temporality for each metric type will be used.
 
 ## Logs
 
