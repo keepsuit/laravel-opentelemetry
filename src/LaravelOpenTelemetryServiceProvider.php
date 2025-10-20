@@ -18,6 +18,7 @@ use Keepsuit\LaravelOpenTelemetry\Support\OpenTelemetryMonologHandler;
 use Keepsuit\LaravelOpenTelemetry\Support\PropagatorBuilder;
 use Keepsuit\LaravelOpenTelemetry\Support\ResourceBuilder;
 use Keepsuit\LaravelOpenTelemetry\Support\SamplerBuilder;
+use Monolog\Handler\NullHandler;
 use OpenTelemetry\API\Common\Time\Clock;
 use OpenTelemetry\API\Instrumentation\CachedInstrumentation;
 use OpenTelemetry\API\Logs\LoggerInterface;
@@ -64,12 +65,13 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 {
     public function packageBooted(): void
     {
+        $this->injectConfig();
+
         if (Sdk::isDisabled()) {
             return;
         }
 
         $this->configureEnvironmentVariables();
-        $this->injectConfig();
         $this->init();
         $this->registerInstrumentation();
     }
@@ -320,7 +322,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 
             $config->set('logging.channels.otlp', [
                 'driver' => 'monolog',
-                'handler' => OpenTelemetryMonologHandler::class,
+                'handler' => Sdk::isDisabled() ? NullHandler::class : OpenTelemetryMonologHandler::class,
                 'level' => 'debug',
             ]);
         });
