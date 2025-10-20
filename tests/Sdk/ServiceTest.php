@@ -7,7 +7,7 @@ test('service resource attributes', function () {
 
     expect($resource->getAttributes())
         ->get('service.name')->toBe('laravel-app')
-        ->get('service.instance.id')->toBeUuid();
+        ->get('service.instance.id')->toBeNull();
 });
 
 test('custom instance id', function () {
