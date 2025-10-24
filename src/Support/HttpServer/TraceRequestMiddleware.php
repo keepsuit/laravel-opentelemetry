@@ -26,7 +26,7 @@ class TraceRequestMiddleware
             return $next($request);
         }
 
-        if (in_array($request->method(), HttpServerInstrumentation::getExcludedMethods())) {
+        if (in_array($request->method(), HttpServerInstrumentation::getExcludedMethods(), true)) {
             return $next($request);
         }
 
