@@ -356,3 +356,94 @@ it('mark some headers as sensitive by default', function () {
             'http.response.header.set-cookie' => ['*****'],
         ]);
 });
+
+it('skip tracing for excluded HTTP methods', function () {
+    registerInstrumentation(HttpServerInstrumentation::class, [
+        'excluded_methods' => [
+            'HEAD',
+            'OPTIONS',
+        ],
+    ]);
+
+    // Test HEAD request
+    $response = $this->head('test-ok');
+    $response->assertOk();
+
+    $spans = getRecordedSpans();
+    $serverSpan = $spans->firstWhere(fn (\OpenTelemetry\SDK\Trace\ImmutableSpan $span) => $span->getKind() === SpanKind::KIND_SERVER);
+
+    expect($serverSpan)->toBeNull();
+
+    resetStorage();
+
+    // Test OPTIONS request
+    $response = $this->options('test-ok');
+    $response->assertOk();
+
+    $spans = getRecordedSpans();
+    $serverSpan = $spans->firstWhere(fn (\OpenTelemetry\SDK\Trace\ImmutableSpan $span) => $span->getKind() === SpanKind::KIND_SERVER);
+
+    expect($serverSpan)->toBeNull();
+});
+
+it('trace requests with non-excluded HTTP methods', function () {
+    registerInstrumentation(HttpServerInstrumentation::class, [
+        'excluded_methods' => [
+            'HEAD',
+            'OPTIONS',
+        ],
+    ]);
+
+    // Test GET request (should be traced)
+    $response = $this->get('test-ok');
+    $response->assertOk();
+
+    $spans = getRecordedSpans();
+    $serverSpan = $spans->firstWhere(fn (\OpenTelemetry\SDK\Trace\ImmutableSpan $span) => $span->getKind() === SpanKind::KIND_SERVER);
+
+    expect($serverSpan)
+        ->not->toBeNull()
+        ->getName()->toBe('/test-ok');
+
+    resetStorage();
+
+    // Test POST request (should be traced)
+    $response = $this->post('test-ok');
+    $response->assertOk();
+
+    $spans = getRecordedSpans();
+    $serverSpan = $spans->firstWhere(fn (\OpenTelemetry\SDK\Trace\ImmutableSpan $span) => $span->getKind() === SpanKind::KIND_SERVER);
+
+    expect($serverSpan)
+        ->not->toBeNull()
+        ->getName()->toBe('/test-ok');
+});
+
+it('handle excluded methods case-insensitively', function () {
+    registerInstrumentation(HttpServerInstrumentation::class, [
+        'excluded_methods' => [
+            'head',  // lowercase
+            'OpTiOnS',  // mixed case
+        ],
+    ]);
+
+    // Test HEAD request
+    $response = $this->head('test-ok');
+    $response->assertOk();
+
+    $spans = getRecordedSpans();
+    $serverSpan = $spans->firstWhere(fn (\OpenTelemetry\SDK\Trace\ImmutableSpan $span) => $span->getKind() === SpanKind::KIND_SERVER);
+
+    expect($serverSpan)->toBeNull();
+
+    resetStorage();
+
+    // Test OPTIONS request
+    $response = $this->options('test-ok');
+    $response->assertOk();
+
+    $spans = getRecordedSpans();
+    $serverSpan = $spans->firstWhere(fn (\OpenTelemetry\SDK\Trace\ImmutableSpan $span) => $span->getKind() === SpanKind::KIND_SERVER);
+
+    expect($serverSpan)->toBeNull();
+});

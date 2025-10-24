@@ -26,6 +26,10 @@ class TraceRequestMiddleware
             return $next($request);
         }
 
+        if (in_array($request->method(), HttpServerInstrumentation::getExcludedMethods())) {
+            return $next($request);
+        }
+
         $bootedTimestamp = $this->bootedTimestamp($request);
 
         $span = $this->startTracing($request, $bootedTimestamp);

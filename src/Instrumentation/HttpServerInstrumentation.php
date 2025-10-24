@@ -13,6 +13,8 @@ class HttpServerInstrumentation implements Instrumentation
 
     protected static array $excludedPaths = [];
 
+    protected static array $excludedMethods = [];
+
     /**
      * @return array<string>
      */
@@ -21,11 +23,24 @@ class HttpServerInstrumentation implements Instrumentation
         return static::$excludedPaths;
     }
 
+    /**
+     * @return array<string>
+     */
+    public static function getExcludedMethods(): array
+    {
+        return static::$excludedMethods;
+    }
+
     public function register(array $options): void
     {
         static::$excludedPaths = array_map(
             fn (string $path) => ltrim($path, '/'),
             Arr::get($options, 'excluded_paths', []),
+        );
+
+        static::$excludedMethods = array_map(
+            fn (string $method) => strtoupper($method),
+            Arr::get($options, 'excluded_methods', []),
         );
 
         static::$allowedHeaders = $this->normalizeHeaders(Arr::get($options, 'allowed_headers', []));

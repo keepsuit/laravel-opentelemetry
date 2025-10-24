@@ -139,6 +139,7 @@ return [
         Instrumentation\HttpServerInstrumentation::class => [
             'enabled' => env('OTEL_INSTRUMENTATION_HTTP_SERVER', true),
             'excluded_paths' => [],
+            'excluded_methods' => [],
             'allowed_headers' => [],
             'sensitive_headers' => [],
         ],
