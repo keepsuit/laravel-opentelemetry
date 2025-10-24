@@ -2,6 +2,16 @@
 
 All notable changes to `laravel-opentelemetry` will be documented in this file.
 
+## v1.13.0 - 2025-10-24
+
+### What's Changed
+
+* Gracefully disable otel by @cappuc in https://github.com/keepsuit/laravel-opentelemetry/pull/55
+* Add support for excluding HTTP methods from tracing by @Copilot in https://github.com/keepsuit/laravel-opentelemetry/pull/56
+* Bump stefanzweifel/git-auto-commit-action from 6 to 7 by @dependabot[bot] in https://github.com/keepsuit/laravel-opentelemetry/pull/54
+
+**Full Changelog**: https://github.com/keepsuit/laravel-opentelemetry/compare/1.12.0...1.13.0
+
 ## v1.12.0 - 2025-09-21
 
 ### What's Changed
@@ -78,6 +88,7 @@ Instrumentation\ConsoleInstrumentation::class => [
     'enabled' => env('OTEL_INSTRUMENTATION_CONSOLE', true),
     'excluded' => [],
 ],
+
 
 
 
@@ -193,6 +204,7 @@ Tracer::newSpan('name')->setSpanKind(SpanKind::KIND_PRODUCER)->measure(callback)
 
 
 
+
 ```
 `Tracer::recordExceptionToSpan` has been removed and exception should be recorded directly to span: `$span->recordException($exception)`
 
@@ -213,6 +225,7 @@ This is the injected `otlp` channel:
         'level' => 'debug',
     ]
 ]
+
 
 
 
