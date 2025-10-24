@@ -25,6 +25,7 @@ use OpenTelemetry\API\Metrics\MeterInterface;
 use OpenTelemetry\API\Signals;
 use OpenTelemetry\API\Trace\StatusCode;
 use OpenTelemetry\API\Trace\TracerInterface;
+use OpenTelemetry\Context\Propagation\NoopTextMapPropagator;
 use OpenTelemetry\Context\Propagation\TextMapPropagatorInterface;
 use OpenTelemetry\Contrib\Grpc\GrpcTransportFactory;
 use OpenTelemetry\Contrib\Otlp\HttpEndpointResolver;
@@ -41,21 +42,28 @@ use OpenTelemetry\SDK\Common\Export\TransportInterface;
 use OpenTelemetry\SDK\Logs\Exporter\ConsoleExporterFactory as LogsConsoleExporterFactory;
 use OpenTelemetry\SDK\Logs\Exporter\InMemoryExporterFactory as LogsInMemoryExporterFactory;
 use OpenTelemetry\SDK\Logs\LoggerProvider;
+use OpenTelemetry\SDK\Logs\LoggerProviderInterface;
 use OpenTelemetry\SDK\Logs\LogRecordExporterInterface;
+use OpenTelemetry\SDK\Logs\NoopLoggerProvider;
 use OpenTelemetry\SDK\Logs\Processor\BatchLogRecordProcessor;
 use OpenTelemetry\SDK\Metrics\MeterProvider;
+use OpenTelemetry\SDK\Metrics\MeterProviderInterface;
 use OpenTelemetry\SDK\Metrics\MetricExporter\ConsoleMetricExporterFactory;
 use OpenTelemetry\SDK\Metrics\MetricExporter\InMemoryExporterFactory;
 use OpenTelemetry\SDK\Metrics\MetricExporterInterface;
 use OpenTelemetry\SDK\Metrics\MetricReader\ExportingReader;
 use OpenTelemetry\SDK\Metrics\MetricReaderInterface;
+use OpenTelemetry\SDK\Metrics\NoopMeterProvider;
+use OpenTelemetry\SDK\Resource\ResourceInfo;
 use OpenTelemetry\SDK\Sdk;
+use OpenTelemetry\SDK\Trace\NoopTracerProvider;
 use OpenTelemetry\SDK\Trace\SpanExporter\ConsoleSpanExporterFactory;
 use OpenTelemetry\SDK\Trace\SpanExporter\InMemorySpanExporterFactory;
 use OpenTelemetry\SDK\Trace\SpanExporterInterface;
 use OpenTelemetry\SDK\Trace\SpanProcessor\BatchSpanProcessorBuilder;
 use OpenTelemetry\SDK\Trace\TracerProvider;
-use OpenTelemetry\SemConv\ResourceAttributes;
+use OpenTelemetry\SDK\Trace\TracerProviderInterface;
+use OpenTelemetry\SemConv\Version;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 use Throwable;
@@ -64,10 +72,6 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 {
     public function packageBooted(): void
     {
-        if (Sdk::isDisabled()) {
-            return;
-        }
-
         $this->configureEnvironmentVariables();
         $this->injectConfig();
         $this->init();
@@ -87,56 +91,14 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 
         $resource = ResourceBuilder::build();
 
-        $propagator = PropagatorBuilder::new()->build(config('opentelemetry.propagators'));
-        $this->app->bind(TextMapPropagatorInterface::class, fn () => $propagator);
+        $propagator = match (Sdk::isDisabled()) {
+            true => new NoopTextMapPropagator,
+            default => PropagatorBuilder::new()->build(config('opentelemetry.propagators'))
+        };
 
-        /**
-         * Metrics
-         */
-        $metricsExporter = $this->buildMetricsExporter();
-        $this->app->bind(MetricExporterInterface::class, fn () => $metricsExporter);
-        $metricsReader = new ExportingReader($metricsExporter);
-        $this->app->bind(MetricReaderInterface::class, fn () => $metricsReader);
-
-        $meterProvider = MeterProvider::builder()
-            ->setResource($resource)
-            ->addReader($metricsReader)
-            ->build();
-
-        /**
-         * Traces
-         */
-        $spanExporter = $this->buildSpanExporter();
-        $this->app->bind(SpanExporterInterface::class, fn () => $spanExporter);
-        $spanProcessor = (new BatchSpanProcessorBuilder($spanExporter))->build();
-
-        $samplerConfig = config('opentelemetry.traces.sampler', []);
-        $sampler = SamplerBuilder::new()->build(
-            $samplerConfig['type'] ?? 'always_on',
-            $samplerConfig['parent'] ?? true,
-            $samplerConfig['args'] ?? []
-        );
-
-        $tracerProvider = TracerProvider::builder()
-            ->setResource($resource)
-            ->addSpanProcessor($spanProcessor)
-            ->setSampler($sampler)
-            ->build();
-
-        /**
-         * Logs
-         */
-        $logExporter = $this->buildLogsExporter();
-        $this->app->bind(LogRecordExporterInterface::class, fn () => $logExporter);
-        $logProcessor = new BatchLogRecordProcessor(
-            exporter: $logExporter,
-            clock: Clock::getDefault()
-        );
-
-        $loggerProvider = LoggerProvider::builder()
-            ->setResource($resource)
-            ->addLogRecordProcessor($logProcessor)
-            ->build();
+        $meterProvider = $this->buildMeterProvider($resource);
+        $tracerProvider = $this->buildTracerProvider($resource);
+        $loggerProvider = $this->buildLoggerProvider($resource);
 
         Sdk::builder()
             ->setTracerProvider($tracerProvider)
@@ -149,9 +111,10 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         $instrumentation = new CachedInstrumentation(
             name: 'laravel-opentelemetry',
             version: class_exists(InstalledVersions::class) ? InstalledVersions::getPrettyVersion('keepsuit/laravel-opentelemetry') : null,
-            schemaUrl: ResourceAttributes::SCHEMA_URL,
+            schemaUrl: Version::VERSION_1_36_0->url(),
         );
 
+        $this->app->bind(TextMapPropagatorInterface::class, fn () => $propagator);
         $this->app->bind(MeterInterface::class, fn () => $instrumentation->meter());
         $this->app->bind(TracerInterface::class, fn () => $instrumentation->tracer());
         $this->app->bind(LoggerInterface::class, fn () => $instrumentation->logger());
@@ -187,7 +150,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         });
     }
 
-    private function configureEnvironmentVariables(): void
+    protected function configureEnvironmentVariables(): void
     {
         $envRepository = Env::getRepository();
 
@@ -195,6 +158,77 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 
         // Disable debug scopes wrapping
         $envRepository->set('OTEL_PHP_DEBUG_SCOPES_DISABLED', '1');
+    }
+
+    protected function buildTracerProvider(ResourceInfo $resource): TracerProviderInterface
+    {
+        $spanExporter = match (Sdk::isDisabled()) {
+            true => (new InMemorySpanExporterFactory)->create(),
+            default => $this->buildSpanExporter(),
+        };
+        $this->app->bind(SpanExporterInterface::class, fn () => $spanExporter);
+
+        if (Sdk::isDisabled()) {
+            return new NoopTracerProvider;
+        }
+
+        $spanProcessor = (new BatchSpanProcessorBuilder($spanExporter))->build();
+
+        $samplerConfig = config('opentelemetry.traces.sampler', []);
+        $sampler = SamplerBuilder::new()->build(
+            $samplerConfig['type'] ?? 'always_on',
+            $samplerConfig['parent'] ?? true,
+            $samplerConfig['args'] ?? []
+        );
+
+        return TracerProvider::builder()
+            ->setResource($resource)
+            ->addSpanProcessor($spanProcessor)
+            ->setSampler($sampler)
+            ->build();
+    }
+
+    protected function buildMeterProvider(ResourceInfo $resource): MeterProviderInterface
+    {
+        $metricsExporter = match (Sdk::isDisabled()) {
+            true => (new InMemoryExporterFactory)->create(),
+            default => $this->buildMetricsExporter(),
+        };
+        $this->app->bind(MetricExporterInterface::class, fn () => $metricsExporter);
+        $metricsReader = new ExportingReader($metricsExporter);
+        $this->app->bind(MetricReaderInterface::class, fn () => $metricsReader);
+
+        if (Sdk::isDisabled()) {
+            return new NoopMeterProvider;
+        }
+
+        return MeterProvider::builder()
+            ->setResource($resource)
+            ->addReader($metricsReader)
+            ->build();
+    }
+
+    protected function buildLoggerProvider(ResourceInfo $resource): LoggerProviderInterface
+    {
+        $logExporter = match (Sdk::isDisabled()) {
+            true => (new LogsInMemoryExporterFactory)->create(),
+            default => $this->buildLogsExporter(),
+        };
+        $this->app->bind(LogRecordExporterInterface::class, fn () => $logExporter);
+
+        if (Sdk::isDisabled()) {
+            return new NoopLoggerProvider;
+        }
+
+        $logProcessor = new BatchLogRecordProcessor(
+            exporter: $logExporter,
+            clock: Clock::getDefault()
+        );
+
+        return LoggerProvider::builder()
+            ->setResource($resource)
+            ->addLogRecordProcessor($logProcessor)
+            ->build();
     }
 
     protected function buildMetricsExporter(): MetricExporterInterface
