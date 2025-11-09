@@ -2,6 +2,14 @@
 
 All notable changes to `laravel-opentelemetry` will be documented in this file.
 
+## v1.13.1 - 2025-11-09
+
+### What's changed
+
+- Excluded some long running commands from console instrumentation
+
+**Full Changelog**: https://github.com/keepsuit/laravel-opentelemetry/compare/1.13.0...1.13.1
+
 ## v1.13.0 - 2025-10-24
 
 ### What's Changed
@@ -88,6 +96,7 @@ Instrumentation\ConsoleInstrumentation::class => [
     'enabled' => env('OTEL_INSTRUMENTATION_CONSOLE', true),
     'excluded' => [],
 ],
+
 
 
 
@@ -205,6 +214,7 @@ Tracer::newSpan('name')->setSpanKind(SpanKind::KIND_PRODUCER)->measure(callback)
 
 
 
+
 ```
 `Tracer::recordExceptionToSpan` has been removed and exception should be recorded directly to span: `$span->recordException($exception)`
 
@@ -225,6 +235,7 @@ This is the injected `otlp` channel:
         'level' => 'debug',
     ]
 ]
+
 
 
 
