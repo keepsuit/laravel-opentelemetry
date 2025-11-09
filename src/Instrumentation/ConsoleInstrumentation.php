@@ -4,7 +4,7 @@ namespace Keepsuit\LaravelOpenTelemetry\Instrumentation;
 
 use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Console\Events\CommandStarting;
-use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use OpenTelemetry\API\Trace\SpanInterface;
 use OpenTelemetry\API\Trace\StatusCode;
@@ -15,22 +15,54 @@ class ConsoleInstrumentation implements Instrumentation
 {
     protected \WeakMap $commands;
 
+    /**
+     * @var string[]
+     */
     protected array $excluded = [];
 
+    /**
+     * @var string[]
+     */
+    protected array $excludedWildcards = [];
+
+    /**
+     * @param  array{
+     *     excluded?: string[]
+     * }  $options
+     */
     public function register(array $options): void
     {
         $this->commands = new \WeakMap;
-        $this->excluded = Arr::map($options['excluded'] ?? [], function (string $command) {
-            if (class_exists($command)) {
-                try {
-                    return app($command)->getName();
-                } catch (\Throwable) {
-                    return null;
-                }
-            }
 
-            return $command;
-        });
+        /**
+         * @var Collection<int, string> $wildcards
+         * @var Collection<int, string> $fullCommands
+         */
+        [$wildcards, $fullCommands] = Collection::make($options['excluded'] ?? [])
+            ->map(function (string $command) {
+                if (class_exists($command)) {
+                    try {
+                        return app($command)->getName();
+                    } catch (\Throwable) {
+                        return null;
+                    }
+                }
+
+                return $command;
+            })
+            ->merge([
+                'horizon',
+                'horizon:*',
+                'queue:*',
+                'reverb:*',
+                'schedule:*',
+                'inertia:*',
+                'mcp:*',
+                'list',
+            ])
+            ->partition(fn (string $command) => str_ends_with($command, '*'));
+        $this->excluded = $fullCommands->values()->all();
+        $this->excludedWildcards = $wildcards->values()->all();
 
         app('events')->listen(CommandStarting::class, [$this, 'commandStarting']);
         app('events')->listen(CommandFinished::class, [$this, 'commandFinished']);
@@ -42,7 +74,7 @@ class ConsoleInstrumentation implements Instrumentation
             return;
         }
 
-        if (in_array($event->command, $this->excluded, true)) {
+        if ($this->isExcluded($event->command)) {
             return;
         }
 
@@ -100,5 +132,21 @@ class ConsoleInstrumentation implements Instrumentation
 
             $span->setAttribute('console.option.'.$key, $value);
         }
+    }
+
+    protected function isExcluded(string $command): bool
+    {
+        if (in_array($command, $this->excluded, true)) {
+            return true;
+        }
+
+        foreach ($this->excludedWildcards as $wildcard) {
+            if (str_starts_with($command, rtrim($wildcard, '*'))) {
+
+                return true;
+            }
+        }
+
+        return false;
     }
 }
