@@ -45,7 +45,7 @@
         "php-http/guzzle7-adapter": "^1.0",
         "phpstan/extension-installer": "^1.4",
         "phpstan/phpstan-deprecation-rules": "^1.2 || ^2.0",
-        "predis/predis": "^2.2",
+        "predis/predis": "^2.2 || ^3.0",
         "spatie/invade": "^2.0",
         "spatie/laravel-ray": "^1.40",
         "spatie/test-time": "^1.3",
