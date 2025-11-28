@@ -44,6 +44,7 @@ use OpenTelemetry\SDK\Logs\Exporter\InMemoryExporterFactory as LogsInMemoryExpor
 use OpenTelemetry\SDK\Logs\LoggerProvider;
 use OpenTelemetry\SDK\Logs\LoggerProviderInterface;
 use OpenTelemetry\SDK\Logs\LogRecordExporterInterface;
+use OpenTelemetry\SDK\Logs\LogRecordProcessorInterface;
 use OpenTelemetry\SDK\Logs\NoopLoggerProvider;
 use OpenTelemetry\SDK\Logs\Processor\BatchLogRecordProcessor;
 use OpenTelemetry\SDK\Metrics\MeterProvider;
@@ -61,6 +62,7 @@ use OpenTelemetry\SDK\Trace\SpanExporter\ConsoleSpanExporterFactory;
 use OpenTelemetry\SDK\Trace\SpanExporter\InMemorySpanExporterFactory;
 use OpenTelemetry\SDK\Trace\SpanExporterInterface;
 use OpenTelemetry\SDK\Trace\SpanProcessor\BatchSpanProcessorBuilder;
+use OpenTelemetry\SDK\Trace\SpanProcessorInterface;
 use OpenTelemetry\SDK\Trace\TracerProvider;
 use OpenTelemetry\SDK\Trace\TracerProviderInterface;
 use OpenTelemetry\SemConv\Version;
@@ -181,11 +183,22 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
             $samplerConfig['args'] ?? []
         );
 
-        return TracerProvider::builder()
+        $builder = TracerProvider::builder()
             ->setResource($resource)
             ->addSpanProcessor($spanProcessor)
-            ->setSampler($sampler)
-            ->build();
+            ->setSampler($sampler);
+
+        foreach (config('opentelemetry.traces.processors', []) as $processorClass) {
+            if (class_exists($processorClass)) {
+                $processor = $this->app->make($processorClass);
+
+                if ($processor instanceof SpanProcessorInterface) {
+                    $builder->addSpanProcessor($processor);
+                }
+            }
+        }
+
+        return $builder->build();
     }
 
     protected function buildMeterProvider(ResourceInfo $resource): MeterProviderInterface
@@ -225,10 +238,21 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
             clock: Clock::getDefault()
         );
 
-        return LoggerProvider::builder()
+        $builder = LoggerProvider::builder()
             ->setResource($resource)
-            ->addLogRecordProcessor($logProcessor)
-            ->build();
+            ->addLogRecordProcessor($logProcessor);
+
+        foreach (config('opentelemetry.logs.processors', []) as $processorClass) {
+            if (class_exists($processorClass)) {
+                $processor = $this->app->make($processorClass);
+
+                if ($processor instanceof LogRecordProcessorInterface) {
+                    $builder->addLogRecordProcessor($processor);
+                }
+            }
+        }
+
+        return $builder->build();
     }
 
     protected function buildMetricsExporter(): MetricExporterInterface
