@@ -287,7 +287,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
             Signals::TRACE => $config['traces_protocol'] ?? null,
             Signals::METRICS => $config['metrics_protocol'] ?? null,
             Signals::LOGS => $config['logs_protocol'] ?? null,
-        } ?? $config['traces_protocol'] ?? null;
+        } ?? $config['protocol'] ?? null;
 
         $timeoutMillis = match ($signal) {
             Signals::TRACE => $config['traces_timeout'] ?? 10000,
