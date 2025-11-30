@@ -296,7 +296,7 @@ it('trace allowed response headers', function () {
 
     expect($span->getAttributes())
         ->toMatchArray([
-            'http.response.header.content-type' => ['text/html; charset=UTF-8'],
+            'http.response.header.content-type' => ['text/html; charset=utf-8'],
         ])
         ->not->toHaveKey('http.response.header.date');
 });
