@@ -66,6 +66,13 @@ return [
                 'ratio' => env('OTEL_TRACES_SAMPLER_TRACEIDRATIO_RATIO', 0.05),
             ],
         ],
+
+        /**
+         * Traces span processors.
+         *
+         * Example: YourTracesSpanProcessor::class
+         */
+        'processors' => [],
     ],
 
     /**
@@ -91,6 +98,13 @@ return [
          * Context field name for trace id
          */
         'trace_id_field' => 'traceid',
+
+        /**
+         * Logs record processors.
+         *
+         * Example: YourLogRecordProcessor::class
+         */
+        'processors' => [],
     ],
 
     /**
