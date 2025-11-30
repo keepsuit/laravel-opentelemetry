@@ -279,10 +279,15 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
      */
     protected function buildOtlpTransport(array $config, string $signal): TransportInterface
     {
-        $protocol = $config['protocol'] ?? null;
         $endpoint = $config['endpoint'] ?? 'http://localhost:4318';
 
         $maxRetries = $config['max_retries'] ?? 3;
+
+        $protocol = match ($signal) {
+            Signals::TRACE => $config['traces_protocol'] ?? null,
+            Signals::METRICS => $config['metrics_protocol'] ?? null,
+            Signals::LOGS => $config['logs_protocol'] ?? null,
+        } ?? $config['protocol'] ?? null;
 
         $timeoutMillis = match ($signal) {
             Signals::TRACE => $config['traces_timeout'] ?? 10000,
