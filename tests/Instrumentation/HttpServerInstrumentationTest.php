@@ -295,10 +295,11 @@ it('trace allowed response headers', function () {
     $span = getRecordedSpans()->last();
 
     expect($span->getAttributes())
-        ->toMatchArray([
-            'http.response.header.content-type' => ['text/html; charset=utf-8'],
-        ])
+        ->toHaveKey('http.response.header.content-type')
         ->not->toHaveKey('http.response.header.date');
+
+    expect(strtolower($span->getAttributes()->get('http.response.header.content-type')[0]))
+        ->toBe('text/html; charset=utf-8');
 });
 
 it('trace sensitive headers with hidden value', function () {
