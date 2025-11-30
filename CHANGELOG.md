@@ -2,6 +2,20 @@
 
 All notable changes to `laravel-opentelemetry` will be documented in this file.
 
+## v1.14.0 - 2025-11-30
+
+### What's Changed
+
+* Bump actions/checkout from 5 to 6 by @dependabot[bot] in https://github.com/keepsuit/laravel-opentelemetry/pull/58
+* Add support for per signal protocol selection by @patrickratzow in https://github.com/keepsuit/laravel-opentelemetry/pull/61
+* Add support for custom logs & traces processors by @patrickratzow in https://github.com/keepsuit/laravel-opentelemetry/pull/60
+
+### New Contributors
+
+* @patrickratzow made their first contribution
+
+**Full Changelog**: https://github.com/keepsuit/laravel-opentelemetry/compare/1.13.1...1.14.0
+
 ## v1.13.1 - 2025-11-09
 
 ### What's changed
@@ -96,6 +110,7 @@ Instrumentation\ConsoleInstrumentation::class => [
     'enabled' => env('OTEL_INSTRUMENTATION_CONSOLE', true),
     'excluded' => [],
 ],
+
 
 
 
@@ -215,6 +230,7 @@ Tracer::newSpan('name')->setSpanKind(SpanKind::KIND_PRODUCER)->measure(callback)
 
 
 
+
 ```
 `Tracer::recordExceptionToSpan` has been removed and exception should be recorded directly to span: `$span->recordException($exception)`
 
@@ -235,6 +251,7 @@ This is the injected `otlp` channel:
         'level' => 'debug',
     ]
 ]
+
 
 
 
