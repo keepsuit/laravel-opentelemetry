@@ -94,6 +94,14 @@ return [
                 'ratio' => env('OTEL_TRACES_SAMPLER_TRACEIDRATIO_RATIO', 0.05),
             ],
         ],
+
+        /**
+         * Traces span processors.
+         * Processors classes must implement OpenTelemetry\SDK\Trace\SpanProcessorInterface
+         *
+         * Example: YourTracesSpanProcessor::class
+         */
+        'processors' => [],
     ],
 
     /**
@@ -119,6 +127,14 @@ return [
          * Context field name for trace id
          */
         'trace_id_field' => 'traceid',
+
+        /**
+         * Logs record processors.
+         * Processors classes must implement OpenTelemetry\SDK\Logs\LogRecordProcessorInterface
+         *
+         * Example: YourLogRecordProcessor::class
+         */
+        'processors' => [],
     ],
 
     /**
@@ -141,8 +157,16 @@ return [
             'max_retries' => env('OTEL_EXPORTER_OTLP_MAX_RETRIES', 3),
             'traces_timeout' => env(Variables::OTEL_EXPORTER_OTLP_TRACES_TIMEOUT, env(Variables::OTEL_EXPORTER_OTLP_TIMEOUT, 10000)),
             'traces_headers' => (string) env(Variables::OTEL_EXPORTER_OTLP_TRACES_HEADERS, env(Variables::OTEL_EXPORTER_OTLP_HEADERS, '')),
+            /**
+             * Override protocol for traces export
+             */
+            'traces_protocol' => env(Variables::OTEL_EXPORTER_OTLP_TRACES_PROTOCOL),
             'metrics_timeout' => env(Variables::OTEL_EXPORTER_OTLP_METRICS_TIMEOUT, env(Variables::OTEL_EXPORTER_OTLP_TIMEOUT, 10000)),
             'metrics_headers' => (string) env(Variables::OTEL_EXPORTER_OTLP_METRICS_HEADERS, env(Variables::OTEL_EXPORTER_OTLP_HEADERS, '')),
+            /**
+             * Override protocol for metrics export
+             */
+            'metrics_protocol' => env(Variables::OTEL_EXPORTER_OTLP_METRICS_PROTOCOL),
             /**
              * Preferred metrics temporality
              * Supported values: "Delta", "Cumulative"
@@ -150,6 +174,10 @@ return [
             'metrics_temporality' => env(Variables::OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE),
             'logs_timeout' => env(Variables::OTEL_EXPORTER_OTLP_LOGS_TIMEOUT, env(Variables::OTEL_EXPORTER_OTLP_TIMEOUT, 10000)),
             'logs_headers' => (string) env(Variables::OTEL_EXPORTER_OTLP_LOGS_HEADERS, env(Variables::OTEL_EXPORTER_OTLP_HEADERS, '')),
+            /**
+             * Override protocol for logs export
+             */
+            'logs_protocol' => env(Variables::OTEL_EXPORTER_OTLP_LOGS_PROTOCOL),
         ],
 
         'zipkin' => [
@@ -167,6 +195,7 @@ return [
         Instrumentation\HttpServerInstrumentation::class => [
             'enabled' => env('OTEL_INSTRUMENTATION_HTTP_SERVER', true),
             'excluded_paths' => [],
+            'excluded_methods' => [],
             'allowed_headers' => [],
             'sensitive_headers' => [],
         ],
