@@ -466,4 +466,7 @@ it('record forwarded ip from trusted proxies', function () {
         ->toMatchArray([
             \OpenTelemetry\SemConv\Attributes\NetworkAttributes::NETWORK_PEER_ADDRESS => '93.125.25.10',
         ]);
-});
+})->skip(
+    fn () => ! method_exists(\Illuminate\Http\Middleware\TrustProxies::class, 'at'),
+    'Requires laravel 11.31+'
+);
