@@ -105,9 +105,9 @@ class TraceRequestMiddleware
         }
     }
 
-    protected function recordHttpRequestToSpan(SpanInterface $span, Request $request): SpanInterface
+    protected function recordHttpRequestToSpan(SpanInterface $span, Request $request): void
     {
-        return $span
+        $span
             ->setAttribute(UrlAttributes::URL_FULL, $request->fullUrl())
             ->setAttribute(UrlAttributes::URL_PATH, $request->path() === '/' ? $request->path() : '/'.$request->path())
             ->setAttribute(UrlAttributes::URL_QUERY, $request->getQueryString())
@@ -121,7 +121,7 @@ class TraceRequestMiddleware
             ->setAttribute(NetworkAttributes::NETWORK_PEER_ADDRESS, $request->ip());
     }
 
-    protected function recordHeaders(SpanInterface $span, Request|Response $http): SpanInterface
+    protected function recordHeaders(SpanInterface $span, Request|Response $http): void
     {
         $prefix = match (true) {
             $http instanceof Request => 'http.request.header.',
@@ -139,8 +139,6 @@ class TraceRequestMiddleware
 
             $span->setAttribute($prefix.$key, $value);
         }
-
-        return $span;
     }
 
     /**
