@@ -448,3 +448,22 @@ it('handle excluded methods case-insensitively', function () {
 
     expect($serverSpan)->toBeNull();
 });
+
+it('record forwarded ip from trusted proxies', function () {
+    registerInstrumentation(HttpServerInstrumentation::class);
+
+    \Illuminate\Http\Middleware\TrustProxies::at('*');
+
+    $response = $this->get('test-ok', [
+        'X-Forwarded-For' => '93.125.25.10',
+    ]);
+
+    $response->assertOk();
+
+    $span = getRecordedSpans()->last();
+
+    expect($span->getAttributes())
+        ->toMatchArray([
+            \OpenTelemetry\SemConv\Attributes\NetworkAttributes::NETWORK_PEER_ADDRESS => '93.125.25.10',
+        ]);
+});

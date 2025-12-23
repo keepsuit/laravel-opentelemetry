@@ -53,6 +53,8 @@ class TraceRequestMiddleware
 
             return $response;
         } finally {
+            $this->recordHttpRequestToSpan($span, $request);
+
             Tracer::terminateActiveSpansUpToRoot($span);
 
             $scope->detach();
@@ -71,18 +73,7 @@ class TraceRequestMiddleware
         $builder = Tracer::newSpan($route)
             ->setSpanKind(SpanKind::KIND_SERVER)
             ->setParent($context)
-            ->setAttribute(UrlAttributes::URL_FULL, $request->fullUrl())
-            ->setAttribute(UrlAttributes::URL_PATH, $request->path() === '/' ? $request->path() : '/'.$request->path())
-            ->setAttribute(UrlAttributes::URL_QUERY, $request->getQueryString())
-            ->setAttribute(UrlAttributes::URL_SCHEME, $request->getScheme())
-            ->setAttribute(HttpAttributes::HTTP_ROUTE, $route)
-            ->setAttribute(HttpAttributes::HTTP_REQUEST_METHOD, $request->method())
-            ->setAttribute(HttpIncubatingAttributes::HTTP_REQUEST_BODY_SIZE, $request->header('Content-Length'))
-            ->setAttribute(ServerAttributes::SERVER_ADDRESS, $request->getHttpHost())
-            ->setAttribute(ServerAttributes::SERVER_PORT, $request->getPort())
-            ->setAttribute(UserAgentAttributes::USER_AGENT_ORIGINAL, $request->userAgent())
-            ->setAttribute(NetworkAttributes::NETWORK_PROTOCOL_VERSION, $request->getProtocolVersion())
-            ->setAttribute(NetworkAttributes::NETWORK_PEER_ADDRESS, $request->ip());
+            ->setAttribute(HttpAttributes::HTTP_ROUTE, $route);
 
         if ($startTimestamp) {
             $builder->setStartTimestamp($startTimestamp);
@@ -112,6 +103,22 @@ class TraceRequestMiddleware
         if ($response->isServerError() || $response->isClientError()) {
             $span->setStatus(StatusCode::STATUS_ERROR);
         }
+    }
+
+    protected function recordHttpRequestToSpan(SpanInterface $span, Request $request): SpanInterface
+    {
+        return $span
+            ->setAttribute(UrlAttributes::URL_FULL, $request->fullUrl())
+            ->setAttribute(UrlAttributes::URL_PATH, $request->path() === '/' ? $request->path() : '/'.$request->path())
+            ->setAttribute(UrlAttributes::URL_QUERY, $request->getQueryString())
+            ->setAttribute(UrlAttributes::URL_SCHEME, $request->getScheme())
+            ->setAttribute(HttpAttributes::HTTP_REQUEST_METHOD, $request->method())
+            ->setAttribute(HttpIncubatingAttributes::HTTP_REQUEST_BODY_SIZE, $request->header('Content-Length'))
+            ->setAttribute(ServerAttributes::SERVER_ADDRESS, $request->getHttpHost())
+            ->setAttribute(ServerAttributes::SERVER_PORT, $request->getPort())
+            ->setAttribute(UserAgentAttributes::USER_AGENT_ORIGINAL, $request->userAgent())
+            ->setAttribute(NetworkAttributes::NETWORK_PROTOCOL_VERSION, $request->getProtocolVersion())
+            ->setAttribute(NetworkAttributes::NETWORK_PEER_ADDRESS, $request->ip());
     }
 
     protected function recordHeaders(SpanInterface $span, Request|Response $http): SpanInterface
