@@ -19,6 +19,7 @@ class ResourceBuilder
             ResourceInfo::create(Attributes::create([
                 ServiceAttributes::SERVICE_NAME => config('opentelemetry.service_name'),
                 ServiceIncubatingAttributes::SERVICE_INSTANCE_ID => config('opentelemetry.service_instance_id'),
+                ...config('opentelemetry.resource_attributes', []),
             ]))
         );
     }
