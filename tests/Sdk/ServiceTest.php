@@ -27,3 +27,16 @@ test('parse resource attributes from env', function () {
 
     expect(ResourceAttributesParser::parse('key1=value1,key2=value2'))->toBe(['key1' => 'value1', 'key2' => 'value2']);
 });
+
+test('set resource attributes from config', function () {
+    config()->set('opentelemetry.resource_attributes', [
+        'environment' => 'production',
+        'region' => 'us-west-2',
+    ]);
+
+    $resource = ResourceBuilder::build();
+
+    expect($resource->getAttributes())
+        ->get('environment')->toBe('production')
+        ->get('region')->toBe('us-west-2');
+});
