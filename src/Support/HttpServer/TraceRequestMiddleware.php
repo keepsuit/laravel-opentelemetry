@@ -109,6 +109,8 @@ class TraceRequestMiddleware
 
     protected function recordHttpRequestToSpan(SpanInterface $span, Request $request): void
     {
+        $protocolVersion = Str::of($request->getProtocolVersion() ?? '');
+
         $span
             ->setAttribute(UrlAttributes::URL_FULL, $request->fullUrl())
             ->setAttribute(UrlAttributes::URL_PATH, $request->path() === '/' ? $request->path() : '/'.$request->path())
@@ -120,7 +122,11 @@ class TraceRequestMiddleware
             ->setAttribute(ServerAttributes::SERVER_ADDRESS, $request->getHttpHost())
             ->setAttribute(ServerAttributes::SERVER_PORT, $request->getPort())
             ->setAttribute(NetworkAttributes::NETWORK_PROTOCOL_NAME, 'http')
-            ->setAttribute(NetworkAttributes::NETWORK_PROTOCOL_VERSION, Str::of($request->getProtocolVersion() ?? '')->after('/')->toString() ?: null)
+            ->setAttribute(NetworkAttributes::NETWORK_PROTOCOL_VERSION, match (true) {
+                $protocolVersion->isEmpty() => null,
+                $protocolVersion->contains('/') => $protocolVersion->after('/')->toString(),
+                default => $protocolVersion->toString(),
+            })
             ->setAttribute(NetworkAttributes::NETWORK_PEER_ADDRESS, $request->server('REMOTE_ADDR'))
             ->setAttribute(ClientAttributes::CLIENT_ADDRESS, $request->ip());
     }
