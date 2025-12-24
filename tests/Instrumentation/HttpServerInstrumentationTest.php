@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
@@ -11,7 +12,7 @@ use OpenTelemetry\API\Trace\StatusCode;
 
 use function Pest\Laravel\withoutExceptionHandling;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 beforeEach(function () {
     Route::middleware('web')->group(function () {
@@ -60,7 +61,8 @@ it('can trace a request', function () {
             'server.address' => 'localhost',
             'server.port' => 80,
             'user_agent.original' => 'Symfony',
-            'network.protocol.version' => 'HTTP/1.1',
+            'network.protocol.name' => 'http',
+            'network.protocol.version' => '1.1',
             'network.peer.address' => '127.0.0.1',
             'http.response.status_code' => 200,
             'http.response.body.size' => 32,
@@ -100,7 +102,8 @@ it('can trace a request with route model binding', function () {
             'server.address' => 'localhost',
             'server.port' => 80,
             'user_agent.original' => 'Symfony',
-            'network.protocol.version' => 'HTTP/1.1',
+            'network.protocol.name' => 'http',
+            'network.protocol.version' => '1.1',
             'network.peer.address' => '127.0.0.1',
             'http.response.status_code' => 200,
             'http.response.body.size' => 32,
@@ -134,7 +137,8 @@ it('can record route exception', function () {
             'server.address' => 'localhost',
             'server.port' => 80,
             'user_agent.original' => 'Symfony',
-            'network.protocol.version' => 'HTTP/1.1',
+            'network.protocol.name' => 'http',
+            'network.protocol.version' => '1.1',
             'network.peer.address' => '127.0.0.1',
             'http.response.status_code' => 500,
         ])
@@ -464,7 +468,8 @@ it('record forwarded ip from trusted proxies', function () {
 
     expect($span->getAttributes())
         ->toMatchArray([
-            \OpenTelemetry\SemConv\Attributes\NetworkAttributes::NETWORK_PEER_ADDRESS => '93.125.25.10',
+            \OpenTelemetry\SemConv\Attributes\ClientAttributes::CLIENT_ADDRESS => '93.125.25.10',
+            \OpenTelemetry\SemConv\Attributes\NetworkAttributes::NETWORK_PEER_ADDRESS => '127.0.0.1',
         ]);
 })->skip(
     fn () => ! method_exists(\Illuminate\Http\Middleware\TrustProxies::class, 'at'),

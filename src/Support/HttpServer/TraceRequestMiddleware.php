@@ -5,11 +5,13 @@ namespace Keepsuit\LaravelOpenTelemetry\Support\HttpServer;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\HttpServerInstrumentation;
 use OpenTelemetry\API\Trace\SpanInterface;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
+use OpenTelemetry\SemConv\Attributes\ClientAttributes;
 use OpenTelemetry\SemConv\Attributes\HttpAttributes;
 use OpenTelemetry\SemConv\Attributes\NetworkAttributes;
 use OpenTelemetry\SemConv\Attributes\ServerAttributes;
@@ -112,13 +114,15 @@ class TraceRequestMiddleware
             ->setAttribute(UrlAttributes::URL_PATH, $request->path() === '/' ? $request->path() : '/'.$request->path())
             ->setAttribute(UrlAttributes::URL_QUERY, $request->getQueryString())
             ->setAttribute(UrlAttributes::URL_SCHEME, $request->getScheme())
+            ->setAttribute(UserAgentAttributes::USER_AGENT_ORIGINAL, $request->userAgent())
             ->setAttribute(HttpAttributes::HTTP_REQUEST_METHOD, $request->method())
             ->setAttribute(HttpIncubatingAttributes::HTTP_REQUEST_BODY_SIZE, $request->header('Content-Length'))
             ->setAttribute(ServerAttributes::SERVER_ADDRESS, $request->getHttpHost())
             ->setAttribute(ServerAttributes::SERVER_PORT, $request->getPort())
-            ->setAttribute(UserAgentAttributes::USER_AGENT_ORIGINAL, $request->userAgent())
-            ->setAttribute(NetworkAttributes::NETWORK_PROTOCOL_VERSION, $request->getProtocolVersion())
-            ->setAttribute(NetworkAttributes::NETWORK_PEER_ADDRESS, $request->ip());
+            ->setAttribute(NetworkAttributes::NETWORK_PROTOCOL_NAME, 'http')
+            ->setAttribute(NetworkAttributes::NETWORK_PROTOCOL_VERSION, Str::of($request->getProtocolVersion() ?? '')->after('/')->toString() ?: null)
+            ->setAttribute(NetworkAttributes::NETWORK_PEER_ADDRESS, $request->server('REMOTE_ADDR'))
+            ->setAttribute(ClientAttributes::CLIENT_ADDRESS, $request->ip());
     }
 
     protected function recordHeaders(SpanInterface $span, Request|Response $http): void
