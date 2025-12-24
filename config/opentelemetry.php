@@ -20,7 +20,7 @@ return [
     /**
      * Additional resource attributes
      * Key-value pairs of resource attributes to add to all telemetry data.
-     * By default, reads and parse OTEL_RESOURCE_ATTRIBUTES environment variable (which should be in the format 'key1=value1,key2=value2').
+     * By default, reads and parses OTEL_RESOURCE_ATTRIBUTES environment variable (which should be in the format 'key1=value1,key2=value2').
      */
     'resource_attributes' => ResourceAttributesParser::parse((string) env(Variables::OTEL_RESOURCE_ATTRIBUTES, '')),
 
