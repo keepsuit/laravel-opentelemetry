@@ -1,6 +1,7 @@
 <?php
 
 use Keepsuit\LaravelOpenTelemetry\Instrumentation;
+use Keepsuit\LaravelOpenTelemetry\Support\ResourceAttributesParser;
 use OpenTelemetry\SDK\Common\Configuration\Variables;
 
 return [
@@ -15,6 +16,13 @@ return [
      * If not set, a random id will be generated on each request.
      */
     'service_instance_id' => env('OTEL_SERVICE_INSTANCE_ID'),
+
+    /**
+     * Additional resource attributes
+     * Key-value pairs of resource attributes to add to all telemetry data.
+     * By default, reads and parses OTEL_RESOURCE_ATTRIBUTES environment variable (which should be in the format 'key1=value1,key2=value2').
+     */
+    'resource_attributes' => ResourceAttributesParser::parse((string) env(Variables::OTEL_RESOURCE_ATTRIBUTES, '')),
 
     /**
      * Comma separated list of propagators to use.

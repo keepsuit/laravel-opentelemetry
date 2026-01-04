@@ -1,5 +1,6 @@
 <?php
 
+use Keepsuit\LaravelOpenTelemetry\Support\ResourceAttributesParser;
 use Keepsuit\LaravelOpenTelemetry\Support\ResourceBuilder;
 
 test('service resource attributes', function () {
@@ -17,4 +18,25 @@ test('custom instance id', function () {
 
     expect($resource->getAttributes())
         ->get('service.instance.id')->toBe('custom-id-1234');
+});
+
+test('parse resource attributes from env', function () {
+    expect(ResourceAttributesParser::parse(''))->toBe([]);
+
+    expect(ResourceAttributesParser::parse('key1=value1'))->toBe(['key1' => 'value1']);
+
+    expect(ResourceAttributesParser::parse('key1=value1,key2=value2'))->toBe(['key1' => 'value1', 'key2' => 'value2']);
+});
+
+test('set resource attributes from config', function () {
+    config()->set('opentelemetry.resource_attributes', [
+        'environment' => 'production',
+        'region' => 'us-west-2',
+    ]);
+
+    $resource = ResourceBuilder::build();
+
+    expect($resource->getAttributes())
+        ->get('environment')->toBe('production')
+        ->get('region')->toBe('us-west-2');
 });

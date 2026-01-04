@@ -2,6 +2,16 @@
 
 All notable changes to `laravel-opentelemetry` will be documented in this file.
 
+## v 1.15.0 - 2025-12-24
+
+### What's Changed
+
+* Bump actions/cache from 4 to 5 by @dependabot[bot] in https://github.com/keepsuit/laravel-opentelemetry/pull/64
+* record correct request attribute when using trusted proxy by @cappuc in https://github.com/keepsuit/laravel-opentelemetry/pull/66
+* set resource attributes from config by @cappuc in https://github.com/keepsuit/laravel-opentelemetry/pull/68
+
+**Full Changelog**: https://github.com/keepsuit/laravel-opentelemetry/compare/1.14.0...1.15.0
+
 ## v1.14.0 - 2025-11-30
 
 ### What's Changed
@@ -110,6 +120,7 @@ Instrumentation\ConsoleInstrumentation::class => [
     'enabled' => env('OTEL_INSTRUMENTATION_CONSOLE', true),
     'excluded' => [],
 ],
+
 
 
 
@@ -231,6 +242,7 @@ Tracer::newSpan('name')->setSpanKind(SpanKind::KIND_PRODUCER)->measure(callback)
 
 
 
+
 ```
 `Tracer::recordExceptionToSpan` has been removed and exception should be recorded directly to span: `$span->recordException($exception)`
 
@@ -251,6 +263,7 @@ This is the injected `otlp` channel:
         'level' => 'debug',
     ]
 ]
+
 
 
 
