@@ -10,10 +10,15 @@ use OpenTelemetry\API\Trace\SpanInterface;
 use OpenTelemetry\API\Trace\StatusCode;
 use OpenTelemetry\Context\ScopeInterface;
 use Symfony\Component\Console\Input\InputInterface;
+use Throwable;
+use WeakMap;
 
 class ConsoleInstrumentation implements Instrumentation
 {
-    protected \WeakMap $commands;
+    /**
+     * @var WeakMap<InputInterface, array{0: SpanInterface, 1: ScopeInterface}>
+     */
+    protected WeakMap $commands;
 
     /**
      * @var string[]
@@ -32,7 +37,7 @@ class ConsoleInstrumentation implements Instrumentation
      */
     public function register(array $options): void
     {
-        $this->commands = new \WeakMap;
+        $this->commands = new WeakMap;
 
         /**
          * @var Collection<int, string> $wildcards
@@ -43,7 +48,7 @@ class ConsoleInstrumentation implements Instrumentation
                 if (class_exists($command)) {
                     try {
                         return app($command)->getName();
-                    } catch (\Throwable) {
+                    } catch (Throwable) {
                         return null;
                     }
                 }

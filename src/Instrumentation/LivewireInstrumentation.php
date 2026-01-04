@@ -7,16 +7,22 @@ use Keepsuit\LaravelOpenTelemetry\Support\InstrumentationUtilities;
 use Livewire\Component;
 use Livewire\EventBus;
 use Livewire\LivewireManager;
+use OpenTelemetry\API\Trace\SpanInterface;
+use OpenTelemetry\Context\ScopeInterface;
+use WeakMap;
 
 class LivewireInstrumentation implements Instrumentation
 {
     use InstrumentationUtilities;
 
-    protected \WeakMap $components;
+    /**
+     * @var WeakMap<Component, array{0: SpanInterface, 1: ScopeInterface}>
+     */
+    protected WeakMap $components;
 
     public function register(array $options): void
     {
-        $this->components = new \WeakMap;
+        $this->components = new WeakMap;
 
         if (! class_exists(LivewireManager::class)) {
             return;
