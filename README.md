@@ -217,7 +217,7 @@ return [
 
         Instrumentation\EventInstrumentation::class => [
             'enabled' => env('OTEL_INSTRUMENTATION_EVENT', true),
-            'ignored' => [],
+            'excluded' => [],
         ],
 
         Instrumentation\ViewInstrumentation::class => env('OTEL_INSTRUMENTATION_VIEW', true),
@@ -246,7 +246,9 @@ You can disable or customize each integration in the config file in the `instrum
 - [Http client](#http-client)
 - [Database](#database)
 - [Redis](#redis)
-- [Queue jobs](#redis)
+- [Queue jobs](#queue-jobs)
+- [Cache](#cache)
+- [Events](#events)
 - [Logs context](#logs-context)
 - [Manual traces](#manual-traces)
 
@@ -302,18 +304,34 @@ Configuration options:
 ### Database
 
 Database queries are automatically traced.
+
 You can disable it by setting `OT_INSTRUMENTATION_QUERY` to `false` or removing the `QueryInstrumentation::class` from the config file.
 
 ### Redis
 
 Redis commands are automatically traced.
+
 You can disable it by setting `OT_INSTRUMENTATION_REDIS` to `false` or removing the `RedisInstrumentation::class` from the config file.
 
 ### Queue jobs
 
 Queue jobs are automatically traced.
 It will automatically create a parent span with kind `PRODUCER` when a job is dispatched and a child span with kind `CONSUMER` when the job is executed.
+
 You can disable it by setting `OT_INSTRUMENTATION_QUEUE` to `false` or removing the `QueueInstrumentation::class` from the config file.
+
+### Cache
+
+Cache operations are recorded as events in the current active span.
+
+You can disable it by setting `OT_INSTRUMENTATION_CACHE` to `false` or removing the `CacheInstrumentation::class` from the config file.
+
+### Events
+
+Events are recorded as events in the current active span. Some internal laravel events are excluded by default.
+You can customize the excluded events in the config file.
+
+You can disable it by setting `OT_INSTRUMENTATION_EVENT` to `false` or removing the `EventInstrumentation::class` from the config file.
 
 ### Logs context
 
@@ -447,15 +465,14 @@ To simplify development, a `Makefile` is provided. The project runs in a Docker 
 
 #### Available Makefile Commands
 
-| Command        | Description                                                                 |
-|----------------|-----------------------------------------------------------------------------|
-| `make build`   | Builds the Docker image with your UID/GID for proper file permissions.     |
-| `make start`   | Starts the containers in the background using Docker Compose.              |
-| `make stop`    | Stops and removes the containers.                                           |
-| `make shell`   | Starts the containers (if needed) and opens a Bash shell in the `app` one. |
-| `make test`    | Runs the test suite via Composer inside the `app` container.               |
-| `make lint`    | Runs the linter via Composer inside the `app` container.                   |
-
+| Command      | Description                                                                |
+|--------------|----------------------------------------------------------------------------|
+| `make build` | Builds the Docker image with your UID/GID for proper file permissions.     |
+| `make start` | Starts the containers in the background using Docker Compose.              |
+| `make stop`  | Stops and removes the containers.                                          |
+| `make shell` | Starts the containers (if needed) and opens a Bash shell in the `app` one. |
+| `make test`  | Runs the test suite via Composer inside the `app` container.               |
+| `make lint`  | Runs the linter via Composer inside the `app` container.                   |
 
 > 📝 Before using `make shell`, ensure the container is running (`make start` in another terminal).
 

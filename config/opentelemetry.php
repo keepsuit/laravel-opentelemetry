@@ -197,7 +197,7 @@ return [
 
         Instrumentation\EventInstrumentation::class => [
             'enabled' => env('OTEL_INSTRUMENTATION_EVENT', true),
-            'ignored' => [],
+            'excluded' => [],
         ],
 
         Instrumentation\ViewInstrumentation::class => env('OTEL_INSTRUMENTATION_VIEW', true),
