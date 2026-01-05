@@ -41,7 +41,7 @@ it('can watch a query', function () {
 
     expect($span)
         ->toBeInstanceOf(ImmutableSpan::class)
-        ->getName()->toBe('sql SELECT')
+        ->getName()->toBe('SELECT')
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
         ->getAttributes()->toArray()->toBe([
             'db.system.name' => 'sqlite',
@@ -68,7 +68,7 @@ it('can watch a query with bindings', function () {
 
     expect($span)
         ->toBeInstanceOf(ImmutableSpan::class)
-        ->getName()->toBe('sql SELECT')
+        ->getName()->toBe('SELECT')
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
         ->getAttributes()->toArray()->toBe([
             'db.system.name' => 'sqlite',
@@ -96,7 +96,7 @@ it('can watch a query with named bindings', function () {
 
     expect($span)
         ->toBeInstanceOf(ImmutableSpan::class)
-        ->getName()->toBe('sql UPDATE')
+        ->getName()->toBe('UPDATE')
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
         ->getAttributes()->toArray()->toBe([
             'db.system.name' => 'sqlite',

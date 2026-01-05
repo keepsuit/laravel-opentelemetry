@@ -120,7 +120,7 @@ it('can trace queue jobs dispatched after commit', function () {
     ]);
 
     $root = getRecordedSpans()->first(fn (ImmutableSpan $span) => $span->getName() === 'root');
-    $sqlSpan = getRecordedSpans()->first(fn (ImmutableSpan $span) => $span->getName() === 'sql SELECT');
+    $sqlSpan = getRecordedSpans()->first(fn (ImmutableSpan $span) => $span->getName() === 'SELECT');
     $enqueueSpan = getRecordedSpans()->first(fn (ImmutableSpan $span) => $span->getName() === TestJob::class.' enqueue');
     $processSpan = getRecordedSpans()->first(fn (ImmutableSpan $span) => $span->getName() === TestJob::class.' process');
 
