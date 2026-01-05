@@ -251,6 +251,7 @@ You can disable or customize each integration in the config file in the `instrum
 - [Events](#events)
 - [View](#view)
 - [Livewire](#livewire)
+- [Console commands](#console-commands)
 - [Logs context](#logs-context)
 - [Manual traces](#manual-traces)
 
@@ -347,6 +348,17 @@ You can disable it by setting `OT_INSTRUMENTATION_VIEW` to `false` or removing t
 Livewire components rendering is automatically traced. A span is created for each rendered component.
 
 You can disable it by setting `OT_INSTRUMENTATION_LIVEWIRE` to `false` or removing the `LivewireInstrumentation::class` from the config file.
+
+### Console commands
+
+Console commands are not traced by default.
+You can trace console commands by adding them to the `commands` option of `ConsoleInstrumentation`.
+
+You can disable it by setting `OT_INSTRUMENTATION_CONSOLE` to `false` or removing the `ConsoleInstrumentation::class` from the config file.
+
+Configuration options:
+
+- `commands`: list of commands to trace
 
 ### Logs context
 

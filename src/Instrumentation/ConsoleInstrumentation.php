@@ -18,32 +18,32 @@ class ConsoleInstrumentation implements Instrumentation
     /**
      * @var WeakMap<InputInterface, array{0: SpanInterface, 1: ScopeInterface}>
      */
-    protected WeakMap $commands;
+    protected WeakMap $startedCommands;
 
     /**
      * @var string[]
      */
-    protected array $excluded = [];
+    protected array $whitelist = [];
 
     /**
      * @var string[]
      */
-    protected array $excludedWildcards = [];
+    protected array $whitelistWildcards = [];
 
     /**
      * @param  array{
-     *     excluded?: string[]
+     *     commands?: string[]
      * }  $options
      */
     public function register(array $options): void
     {
-        $this->commands = new WeakMap;
+        $this->startedCommands = new WeakMap;
 
         /**
          * @var Collection<int, string> $wildcards
          * @var Collection<int, string> $fullCommands
          */
-        [$wildcards, $fullCommands] = Collection::make($options['excluded'] ?? [])
+        [$wildcards, $fullCommands] = Collection::make($options['commands'] ?? [])
             ->map(function (string $command) {
                 if (class_exists($command)) {
                     try {
@@ -55,19 +55,10 @@ class ConsoleInstrumentation implements Instrumentation
 
                 return $command;
             })
-            ->merge([
-                'horizon',
-                'horizon:*',
-                'queue:*',
-                'reverb:*',
-                'schedule:*',
-                'inertia:*',
-                'mcp:*',
-                'list',
-            ])
             ->partition(fn (string $command) => str_ends_with($command, '*'));
-        $this->excluded = $fullCommands->values()->all();
-        $this->excludedWildcards = $wildcards->values()->all();
+
+        $this->whitelist = $fullCommands->values()->all();
+        $this->whitelistWildcards = $wildcards->values()->all();
 
         app('events')->listen(CommandStarting::class, [$this, 'commandStarting']);
         app('events')->listen(CommandFinished::class, [$this, 'commandFinished']);
@@ -79,7 +70,7 @@ class ConsoleInstrumentation implements Instrumentation
             return;
         }
 
-        if ($this->isExcluded($event->command)) {
+        if (! $this->shouldRecord($event->command)) {
             return;
         }
 
@@ -91,12 +82,12 @@ class ConsoleInstrumentation implements Instrumentation
 
         $scope = $span->activate();
 
-        $this->commands[$event->input] = [$span, $scope];
+        $this->startedCommands[$event->input] = [$span, $scope];
     }
 
     public function commandFinished(CommandFinished $event): void
     {
-        $trace = $this->commands[$event->input] ?? null;
+        $trace = $this->startedCommands[$event->input] ?? null;
 
         if ($trace === null) {
             return;
@@ -139,13 +130,13 @@ class ConsoleInstrumentation implements Instrumentation
         }
     }
 
-    protected function isExcluded(string $command): bool
+    protected function shouldRecord(string $command): bool
     {
-        if (in_array($command, $this->excluded, true)) {
+        if (in_array($command, $this->whitelist, true)) {
             return true;
         }
 
-        foreach ($this->excludedWildcards as $wildcard) {
+        foreach ($this->whitelistWildcards as $wildcard) {
             if (str_starts_with($command, rtrim($wildcard, '*'))) {
 
                 return true;

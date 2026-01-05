@@ -206,7 +206,7 @@ return [
 
         Instrumentation\ConsoleInstrumentation::class => [
             'enabled' => env('OTEL_INSTRUMENTATION_CONSOLE', true),
-            'excluded' => [],
+            'commands' => [],
         ],
     ],
 ];
