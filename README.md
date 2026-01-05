@@ -263,16 +263,39 @@ Configuration options:
 
 ### Http client
 
-To trace an outgoing http request call the `withTrace` method on the request builder.
+Http client requests are automatically traced by default, but you can set it to manual mode by setting `manual` to `true` in the config file.
+
+When using manual mode, you need to call the `withTrace` method on the request builder to enable tracing for the request.
 
 ```php
 Http::withTrace()->get('https://example.com');
+```
+
+The low-cardinality url template cannot be automatically detected in http client requests like in server requests.
+By default, the span name will be only the HTTP method (e.g. `GET`) but you can set manually resolve the url template from the request.
+
+In your service provider:
+
+```php
+use Keepsuit\LaravelOpenTelemetry\Instrumentation\HttpClientInstrumentation;
+use Psr\Http\Message\RequestInterface;
+
+public function boot(): void
+{
+    HttpClientInstrumentation::setRouteNameResolver(function (RequestInterface $request): ?string {
+        return match (true) {
+            str_starts_with($request->getUri()->getPath(), '/products/') => '/products/{id}',
+            default => null,
+        };
+    });
+}
 ```
 
 You can disable it by setting `OT_INSTRUMENTATION_HTTP_CLIENT` to `false` or removing the `HttpClientInstrumentation::class` from the config file.
 
 Configuration options:
 
+- `manual`: set to `true` to enable manual tracing
 - `allowed_headers`: list of headers to include in the trace
 - `sensitive_headers`: list of headers with sensitive data to hide in the trace
 

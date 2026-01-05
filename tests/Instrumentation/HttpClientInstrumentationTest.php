@@ -266,3 +266,30 @@ it('mark some headers as sensitive by default', function () {
             'http.response.header.set-cookie' => ['*****'],
         ]);
 });
+
+it('can resolve route name', function () {
+    registerInstrumentation(HttpClientInstrumentation::class);
+
+    HttpClientInstrumentation::setRouteNameResolver(function (\Psr\Http\Message\RequestInterface $request) {
+        return match (true) {
+            str_starts_with($request->getUri()->getPath(), '/products/') => '/products/{id}',
+            default => null,
+        };
+    });
+
+    Http::fake([
+        '*' => Http::response('', 200, ['Content-Length' => 0]),
+    ]);
+
+    withRootSpan(function () {
+        Http::get(Server::$url.'products/123');
+    });
+
+    $span = getRecordedSpans()->first();
+
+    expect($span)
+        ->getName()->toBe('GET /products/{id}')
+        ->getAttributes()->toMatchArray([
+            'url.template' => '/products/{id}',
+        ]);
+});
