@@ -249,6 +249,8 @@ You can disable or customize each integration in the config file in the `instrum
 - [Queue jobs](#queue-jobs)
 - [Cache](#cache)
 - [Events](#events)
+- [View](#view)
+- [Livewire](#livewire)
 - [Logs context](#logs-context)
 - [Manual traces](#manual-traces)
 
@@ -260,6 +262,7 @@ You can disable it by setting `OT_INSTRUMENTATION_HTTP_SERVER` to `false` or rem
 Configuration options:
 
 - `excluded_paths`: list of paths to exclude from tracing
+- `excluded_methods`: list of HTTP methods to exclude from tracing
 - `allowed_headers`: list of headers to include in the trace
 - `sensitive_headers`: list of headers with sensitive data to hide in the trace
 
@@ -303,13 +306,13 @@ Configuration options:
 
 ### Database
 
-Database queries are automatically traced.
+Database queries are automatically traced. A span is created for each query executed.
 
 You can disable it by setting `OT_INSTRUMENTATION_QUERY` to `false` or removing the `QueryInstrumentation::class` from the config file.
 
 ### Redis
 
-Redis commands are automatically traced.
+Redis commands are automatically traced. A span is created for each command executed.
 
 You can disable it by setting `OT_INSTRUMENTATION_REDIS` to `false` or removing the `RedisInstrumentation::class` from the config file.
 
@@ -332,6 +335,18 @@ Events are recorded as events in the current active span. Some internal laravel 
 You can customize the excluded events in the config file.
 
 You can disable it by setting `OT_INSTRUMENTATION_EVENT` to `false` or removing the `EventInstrumentation::class` from the config file.
+
+### View
+
+View rendering is automatically traced. A span is created for each rendered view.
+
+You can disable it by setting `OT_INSTRUMENTATION_VIEW` to `false` or removing the `ViewInstrumentation::class` from the config file.
+
+### Livewire
+
+Livewire components rendering is automatically traced. A span is created for each rendered component.
+
+You can disable it by setting `OT_INSTRUMENTATION_LIVEWIRE` to `false` or removing the `LivewireInstrumentation::class` from the config file.
 
 ### Logs context
 
