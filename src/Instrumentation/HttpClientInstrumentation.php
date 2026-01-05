@@ -41,5 +41,9 @@ class HttpClientInstrumentation implements Instrumentation
     protected function registerGlobalMiddleware(Factory $factory): void
     {
         $factory->globalMiddleware(GuzzleTraceMiddleware::make());
+
+        PendingRequest::macro('withTrace', function () {
+            return $this;
+        });
     }
 }

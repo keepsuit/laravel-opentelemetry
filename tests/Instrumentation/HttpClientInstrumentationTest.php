@@ -89,16 +89,22 @@ it('injects propagation headers manually to client request', function () {
         ->header('traceparent')->toBe([sprintf('00-%s-%s-01', $traceId, $httpSpan->getSpanId())]);
 });
 
-it('create http client span', function () {
-    registerInstrumentation(HttpClientInstrumentation::class);
+it('create http client span', function (array $options, bool $withTrace) {
+    registerInstrumentation(HttpClientInstrumentation::class, $options);
 
     Http::fake([
         '*' => Http::response('', 200, ['Content-Length' => 0]),
     ]);
 
-    withRootSpan(function () {
-        Http::get(Server::$url);
+    withRootSpan(function () use ($withTrace) {
+        if ($withTrace) {
+            Http::withTrace()->get(Server::$url);
+        } else {
+            Http::get(Server::$url);
+        }
     });
+
+    expect(getRecordedSpans()->count())->toBe(2);
 
     $httpSpan = getRecordedSpans()->first();
 
@@ -117,7 +123,20 @@ it('create http client span', function () {
             'server.port' => 8126,
             'http.response.status_code' => 200,
         ]);
-});
+})->with([
+    'global' => [
+        'options' => ['manual' => false],
+        'withTrace' => false,
+    ],
+    'manual' => [
+        'options' => ['manual' => true],
+        'withTrace' => true,
+    ],
+    'both' => [
+        'options' => ['manual' => false],
+        'withTrace' => true,
+    ],
+]);
 
 it('set span status to error on 4xx and 5xx status code', function () {
     registerInstrumentation(HttpClientInstrumentation::class);
