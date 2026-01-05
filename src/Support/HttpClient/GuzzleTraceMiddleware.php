@@ -26,7 +26,7 @@ class GuzzleTraceMiddleware
                     return $handler($request, $options);
                 }
 
-                $span = Tracer::newSpan(sprintf('HTTP %s', $request->getMethod()))
+                $span = Tracer::newSpan($request->getMethod())
                     ->setSpanKind(SpanKind::KIND_CLIENT)
                     ->setAttribute(UrlAttributes::URL_FULL, sprintf('%s://%s%s', $request->getUri()->getScheme(), $request->getUri()->getHost(), $request->getUri()->getPath()))
                     ->setAttribute(UrlAttributes::URL_PATH, $request->getUri()->getPath())

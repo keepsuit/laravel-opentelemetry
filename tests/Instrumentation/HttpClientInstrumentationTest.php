@@ -104,7 +104,7 @@ it('create http client span', function () {
 
     expect($httpSpan)
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
-        ->getName()->toBe('HTTP GET')
+        ->getName()->toBe('GET')
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_UNSET)
         ->getAttributes()->toMatchArray([
             'url.full' => 'http://127.0.0.1/',
@@ -134,7 +134,7 @@ it('set span status to error on 4xx and 5xx status code', function () {
 
     expect($httpSpan)
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
-        ->getName()->toBe('HTTP GET')
+        ->getName()->toBe('GET')
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_ERROR)
         ->getAttributes()->toMatchArray([
             'http.response.status_code' => 500,
