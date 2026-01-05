@@ -69,10 +69,10 @@ class TraceRequestMiddleware
         $context = Tracer::extractContextFromPropagationHeaders($request->headers->all());
 
         /** @var non-empty-string $route */
-        $route = rescue(fn () => Route::getRoutes()->match($request)->uri(), $request->path(), false);
-        $route = str_starts_with($route, '/') ? $route : '/'.$route;
+        $route = rescue(fn () => Route::getRoutes()->match($request)->uri(), rescue: false);
+        $route = $route !== null ? '/'.ltrim($route, '/') : null;
 
-        $builder = Tracer::newSpan($route)
+        $builder = Tracer::newSpan(trim(sprintf('%s %s', $request->method(), $route ?? '')))
             ->setSpanKind(SpanKind::KIND_SERVER)
             ->setParent($context)
             ->setAttribute(HttpAttributes::HTTP_ROUTE, $route);

@@ -48,7 +48,7 @@ it('can trace a request', function () {
     $spans = getRecordedSpans();
 
     expect($spans->last())
-        ->getName()->toBe('/test-ok')
+        ->getName()->toBe('GET /test-ok')
         ->getKind()->toBe(SpanKind::KIND_SERVER)
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_OK)
         ->getTraceId()->toBe($traceId)
@@ -89,7 +89,7 @@ it('can trace a request with route model binding', function () {
     $span = getRecordedSpans()->last();
 
     expect($span)
-        ->getName()->toBe('/products/{product}')
+        ->getName()->toBe('GET /products/{product}')
         ->getKind()->toBe(SpanKind::KIND_SERVER)
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_OK)
         ->getTraceId()->toBe($traceId)
@@ -125,7 +125,7 @@ it('can record route exception', function () {
     $span = getRecordedSpans()->last();
 
     expect($span)
-        ->getName()->toBe('/test-exception')
+        ->getName()->toBe('GET /test-exception')
         ->getKind()->toBe(SpanKind::KIND_SERVER)
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_ERROR)
         ->getAttributes()->toMatchArray([
@@ -174,7 +174,7 @@ it('can record a route exception in a nested span', function () {
         ->getAttributes()->get('exception.message')->toBe('Exception thrown!');
 
     expect($routeSpan)
-        ->getName()->toBe('/test-nested-exception')
+        ->getName()->toBe('GET /test-nested-exception')
         ->getKind()->toBe(SpanKind::KIND_SERVER)
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_ERROR)
         ->getEvents()->toBeEmpty();
@@ -207,7 +207,7 @@ it('set generic span name when route has parameters', function () {
     $spans = getRecordedSpans();
 
     expect($spans->last())
-        ->getName()->toBe('/test/{parameter}')
+        ->getName()->toBe('GET /test/{parameter}')
         ->getKind()->toBe(SpanKind::KIND_SERVER)
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_OK)
         ->getAttributes()->toMatchArray([
@@ -230,7 +230,7 @@ it('continue trace', function () {
     $spans = getRecordedSpans();
 
     expect($spans->last())
-        ->getName()->toBe('/test-ok')
+        ->getName()->toBe('GET /test-ok')
         ->getKind()->toBe(SpanKind::KIND_SERVER)
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_OK)
         ->getTraceId()->toBe('0af7651916cd43dd8448eb211c80319c')
@@ -408,7 +408,7 @@ it('trace requests with non-excluded HTTP methods', function () {
 
     expect($serverSpan)
         ->not->toBeNull()
-        ->getName()->toBe('/test-ok');
+        ->getName()->toBe('GET /test-ok');
 
     resetStorage();
 
@@ -421,7 +421,7 @@ it('trace requests with non-excluded HTTP methods', function () {
 
     expect($serverSpan)
         ->not->toBeNull()
-        ->getName()->toBe('/test-ok');
+        ->getName()->toBe('POST /test-ok');
 });
 
 it('handle excluded methods case-insensitively', function () {
