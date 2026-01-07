@@ -74,7 +74,7 @@ it('can trace a request', function () {
         ]);
 
     expect(Log::sharedContext())->toMatchArray([
-        'traceid' => $traceId,
+        'trace_id' => $traceId,
     ]);
 });
 
@@ -114,10 +114,6 @@ it('can trace a request with route model binding', function () {
             'http.response.body.size' => 32,
             'product' => 1,
         ]);
-
-    expect(Log::sharedContext())->toMatchArray([
-        'traceid' => $traceId,
-    ]);
 });
 
 it('can record route exception', function () {

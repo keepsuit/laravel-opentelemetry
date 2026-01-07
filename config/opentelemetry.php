@@ -111,7 +111,7 @@ return [
         /**
          * Context field name for trace id
          */
-        'trace_id_field' => 'traceid',
+        'trace_id_field' => 'trace_id',
 
         /**
          * Logs record processors.
