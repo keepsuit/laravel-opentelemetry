@@ -25,6 +25,11 @@ return [
     'resource_attributes' => ResourceAttributesParser::parse((string) env(Variables::OTEL_RESOURCE_ATTRIBUTES, '')),
 
     /**
+     * Include authenticated user context on traces and logs.
+     */
+    'user_context' => env('OTEL_USER_CONTEXT', true),
+
+    /**
      * Comma separated list of propagators to use.
      * Supports any otel propagator, for example: "tracecontext", "baggage", "b3", "b3multi", "none"
      */

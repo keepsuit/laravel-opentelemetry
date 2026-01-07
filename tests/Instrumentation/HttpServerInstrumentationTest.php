@@ -16,13 +16,18 @@ uses(RefreshDatabase::class);
 
 beforeEach(function () {
     Route::middleware('web')->group(function () {
-        Route::any('test-ok', fn () => Tracer::traceId())->middleware(['web']);
+        Route::any('test-ok', fn () => Tracer::traceId());
         Route::any('test-exception', fn () => throw TestException::create());
         Route::any('test-nested-exception', function () {
             $span = Tracer::newSpan('nested')->start();
             $span->activate();
 
             throw TestException::create();
+        });
+        Route::any('test-log', function () {
+            Log::info('Test log message');
+
+            return Tracer::traceId();
         });
         Route::any('test/{parameter}', fn () => Tracer::traceId());
         Route::get('products/{product}', function (Product $product) {
@@ -475,3 +480,87 @@ it('record forwarded ip from trusted proxies', function () {
     fn () => ! method_exists(\Illuminate\Http\Middleware\TrustProxies::class, 'at'),
     'Requires laravel 11.31+'
 );
+
+it('adds user.id when enabled and user is authenticated', function () {
+    config(['opentelemetry.user_context' => true]);
+
+    registerInstrumentation(HttpServerInstrumentation::class);
+
+    $user = new \Illuminate\Foundation\Auth\User;
+    $user->id = 123;
+
+    $response = $this->actingAs($user)->get('test-ok');
+    $response->assertOk();
+
+    $span = getRecordedSpans()->last();
+
+    expect($span->getAttributes())
+        ->toMatchArray([
+            'user.id' => 123,
+        ]);
+});
+
+it('does not add user.id when disabled', function () {
+    config(['opentelemetry.user_context' => false]);
+
+    registerInstrumentation(HttpServerInstrumentation::class);
+
+    $user = new \Illuminate\Foundation\Auth\User;
+    $user->id = 123;
+
+    $response = $this->actingAs($user)->get('test-ok');
+    $response->assertOk();
+
+    $span = getRecordedSpans()->last();
+
+    expect($span->getAttributes())->not->toHaveKey('user.id');
+});
+
+it('collects extra user attributes with custom user resolver', function () {
+    config(['opentelemetry.user_context' => true]);
+
+    registerInstrumentation(HttpServerInstrumentation::class);
+
+    \Keepsuit\LaravelOpenTelemetry\Facades\OpenTelemetry::user(fn (\Illuminate\Contracts\Auth\Authenticatable $user) => ['user.email' => $user->email]);
+
+    $user = new \Illuminate\Foundation\Auth\User;
+    $user->id = 123;
+    $user->email = 'test@example.com';
+
+    $response = $this->actingAs($user)->get('test-ok');
+    $response->assertOk();
+
+    $span = getRecordedSpans()->last();
+
+    expect($span->getAttributes())
+        ->toHaveKey('user.email')
+        ->not->toHaveKey('user.id')
+        ->toMatchArray([
+            'user.email' => 'test@example.com',
+        ]);
+});
+
+it('adds user context to logs when authenticated', function () {
+    config(['opentelemetry.user_context' => true]);
+
+    registerInstrumentation(HttpServerInstrumentation::class);
+
+    $user = new \Illuminate\Foundation\Auth\User;
+    $user->id = 123;
+
+    $response = $this->actingAs($user)->get('test-log');
+    $response->assertOk();
+
+    $span = getRecordedSpans()->last();
+    $log = getRecordedLogs()->last();
+
+    expect($log->getSpanContext()->getTraceId())->toBe($span->getTraceId());
+
+    expect($span->getAttributes())->toMatchArray([
+        'user.id' => 123,
+    ]);
+
+    expect($log->getAttributes())->toMatchArray([
+        'user.id' => 123,
+    ]);
+});

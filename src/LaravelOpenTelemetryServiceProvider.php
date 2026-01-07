@@ -18,6 +18,7 @@ use Keepsuit\LaravelOpenTelemetry\Support\OpenTelemetryMonologHandler;
 use Keepsuit\LaravelOpenTelemetry\Support\PropagatorBuilder;
 use Keepsuit\LaravelOpenTelemetry\Support\ResourceBuilder;
 use Keepsuit\LaravelOpenTelemetry\Support\SamplerBuilder;
+use Keepsuit\LaravelOpenTelemetry\Support\UserContextResolver;
 use OpenTelemetry\API\Common\Time\Clock;
 use OpenTelemetry\API\Instrumentation\CachedInstrumentation;
 use OpenTelemetry\API\Logs\LoggerInterface;
@@ -73,6 +74,12 @@ use Throwable;
 
 class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 {
+    public function packageRegistered(): void
+    {
+        $this->app->singleton(OpenTelemetry::class);
+        $this->app->scoped(UserContextResolver::class);
+    }
+
     public function packageBooted(): void
     {
         $this->configureEnvironmentVariables();

@@ -6,6 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
+use Keepsuit\LaravelOpenTelemetry\Facades\OpenTelemetry;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\HttpServerInstrumentation;
 use OpenTelemetry\API\Trace\SpanInterface;
@@ -129,6 +130,10 @@ class TraceRequestMiddleware
             })
             ->setAttribute(NetworkAttributes::NETWORK_PEER_ADDRESS, $request->server('REMOTE_ADDR'))
             ->setAttribute(ClientAttributes::CLIENT_ADDRESS, $request->ip());
+
+        if (config('opentelemetry.user_context') === true && $request->user() !== null) {
+            $span->setAttributes(OpenTelemetry::collectUserContext($request->user()));
+        }
     }
 
     protected function recordHeaders(SpanInterface $span, Request|Response $http): void
