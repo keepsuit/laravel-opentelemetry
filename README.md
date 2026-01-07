@@ -26,9 +26,8 @@ php artisan vendor:publish --provider="Keepsuit\LaravelOpenTelemetry\LaravelOpen
 This is the contents of the published config file:
 
 ```php
-<?php
-
 use Keepsuit\LaravelOpenTelemetry\Instrumentation;
+use Keepsuit\LaravelOpenTelemetry\Support\ResourceAttributesParser;
 use OpenTelemetry\SDK\Common\Configuration\Variables;
 
 return [
@@ -43,6 +42,18 @@ return [
      * If not set, a random id will be generated on each request.
      */
     'service_instance_id' => env('OTEL_SERVICE_INSTANCE_ID'),
+
+    /**
+     * Additional resource attributes
+     * Key-value pairs of resource attributes to add to all telemetry data.
+     * By default, reads and parses OTEL_RESOURCE_ATTRIBUTES environment variable (which should be in the format 'key1=value1,key2=value2').
+     */
+    'resource_attributes' => ResourceAttributesParser::parse((string) env(Variables::OTEL_RESOURCE_ATTRIBUTES, '')),
+
+    /**
+     * Include authenticated user context on traces and logs.
+     */
+    'user_context' => env('OTEL_USER_CONTEXT', true),
 
     /**
      * Comma separated list of propagators to use.
@@ -126,7 +137,7 @@ return [
         /**
          * Context field name for trace id
          */
-        'trace_id_field' => 'traceid',
+        'trace_id_field' => 'trace_id',
 
         /**
          * Logs record processors.
@@ -226,7 +237,7 @@ return [
 
         Instrumentation\ConsoleInstrumentation::class => [
             'enabled' => env('OTEL_INSTRUMENTATION_CONSOLE', true),
-            'excluded' => [],
+            'commands' => [],
         ],
     ],
 ];
@@ -234,6 +245,29 @@ return [
 
 > [!NOTE]  
 > OpenTelemetry instrumentation can be completely disabled by setting the `OTEL_SDK_DISABLED` environment variable to `true`.
+
+## User Context
+
+When user context is enabled (`opentelemetry.user_context` config option, enabled by default),
+the authenticated user id is automatically added as attribute `user.id` to all traces and logs.
+This allows to easily correlate traces and logs with the user that generated them.
+
+You can customize the user context attributes by providing a custom resolver in you service provider:
+
+```php
+use Keepsuit\LaravelOpenTelemetry\Facades\OpenTelemetry;
+use Illuminate\Contracts\Auth\Authenticatable;
+
+public function boot(): void
+{
+    OpenTelemetry::user(function (Authenticatable $user) {
+        return [
+            'user.id' => $user->getAuthIdentifier(),
+            'user.email' => $user->email,
+        ];
+    });
+}
+```
 
 ## Traces
 
