@@ -78,6 +78,22 @@ return [
                  */
                 'ratio' => env('OTEL_TRACES_SAMPLER_TRACEIDRATIO_RATIO', 0.05),
             ],
+
+            'tail_sampling' => [
+                'enabled' => env('OTEL_TRACES_TAIL_SAMPLING_ENABLED', false),
+                'evaluation_window_ms' => env('OTEL_TRACES_TAIL_SAMPLING_WINDOW_MS', 5000),
+                'max_buffered_traces' => env('OTEL_TRACES_TAIL_SAMPLING_MAX_BUFFERED_TRACES', 10000),
+
+                'rules' => [
+                    \Keepsuit\LaravelOpenTelemetry\Support\Rules\KeepErrorsRule::class => [
+                        'enabled' => true,
+                    ],
+                    \Keepsuit\LaravelOpenTelemetry\Support\Rules\SlowTraceRule::class => [
+                        'enabled' => true,
+                        'threshold_ms' => env('OTEL_TRACES_TAIL_SAMPLING_SLOW_THRESHOLD_MS', 2000),
+                    ],
+                ],
+            ],
         ],
 
         /**

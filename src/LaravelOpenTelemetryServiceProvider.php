@@ -182,7 +182,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
             return new NoopTracerProvider;
         }
 
-        $spanProcessor = (new BatchSpanProcessorBuilder($spanExporter))->build();
+        $batchProcessor = (new BatchSpanProcessorBuilder($spanExporter))->build();
 
         $samplerConfig = config('opentelemetry.traces.sampler', []);
         $sampler = SamplerBuilder::new()->build(
@@ -193,8 +193,46 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 
         $builder = TracerProvider::builder()
             ->setResource($resource)
-            ->addSpanProcessor($spanProcessor)
             ->setSampler($sampler);
+
+        $tailConfig = config('opentelemetry.traces.tail_sampling', []);
+
+        if (! empty($tailConfig['enabled'])) {
+            $ruleConfigs = $tailConfig['rules'] ?? [];
+            $ruleInstances = [];
+
+            foreach ($ruleConfigs as $ruleClass => $options) {
+                if (! ($options['enabled'] ?? true)) {
+                    continue;
+                }
+
+                if (! class_exists($ruleClass)) {
+                    continue;
+                }
+
+                $rule = $this->app->make($ruleClass);
+
+                if (! $rule instanceof \Keepsuit\LaravelOpenTelemetry\Support\TailSamplingRuleInterface) {
+                    continue;
+                }
+
+                $rule->initialize($options ?: []);
+                $ruleInstances[] = $rule;
+            }
+
+            $tailProcessor = new \Keepsuit\LaravelOpenTelemetry\Support\TailSamplingProcessor(
+                $batchProcessor,
+                $ruleInstances,
+                [
+                    'evaluation_window_ms' => $tailConfig['evaluation_window_ms'] ?? 5000,
+                    'max_buffered_traces' => $tailConfig['max_buffered_traces'] ?? 10000,
+                ]
+            );
+
+            $builder->addSpanProcessor($tailProcessor);
+        } else {
+            $builder->addSpanProcessor($batchProcessor);
+        }
 
         foreach (config('opentelemetry.traces.processors', []) as $processorClass) {
             if (class_exists($processorClass)) {
