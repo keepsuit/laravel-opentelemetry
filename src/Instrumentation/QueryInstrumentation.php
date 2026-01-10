@@ -25,7 +25,7 @@ class QueryInstrumentation implements Instrumentation
             return;
         }
 
-        $operationName = Str::of($event->sql)
+        $operationName = (string) Str::of($event->sql)
             ->before(' ')
             ->upper()
             ->when(
@@ -38,7 +38,7 @@ class QueryInstrumentation implements Instrumentation
             return;
         }
 
-        $span = Tracer::newSpan(sprintf('sql %s', $operationName))
+        $span = Tracer::newSpan($operationName)
             ->setSpanKind(SpanKind::KIND_CLIENT)
             ->setStartTimestamp($this->getEventStartTimestampNs($event->time))
             ->setAttribute(DbAttributes::DB_SYSTEM_NAME, $event->connection->getDriverName())

@@ -26,9 +26,8 @@ php artisan vendor:publish --provider="Keepsuit\LaravelOpenTelemetry\LaravelOpen
 This is the contents of the published config file:
 
 ```php
-<?php
-
 use Keepsuit\LaravelOpenTelemetry\Instrumentation;
+use Keepsuit\LaravelOpenTelemetry\Support\ResourceAttributesParser;
 use OpenTelemetry\SDK\Common\Configuration\Variables;
 
 return [
@@ -43,6 +42,18 @@ return [
      * If not set, a random id will be generated on each request.
      */
     'service_instance_id' => env('OTEL_SERVICE_INSTANCE_ID'),
+
+    /**
+     * Additional resource attributes
+     * Key-value pairs of resource attributes to add to all telemetry data.
+     * By default, reads and parses OTEL_RESOURCE_ATTRIBUTES environment variable (which should be in the format 'key1=value1,key2=value2').
+     */
+    'resource_attributes' => ResourceAttributesParser::parse((string) env(Variables::OTEL_RESOURCE_ATTRIBUTES, '')),
+
+    /**
+     * Include authenticated user context on traces and logs.
+     */
+    'user_context' => env('OTEL_USER_CONTEXT', true),
 
     /**
      * Comma separated list of propagators to use.
@@ -126,7 +137,7 @@ return [
         /**
          * Context field name for trace id
          */
-        'trace_id_field' => 'traceid',
+        'trace_id_field' => 'trace_id',
 
         /**
          * Logs record processors.
@@ -217,7 +228,7 @@ return [
 
         Instrumentation\EventInstrumentation::class => [
             'enabled' => env('OTEL_INSTRUMENTATION_EVENT', true),
-            'ignored' => [],
+            'excluded' => [],
         ],
 
         Instrumentation\ViewInstrumentation::class => env('OTEL_INSTRUMENTATION_VIEW', true),
@@ -226,7 +237,7 @@ return [
 
         Instrumentation\ConsoleInstrumentation::class => [
             'enabled' => env('OTEL_INSTRUMENTATION_CONSOLE', true),
-            'excluded' => [],
+            'commands' => [],
         ],
     ],
 ];
@@ -234,6 +245,29 @@ return [
 
 > [!NOTE]  
 > OpenTelemetry instrumentation can be completely disabled by setting the `OTEL_SDK_DISABLED` environment variable to `true`.
+
+## User Context
+
+When user context is enabled (`opentelemetry.user_context` config option, enabled by default),
+the authenticated user id is automatically added as attribute `user.id` to all traces and logs.
+This allows to easily correlate traces and logs with the user that generated them.
+
+You can customize the user context attributes by providing a custom resolver in you service provider:
+
+```php
+use Keepsuit\LaravelOpenTelemetry\Facades\OpenTelemetry;
+use Illuminate\Contracts\Auth\Authenticatable;
+
+public function boot(): void
+{
+    OpenTelemetry::user(function (Authenticatable $user) {
+        return [
+            'user.id' => $user->getAuthIdentifier(),
+            'user.email' => $user->email,
+        ];
+    });
+}
+```
 
 ## Traces
 
@@ -246,7 +280,12 @@ You can disable or customize each integration in the config file in the `instrum
 - [Http client](#http-client)
 - [Database](#database)
 - [Redis](#redis)
-- [Queue jobs](#redis)
+- [Queue jobs](#queue-jobs)
+- [Cache](#cache)
+- [Events](#events)
+- [View](#view)
+- [Livewire](#livewire)
+- [Console commands](#console-commands)
 - [Logs context](#logs-context)
 - [Manual traces](#manual-traces)
 
@@ -258,39 +297,102 @@ You can disable it by setting `OT_INSTRUMENTATION_HTTP_SERVER` to `false` or rem
 Configuration options:
 
 - `excluded_paths`: list of paths to exclude from tracing
+- `excluded_methods`: list of HTTP methods to exclude from tracing
 - `allowed_headers`: list of headers to include in the trace
 - `sensitive_headers`: list of headers with sensitive data to hide in the trace
 
 ### Http client
 
-To trace an outgoing http request call the `withTrace` method on the request builder.
+Http client requests are automatically traced by default, but you can set it to manual mode by setting `manual` to `true` in the config file.
+
+When using manual mode, you need to call the `withTrace` method on the request builder to enable tracing for the request.
 
 ```php
 Http::withTrace()->get('https://example.com');
+```
+
+The low-cardinality url template cannot be automatically detected in http client requests like in server requests.
+By default, the span name will be only the HTTP method (e.g. `GET`) but you can set manually resolve the url template from the request.
+
+In your service provider:
+
+```php
+use Keepsuit\LaravelOpenTelemetry\Instrumentation\HttpClientInstrumentation;
+use Psr\Http\Message\RequestInterface;
+
+public function boot(): void
+{
+    HttpClientInstrumentation::setRouteNameResolver(function (RequestInterface $request): ?string {
+        return match (true) {
+            str_starts_with($request->getUri()->getPath(), '/products/') => '/products/{id}',
+            default => null,
+        };
+    });
+}
 ```
 
 You can disable it by setting `OT_INSTRUMENTATION_HTTP_CLIENT` to `false` or removing the `HttpClientInstrumentation::class` from the config file.
 
 Configuration options:
 
+- `manual`: set to `true` to enable manual tracing
 - `allowed_headers`: list of headers to include in the trace
 - `sensitive_headers`: list of headers with sensitive data to hide in the trace
 
 ### Database
 
-Database queries are automatically traced.
+Database queries are automatically traced. A span is created for each query executed.
+
 You can disable it by setting `OT_INSTRUMENTATION_QUERY` to `false` or removing the `QueryInstrumentation::class` from the config file.
 
 ### Redis
 
-Redis commands are automatically traced.
+Redis commands are automatically traced. A span is created for each command executed.
+
 You can disable it by setting `OT_INSTRUMENTATION_REDIS` to `false` or removing the `RedisInstrumentation::class` from the config file.
 
 ### Queue jobs
 
 Queue jobs are automatically traced.
 It will automatically create a parent span with kind `PRODUCER` when a job is dispatched and a child span with kind `CONSUMER` when the job is executed.
+
 You can disable it by setting `OT_INSTRUMENTATION_QUEUE` to `false` or removing the `QueueInstrumentation::class` from the config file.
+
+### Cache
+
+Cache operations are recorded as events in the current active span.
+
+You can disable it by setting `OT_INSTRUMENTATION_CACHE` to `false` or removing the `CacheInstrumentation::class` from the config file.
+
+### Events
+
+Events are recorded as events in the current active span. Some internal laravel events are excluded by default.
+You can customize the excluded events in the config file.
+
+You can disable it by setting `OT_INSTRUMENTATION_EVENT` to `false` or removing the `EventInstrumentation::class` from the config file.
+
+### View
+
+View rendering is automatically traced. A span is created for each rendered view.
+
+You can disable it by setting `OT_INSTRUMENTATION_VIEW` to `false` or removing the `ViewInstrumentation::class` from the config file.
+
+### Livewire
+
+Livewire components rendering is automatically traced. A span is created for each rendered component.
+
+You can disable it by setting `OT_INSTRUMENTATION_LIVEWIRE` to `false` or removing the `LivewireInstrumentation::class` from the config file.
+
+### Console commands
+
+Console commands are not traced by default.
+You can trace console commands by adding them to the `commands` option of `ConsoleInstrumentation`.
+
+You can disable it by setting `OT_INSTRUMENTATION_CONSOLE` to `false` or removing the `ConsoleInstrumentation::class` from the config file.
+
+Configuration options:
+
+- `commands`: list of commands to trace
 
 ### Logs context
 
@@ -424,15 +526,14 @@ To simplify development, a `Makefile` is provided. The project runs in a Docker 
 
 #### Available Makefile Commands
 
-| Command        | Description                                                                 |
-|----------------|-----------------------------------------------------------------------------|
-| `make build`   | Builds the Docker image with your UID/GID for proper file permissions.     |
-| `make start`   | Starts the containers in the background using Docker Compose.              |
-| `make stop`    | Stops and removes the containers.                                           |
-| `make shell`   | Starts the containers (if needed) and opens a Bash shell in the `app` one. |
-| `make test`    | Runs the test suite via Composer inside the `app` container.               |
-| `make lint`    | Runs the linter via Composer inside the `app` container.                   |
-
+| Command      | Description                                                                |
+|--------------|----------------------------------------------------------------------------|
+| `make build` | Builds the Docker image with your UID/GID for proper file permissions.     |
+| `make start` | Starts the containers in the background using Docker Compose.              |
+| `make stop`  | Stops and removes the containers.                                          |
+| `make shell` | Starts the containers (if needed) and opens a Bash shell in the `app` one. |
+| `make test`  | Runs the test suite via Composer inside the `app` container.               |
+| `make lint`  | Runs the linter via Composer inside the `app` container.                   |
 
 > 📝 Before using `make shell`, ensure the container is running (`make start` in another terminal).
 

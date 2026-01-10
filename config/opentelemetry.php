@@ -25,6 +25,11 @@ return [
     'resource_attributes' => ResourceAttributesParser::parse((string) env(Variables::OTEL_RESOURCE_ATTRIBUTES, '')),
 
     /**
+     * Include authenticated user context on traces and logs.
+     */
+    'user_context' => env('OTEL_USER_CONTEXT', true),
+
+    /**
      * Comma separated list of propagators to use.
      * Supports any otel propagator, for example: "tracecontext", "baggage", "b3", "b3multi", "none"
      */
@@ -106,7 +111,7 @@ return [
         /**
          * Context field name for trace id
          */
-        'trace_id_field' => 'traceid',
+        'trace_id_field' => 'trace_id',
 
         /**
          * Logs record processors.
@@ -197,7 +202,7 @@ return [
 
         Instrumentation\EventInstrumentation::class => [
             'enabled' => env('OTEL_INSTRUMENTATION_EVENT', true),
-            'ignored' => [],
+            'excluded' => [],
         ],
 
         Instrumentation\ViewInstrumentation::class => env('OTEL_INSTRUMENTATION_VIEW', true),
@@ -206,7 +211,7 @@ return [
 
         Instrumentation\ConsoleInstrumentation::class => [
             'enabled' => env('OTEL_INSTRUMENTATION_CONSOLE', true),
-            'excluded' => [],
+            'commands' => [],
         ],
     ],
 ];

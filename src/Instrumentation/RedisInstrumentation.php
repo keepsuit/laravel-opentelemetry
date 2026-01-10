@@ -28,18 +28,19 @@ class RedisInstrumentation implements Instrumentation
             return;
         }
 
-        $traceName = sprintf('redis %s %s', $event->connection->getName(), $event->command);
+        $operationName = strtoupper($event->command);
 
-        $span = Tracer::newSpan($traceName)
+        $span = Tracer::newSpan($operationName)
             ->setSpanKind(SpanKind::KIND_CLIENT)
             ->setStartTimestamp($this->getEventStartTimestampNs($event->time))
             ->start();
 
-        if ($span->isRecording()) {
-            $span->setAttribute(DbAttributes::DB_SYSTEM_NAME, 'redis')
-                ->setAttribute(DbAttributes::DB_QUERY_TEXT, $this->formatCommand($event->command, $event->parameters))
-                ->setAttribute(ServerAttributes::SERVER_ADDRESS, $this->resolveRedisAddress($event->connection->client()));
-        }
+        $span
+            ->setAttribute(DbAttributes::DB_SYSTEM_NAME, 'redis')
+            ->setAttribute(DbAttributes::DB_OPERATION_NAME, $operationName)
+            ->setAttribute(DbAttributes::DB_NAMESPACE, $this->resolveDbIndex($event->connectionName))
+            ->setAttribute(DbAttributes::DB_QUERY_TEXT, $this->formatCommand($event->command, $event->parameters))
+            ->setAttribute(ServerAttributes::SERVER_ADDRESS, $this->resolveRedisAddress($event->connection->client()));
 
         $span->end();
     }
@@ -81,6 +82,11 @@ class RedisInstrumentation implements Instrumentation
         })->implode(' ');
 
         return sprintf('%s %s', $command, $parameters);
+    }
+
+    protected function resolveDbIndex(string $connectionName): ?string
+    {
+        return config(sprintf('database.redis.%s.database', $connectionName));
     }
 
     protected function registerRedisEvents(mixed $redis): void

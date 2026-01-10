@@ -18,6 +18,7 @@ use Keepsuit\LaravelOpenTelemetry\Support\OpenTelemetryMonologHandler;
 use Keepsuit\LaravelOpenTelemetry\Support\PropagatorBuilder;
 use Keepsuit\LaravelOpenTelemetry\Support\ResourceBuilder;
 use Keepsuit\LaravelOpenTelemetry\Support\SamplerBuilder;
+use Keepsuit\LaravelOpenTelemetry\Support\UserContextResolver;
 use OpenTelemetry\API\Common\Time\Clock;
 use OpenTelemetry\API\Instrumentation\CachedInstrumentation;
 use OpenTelemetry\API\Logs\LoggerInterface;
@@ -28,6 +29,7 @@ use OpenTelemetry\API\Trace\TracerInterface;
 use OpenTelemetry\Context\Propagation\NoopTextMapPropagator;
 use OpenTelemetry\Context\Propagation\TextMapPropagatorInterface;
 use OpenTelemetry\Contrib\Grpc\GrpcTransportFactory;
+use OpenTelemetry\Contrib\Otlp\ContentTypes;
 use OpenTelemetry\Contrib\Otlp\HttpEndpointResolver;
 use OpenTelemetry\Contrib\Otlp\LogsExporter;
 use OpenTelemetry\Contrib\Otlp\MetricExporter;
@@ -72,6 +74,12 @@ use Throwable;
 
 class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 {
+    public function packageRegistered(): void
+    {
+        $this->app->singleton(OpenTelemetry::class);
+        $this->app->scoped(UserContextResolver::class);
+    }
+
     public function packageBooted(): void
     {
         $this->configureEnvironmentVariables();
@@ -299,7 +307,22 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
     }
 
     /**
-     * @phpstan-param Signals::TRACE|Signals::METRICS|Signals::LOGS $signal
+     * @param  array{
+     *     endpoint?: string,
+     *     protocol?: string,
+     *     max_retries?: int,
+     *     traces_protocol?: string,
+     *     traces_timeout?: int,
+     *     traces_headers?: string|array<string, string>,
+     *     metrics_protocol?: string,
+     *     metrics_timeout?: int,
+     *     metrics_headers?: string|array<string, string>,
+     *     logs_protocol?: string,
+     *     logs_timeout?: int,
+     *     logs_headers?: string|array<string, string>,
+     * }  $config
+     * @param  Signals::TRACE|Signals::METRICS|Signals::LOGS  $signal
+     * @return TransportInterface<ContentTypes::PROTOBUF|ContentTypes::JSON>
      */
     protected function buildOtlpTransport(array $config, string $signal): TransportInterface
     {
@@ -325,6 +348,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
             Signals::LOGS => $config['logs_headers'] ?? [],
         };
 
+        /** @var array<string, string> $headers */
         $headers = rescue(
             fn () => is_string($headers) ? MapParser::parse($headers) : $headers,
             [],
