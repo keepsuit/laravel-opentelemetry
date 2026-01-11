@@ -3,8 +3,8 @@
 namespace Keepsuit\LaravelOpenTelemetry\Tests\Support;
 
 use Keepsuit\LaravelOpenTelemetry\Support\SamplingResult;
-use Keepsuit\LaravelOpenTelemetry\Support\TailSamplingRuleInterface;
 use Keepsuit\LaravelOpenTelemetry\Support\TraceBuffer;
+use Keepsuit\LaravelOpenTelemetry\TailSamplingRules\TailSamplingRuleInterface;
 
 class TestTailSamplingRule implements TailSamplingRuleInterface
 {

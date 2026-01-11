@@ -2,6 +2,7 @@
 
 namespace Keepsuit\LaravelOpenTelemetry\Support;
 
+use Keepsuit\LaravelOpenTelemetry\TailSamplingRules\TailSamplingRuleInterface;
 use OpenTelemetry\Context\Context;
 use OpenTelemetry\Context\ContextInterface;
 use OpenTelemetry\Context\ContextKeys;

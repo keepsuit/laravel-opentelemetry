@@ -1,11 +1,11 @@
 <?php
 
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
-use Keepsuit\LaravelOpenTelemetry\Support\Rules\KeepErrorsRule;
-use Keepsuit\LaravelOpenTelemetry\Support\Rules\SlowTraceRule;
 use Keepsuit\LaravelOpenTelemetry\Support\SamplingResult;
 use Keepsuit\LaravelOpenTelemetry\Support\TailSamplingProcessor;
 use Keepsuit\LaravelOpenTelemetry\Support\TraceBuffer;
+use Keepsuit\LaravelOpenTelemetry\TailSamplingRules\KeepErrorsRule;
+use Keepsuit\LaravelOpenTelemetry\TailSamplingRules\SlowTraceRule;
 use Keepsuit\LaravelOpenTelemetry\Tests\Support\TestSpanProcessor;
 use Keepsuit\LaravelOpenTelemetry\Tests\Support\TestTailSamplingRule;
 use OpenTelemetry\SDK\Trace\Sampler\AlwaysOffSampler;
