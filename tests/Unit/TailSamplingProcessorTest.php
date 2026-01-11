@@ -4,7 +4,7 @@ use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Support\SamplingResult;
 use Keepsuit\LaravelOpenTelemetry\Support\TailSamplingProcessor;
 use Keepsuit\LaravelOpenTelemetry\Support\TraceBuffer;
-use Keepsuit\LaravelOpenTelemetry\TailSamplingRules\KeepErrorsRule;
+use Keepsuit\LaravelOpenTelemetry\TailSamplingRules\ErrorsRule;
 use Keepsuit\LaravelOpenTelemetry\TailSamplingRules\SlowTraceRule;
 use Keepsuit\LaravelOpenTelemetry\Tests\Support\TestSpanProcessor;
 use Keepsuit\LaravelOpenTelemetry\Tests\Support\TestTailSamplingRule;
@@ -15,19 +15,57 @@ beforeEach(function () {
     TestTime::freeze('Y-m-d H:i:s', '2022-01-01 00:00:00');
 });
 
-test('keep errors rules detects errors', function () {
+test('errors rules keep traces with errors', function () {
     $buffer = new TraceBuffer('trace-1');
-    expect($buffer->hasError())->toBeFalse();
 
-    $rule = new KeepErrorsRule;
+    $rule = new ErrorsRule;
     $rule->initialize([]);
+
+    $span = Tracer::newSpan('root')->start();
+    assert($span instanceof \OpenTelemetry\SDK\Trace\Span);
+    $span->setStatus(\OpenTelemetry\API\Trace\StatusCode::STATUS_ERROR);
+    $span->end();
+    $buffer->addSpan($span);
+    expect($rule->evaluate($buffer))->toBe(SamplingResult::Keep);
+});
+
+test('errors rules forwards traces without errors', function () {
+    $buffer = new TraceBuffer('trace-1');
+
+    $rule = new ErrorsRule;
+    $rule->initialize([]);
+
+    $span = Tracer::newSpan('root')->start();
+    assert($span instanceof \OpenTelemetry\SDK\Trace\Span);
+    $span->end();
+    $buffer->addSpan($span);
     expect($rule->evaluate($buffer))->toBe(SamplingResult::Forward);
 });
 
-test('slow trace rule', function () {
+test('slow trace rule keeps traces exceeding threshold duration', function () {
     $buffer = new TraceBuffer('trace-2');
     $rule = new SlowTraceRule;
     $rule->initialize(['threshold_ms' => 10]);
+
+    $span = Tracer::newSpan('root')->start();
+    assert($span instanceof \OpenTelemetry\SDK\Trace\Span);
+    TestTime::addSeconds(3);
+    $span->end();
+    $buffer->addSpan($span);
+
+    expect($rule->evaluate($buffer))->toBe(SamplingResult::Keep);
+});
+
+test('slow trace rule forwards traces under threshold duration', function () {
+    $buffer = new TraceBuffer('trace-2');
+    $rule = new SlowTraceRule;
+    $rule->initialize(['threshold_ms' => 1000]); // 1 second
+
+    $span = Tracer::newSpan('root')->start();
+    assert($span instanceof \OpenTelemetry\SDK\Trace\Span);
+    TestTime::addMillis(100);
+    $span->end();
+    $buffer->addSpan($span);
 
     expect($rule->evaluate($buffer))->toBe(SamplingResult::Forward);
 });

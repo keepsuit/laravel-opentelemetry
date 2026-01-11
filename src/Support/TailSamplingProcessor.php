@@ -50,7 +50,7 @@ final class TailSamplingProcessor implements SpanProcessorInterface
         }
 
         // If burrer duration exceeds decision wait, evaluate immediately
-        if ($buffer->getDurationMs() >= $this->decisionWait) {
+        if ($buffer->getDecisionDurationMs() >= $this->decisionWait) {
             $this->evaluateTrace($buffer);
             unset($this->buffers[$traceId]);
 

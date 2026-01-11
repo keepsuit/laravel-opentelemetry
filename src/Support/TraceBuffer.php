@@ -2,8 +2,9 @@
 
 namespace Keepsuit\LaravelOpenTelemetry\Support;
 
+use Carbon\CarbonImmutable;
+use OpenTelemetry\API\Common\Time\ClockInterface;
 use OpenTelemetry\API\Trace\SpanContextValidator;
-use OpenTelemetry\API\Trace\StatusCode as ApiStatusCode;
 use OpenTelemetry\SDK\Trace\ReadableSpanInterface;
 
 final class TraceBuffer
@@ -15,9 +16,11 @@ final class TraceBuffer
 
     protected ?ReadableSpanInterface $root = null;
 
-    protected ?int $firstEndEpochNanos = null;
+    protected ?int $bufferCreatedMs = null;
 
-    protected ?int $lastEndEpochNanos = null;
+    protected ?int $traceStartedMs = null;
+
+    protected ?int $traceEndedMs = null;
 
     public function __construct(string $traceId)
     {
@@ -26,6 +29,8 @@ final class TraceBuffer
 
     public function addSpan(ReadableSpanInterface $span): void
     {
+        $this->bufferCreatedMs ??= CarbonImmutable::now()->getTimestampMs();
+
         $this->spans[] = $span;
 
         $spanData = $span->toSpanData();
@@ -34,8 +39,8 @@ final class TraceBuffer
             $this->root = $span;
         }
 
-        $this->firstEndEpochNanos ??= $spanData->getEndEpochNanos();
-        $this->lastEndEpochNanos = max($this->lastEndEpochNanos ?? 0, $spanData->getEndEpochNanos());
+        $this->traceStartedMs = min($this->traceStartedMs ?? PHP_INT_MAX, (int) ($span->toSpanData()->getStartEpochNanos() / ClockInterface::NANOS_PER_MILLISECOND));
+        $this->traceEndedMs = max($this->traceEndedMs ?? 0, (int) ($span->toSpanData()->getEndEpochNanos() / ClockInterface::NANOS_PER_MILLISECOND));
     }
 
     public function getTraceId(): string
@@ -54,27 +59,21 @@ final class TraceBuffer
         return $this->root;
     }
 
-    public function getDurationMs(): int
+    public function getDecisionDurationMs(): int
     {
-        if ($this->firstEndEpochNanos === null || $this->lastEndEpochNanos === null) {
+        if ($this->bufferCreatedMs === null) {
             return 0;
         }
 
-        $durationNs = $this->lastEndEpochNanos - $this->firstEndEpochNanos;
-
-        return (int) floor($durationNs / 1_000_000);
+        return CarbonImmutable::now()->getTimestampMs() - $this->bufferCreatedMs;
     }
 
-    public function hasError(): bool
+    public function getTraceDurationMs(): int
     {
-        foreach ($this->spans as $span) {
-            $spanData = $span->toSpanData();
-
-            if ($spanData->getStatus()->getCode() === ApiStatusCode::STATUS_ERROR) {
-                return true;
-            }
+        if ($this->traceStartedMs === null || $this->traceEndedMs === null) {
+            return 0;
         }
 
-        return false;
+        return $this->traceEndedMs - $this->traceStartedMs;
     }
 }
