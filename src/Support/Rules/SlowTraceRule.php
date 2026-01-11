@@ -5,6 +5,7 @@ namespace Keepsuit\LaravelOpenTelemetry\Support\Rules;
 use Keepsuit\LaravelOpenTelemetry\Support\SamplingResult;
 use Keepsuit\LaravelOpenTelemetry\Support\TailSamplingRuleInterface;
 use Keepsuit\LaravelOpenTelemetry\Support\TraceBuffer;
+use OpenTelemetry\API\Common\Time\ClockInterface;
 
 final class SlowTraceRule implements TailSamplingRuleInterface
 {
@@ -15,8 +16,19 @@ final class SlowTraceRule implements TailSamplingRuleInterface
         $this->thresholdMs = isset($options['threshold_ms']) ? (int) $options['threshold_ms'] : 2000;
     }
 
-    public function evaluate(TraceBuffer $trace): ?SamplingResult
+    public function evaluate(TraceBuffer $trace): SamplingResult
     {
-        return $trace->getDurationMs() >= $this->thresholdMs ? SamplingResult::Keep : null;
+        $root = $trace->getRootSpan();
+
+        if ($root === null) {
+            return SamplingResult::Forward;
+        }
+
+        $durationMs = (int) ($root->getDuration() / ClockInterface::NANOS_PER_MILLISECOND);
+        if ($durationMs >= $this->thresholdMs) {
+            return SamplingResult::Keep;
+        }
+
+        return SamplingResult::Forward;
     }
 }

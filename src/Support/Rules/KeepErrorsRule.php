@@ -8,13 +8,10 @@ use Keepsuit\LaravelOpenTelemetry\Support\TraceBuffer;
 
 final class KeepErrorsRule implements TailSamplingRuleInterface
 {
-    public function initialize(array $options): void
-    {
-        // no options
-    }
+    public function initialize(array $options): void {}
 
-    public function evaluate(TraceBuffer $trace): ?SamplingResult
+    public function evaluate(TraceBuffer $trace): SamplingResult
     {
-        return $trace->hasError() ? SamplingResult::Keep : null;
+        return $trace->hasError() ? SamplingResult::Keep : SamplingResult::Forward;
     }
 }

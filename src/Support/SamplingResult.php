@@ -2,9 +2,9 @@
 
 namespace Keepsuit\LaravelOpenTelemetry\Support;
 
-enum SamplingResult: string
+enum SamplingResult
 {
-    case Keep = 'keep';
-    case Drop = 'drop';
-    case Sample = 'sample';
+    case Keep;
+    case Drop;
+    case Forward;
 }

@@ -2,38 +2,32 @@
 
 namespace Keepsuit\LaravelOpenTelemetry\Support;
 
+use OpenTelemetry\Context\Context;
 use OpenTelemetry\Context\ContextInterface;
+use OpenTelemetry\Context\ContextKeys;
 use OpenTelemetry\SDK\Common\Future\CancellationInterface;
 use OpenTelemetry\SDK\Trace\ReadableSpanInterface;
 use OpenTelemetry\SDK\Trace\ReadWriteSpanInterface;
+use OpenTelemetry\SDK\Trace\SamplerInterface;
+use OpenTelemetry\SDK\Trace\Span;
 use OpenTelemetry\SDK\Trace\SpanProcessorInterface;
 
 final class TailSamplingProcessor implements SpanProcessorInterface
 {
-    private SpanProcessorInterface $downstream;
+    /**
+     * @var array<string, TraceBuffer>
+     */
+    protected array $buffers = [];
 
-    /** @var array<string, TraceBuffer> */
-    private array $buffers = [];
+    public function __construct(
+        protected SpanProcessorInterface $downstream,
+        protected SamplerInterface $sampler,
+        /** @var TailSamplingRuleInterface[] $rules */
+        protected array $rules = [],
+        protected int $decisionWait = 5000
+    ) {}
 
-    /** @var TailSamplingRuleInterface[] */
-    private array $rules = [];
-
-    private int $evaluationWindowMs;
-
-    private int $maxBufferedTraces;
-
-    public function __construct(SpanProcessorInterface $downstream, array $ruleInstances = [], array $options = [])
-    {
-        $this->downstream = $downstream;
-        $this->rules = $ruleInstances;
-        $this->evaluationWindowMs = $options['evaluation_window_ms'] ?? 5000;
-        $this->maxBufferedTraces = $options['max_buffered_traces'] ?? 10000;
-    }
-
-    public function onStart(ReadWriteSpanInterface $span, ContextInterface $parentContext): void
-    {
-        // no-op
-    }
+    public function onStart(ReadWriteSpanInterface $span, ContextInterface $parentContext): void {}
 
     public function onEnd(ReadableSpanInterface $span): void
     {
@@ -42,263 +36,109 @@ final class TailSamplingProcessor implements SpanProcessorInterface
         if (! isset($this->buffers[$traceId])) {
             $this->buffers[$traceId] = new TraceBuffer($traceId);
         }
-
         $buffer = $this->buffers[$traceId];
+
         $buffer->addSpan($span);
 
         // If this span is the root span (no parent), evaluate immediately
-        try {
-            $root = $buffer->getRootSpan();
-            if ($root !== null) {
-                $rootSpanData = $root->toSpanData();
-                if ($rootSpanData->getParentSpanId() === '') {
-                    $this->evaluateTrace($traceId);
+        if ($buffer->getRootSpan() !== null) {
+            $this->evaluateTrace($buffer);
+            unset($this->buffers[$traceId]);
 
-                    return;
-                }
-            }
-        } catch (\Throwable $e) {
-            // ignore and continue
+            return;
         }
 
-        // opportunistic evaluation: if buffer age exceeds evaluation window
-        // check last ended time vs now and evaluate if older than the configured window
-        try {
-            $last = $buffer->getLastEndEpochNanos();
-            if ($last !== null) {
-                $nowNs = (int) (microtime(true) * 1_000_000_000);
-                $ageMs = (int) floor(($nowNs - $last) / 1_000_000);
-                if ($ageMs >= $this->evaluationWindowMs) {
-                    $this->evaluateTrace($traceId);
+        // If burrer duration exceeds decision wait, evaluate immediately
+        if ($buffer->getDurationMs() >= $this->decisionWait) {
+            $this->evaluateTrace($buffer);
+            unset($this->buffers[$traceId]);
 
-                    return;
-                }
-            }
-        } catch (\Throwable $e) {
-            // ignore and continue
+            return;
         }
-
-        // No immediate evaluation; trace remains buffered until root ends or window elapses
     }
 
     public function forceFlush(?CancellationInterface $cancellation = null): bool
     {
-        // evaluate all pending traces
-        foreach (array_keys($this->buffers) as $traceId) {
-            $this->evaluateTrace($traceId);
+        foreach ($this->buffers as $traceId => $buffer) {
+            $this->evaluateTrace($buffer);
+            unset($this->buffers[$traceId]);
         }
 
-        if (method_exists($this->downstream, 'forceFlush')) {
-            return $this->downstream->forceFlush($cancellation);
-        }
-
-        return true;
+        return $this->downstream->forceFlush($cancellation);
     }
 
     public function shutdown(?CancellationInterface $cancellation = null): bool
     {
-        // evaluate and clear buffers
-        foreach (array_keys($this->buffers) as $traceId) {
-            $this->evaluateTrace($traceId);
+        foreach ($this->buffers as $traceId => $buffer) {
+            $this->evaluateTrace($buffer);
+            unset($this->buffers[$traceId]);
         }
 
-        if (method_exists($this->downstream, 'shutdown')) {
-            return $this->downstream->shutdown($cancellation);
-        }
-
-        return true;
+        return $this->downstream->shutdown($cancellation);
     }
 
-    private function evaluateTrace(string $traceId): void
+    protected function evaluateTrace(TraceBuffer $buffer): void
     {
-        if (! isset($this->buffers[$traceId])) {
+        $rulesResult = $this->evaluateRules($buffer);
+
+        // If rules evaluated to Drop, drop the trace
+        if ($rulesResult === SamplingResult::Drop) {
             return;
         }
 
-        $buffer = $this->buffers[$traceId];
-        $root = $buffer->getRootSpan();
-
-        // Default: consult configured sampler and parent-based behavior
-        $samplerConfig = config('opentelemetry.traces.sampler', []);
-        $samplerType = $samplerConfig['type'] ?? 'always_on';
-        $samplerParent = $samplerConfig['parent'] ?? true;
-        $samplerArgs = $samplerConfig['args'] ?? [];
-
-        // Determine parent sampling state
-        $parentIsSampling = false;
-        if ($root !== null) {
-            try {
-                $parentCtx = $root->getParentContext();
-                if ($parentCtx !== null && method_exists($parentCtx, 'isSampled') && $parentCtx->isSampled()) {
-                    $parentIsSampling = true;
-                }
-            } catch (\Throwable $e) {
-                // ignore
-            }
-        }
-
-        // Parent-based handling
-        if ($samplerParent) {
-            if ($parentIsSampling) {
-                $this->forwardTrace($buffer);
-                unset($this->buffers[$traceId]);
-
-                return;
-            }
-
-            // parent not sampling: evaluate rules; if no decision -> Drop
-            $decision = $this->evaluateRules($buffer);
-
-            if ($decision === null) {
-                // drop
-                unset($this->buffers[$traceId]);
-
-                return;
-            }
-
-            $this->applyDecision($decision, $buffer, $samplerType, $samplerParent, $samplerArgs);
-            unset($this->buffers[$traceId]);
+        // If rules evaluated to Keep, forward the trace to downstream
+        if ($rulesResult === SamplingResult::Keep) {
+            $this->forwardTraceToDownstream($buffer);
 
             return;
         }
 
-        // parent-based is disabled: evaluate rules; if no decision -> fallback to sampler
-        $decision = $this->evaluateRules($buffer);
+        // Fallback to sampler when rules return Forward
+        $rootSpan = $buffer->getRootSpan();
 
-        if ($decision === null) {
-            // consult configured sampler
-            $sampler = SamplerBuilder::new()->build($samplerType, $samplerParent, $samplerArgs);
-
-            if ($root === null) {
-                // nothing to forward
-                unset($this->buffers[$traceId]);
-
-                return;
-            }
-
-            $shouldSample = $this->shouldSamplerSample($sampler, $root);
-            if ($shouldSample) {
-                $this->forwardTrace($buffer);
-            }
-
-            unset($this->buffers[$traceId]);
-
+        if ($rootSpan === null) {
             return;
         }
 
-        $this->applyDecision($decision, $buffer, $samplerType, $samplerParent, $samplerArgs);
-        unset($this->buffers[$traceId]);
+        $rootSpanData = $rootSpan->toSpanData();
+
+        $parentContext = Context::getCurrent()
+            ->with(ContextKeys::span(), Span::wrap($rootSpan->getParentContext()));
+
+        $shouldSample = $this->sampler->shouldSample(
+            parentContext: $parentContext,
+            traceId: $rootSpan->getContext()->getTraceId(),
+            spanName: $rootSpan->getName(),
+            spanKind: $rootSpan->getKind(),
+            attributes: $rootSpanData->getAttributes(),
+            links: $rootSpanData->getLinks(),
+        );
+
+        if ($shouldSample->getDecision() === \OpenTelemetry\SDK\Trace\SamplingResult::RECORD_AND_SAMPLE) {
+            $this->forwardTraceToDownstream($buffer);
+        }
     }
 
-    private function evaluateRules(TraceBuffer $buffer): ?SamplingResult
+    protected function evaluateRules(TraceBuffer $buffer): SamplingResult
     {
         foreach ($this->rules as $rule) {
             try {
-                $res = $rule->evaluate($buffer);
-                if ($res !== null) {
-                    return $res;
-                }
-            } catch (\Throwable $e) {
-                // swallow rule exceptions and continue
-            }
-        }
+                $result = $rule->evaluate($buffer);
 
-        return null;
-    }
-
-    private function applyDecision(?SamplingResult $decision, TraceBuffer $buffer, string $samplerType, bool $samplerParent, array $samplerArgs): void
-    {
-        if ($decision === null) {
-            return;
-        }
-
-        match ($decision) {
-            SamplingResult::Keep => $this->forwardTrace($buffer),
-            SamplingResult::Drop => null,
-            SamplingResult::Sample => $this->handleSampleDecision($buffer, $samplerType, $samplerParent, $samplerArgs),
-        };
-    }
-
-    private function handleSampleDecision(TraceBuffer $buffer, string $samplerType, bool $samplerParent, array $samplerArgs): void
-    {
-        $sampler = SamplerBuilder::new()->build($samplerType, $samplerParent, $samplerArgs);
-
-        $root = $buffer->getRootSpan();
-        if ($root === null) {
-            return;
-        }
-
-        if ($this->shouldSamplerSample($sampler, $root)) {
-            $this->forwardTrace($buffer);
-        }
-    }
-
-    private function shouldSamplerSample($sampler, ReadableSpanInterface $root): bool
-    {
-        try {
-            if (method_exists($sampler, 'shouldSample')) {
-                // Build inputs according to OpenTelemetry SDK sampler signature:
-                // shouldSample(ContextInterface $parentContext, string $traceId, string $name, int $spanKind, \OpenTelemetry\SDK\Trace\Attributes $attributes, array $links)
-                $parentContext = $root->getParentContext() ?? $root->getContext();
-
-                $traceId = $root->getContext()->getTraceId();
-                $name = $root->getName();
-                $kind = $root->getKind();
-
-                $spanData = null;
-                try {
-                    $spanData = $root->toSpanData();
-                } catch (\Throwable $e) {
-                    $spanData = null;
-                }
-
-                $attributes = null;
-                $links = [];
-
-                if ($spanData !== null) {
-                    try {
-                        $attributes = $spanData->getAttributes();
-                    } catch (\Throwable $e) {
-                        $attributes = null;
-                    }
-
-                    try {
-                        $links = $spanData->getLinks() ?? [];
-                    } catch (\Throwable $e) {
-                        $links = [];
-                    }
-                }
-
-                // Call sampler
-                $result = $sampler->shouldSample($parentContext, $traceId, $name, $kind, $attributes, $links);
-
-                // The result may be an object with isSampled() or a boolean; handle variants
-                if (is_object($result) && method_exists($result, 'isSampled')) {
-                    return (bool) $result->isSampled();
-                }
-
-                if (is_bool($result)) {
+                if ($result !== SamplingResult::Forward) {
                     return $result;
                 }
-
-                // Fallback: check trace flags
-                return $root->getContext()->isSampled();
+            } catch (\Throwable) {
             }
-        } catch (\Throwable $e) {
-            // ignore and fallback
         }
 
-        return $root->getContext()->isSampled();
+        return SamplingResult::Forward;
     }
 
-    private function forwardTrace(TraceBuffer $buffer): void
+    protected function forwardTraceToDownstream(TraceBuffer $buffer): void
     {
         foreach ($buffer->getSpans() as $span) {
-            try {
-                $this->downstream->onEnd($span);
-            } catch (\Throwable $e) {
-                // swallow
-            }
+            $this->downstream->onEnd($span);
         }
     }
 }

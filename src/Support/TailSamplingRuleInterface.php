@@ -11,7 +11,7 @@ interface TailSamplingRuleInterface
 
     /**
      * Evaluate the rule against the TraceBuffer.
-     * Return a SamplingResult (Keep|Drop|Sample) or null if no decision.
+     * It should return SamplingResult::Forward if no decision is made.
      */
-    public function evaluate(TraceBuffer $trace): ?SamplingResult;
+    public function evaluate(TraceBuffer $trace): SamplingResult;
 }

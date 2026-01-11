@@ -2,21 +2,22 @@
 
 namespace Keepsuit\LaravelOpenTelemetry\Support;
 
+use OpenTelemetry\API\Trace\SpanContextValidator;
 use OpenTelemetry\API\Trace\StatusCode as ApiStatusCode;
 use OpenTelemetry\SDK\Trace\ReadableSpanInterface;
 
 final class TraceBuffer
 {
-    private string $traceId;
+    protected string $traceId;
 
     /** @var ReadableSpanInterface[] */
-    private array $spans = [];
+    protected array $spans = [];
 
-    private ?ReadableSpanInterface $root = null;
+    protected ?ReadableSpanInterface $root = null;
 
-    private ?int $firstEndEpochNanos = null;
+    protected ?int $firstEndEpochNanos = null;
 
-    private ?int $lastEndEpochNanos = null;
+    protected ?int $lastEndEpochNanos = null;
 
     public function __construct(string $traceId)
     {
@@ -27,32 +28,19 @@ final class TraceBuffer
     {
         $this->spans[] = $span;
 
-        // Set root span if this span has no parent or parent span id is empty
-        try {
-            $spanData = $span->toSpanData();
-            $parentSpanId = $spanData->getParentSpanId();
-        } catch (\Throwable $e) {
-            $parentSpanId = '';
-        }
+        $spanData = $span->toSpanData();
 
-        if ($this->root === null && $parentSpanId === '') {
+        if ($this->root === null && ! SpanContextValidator::isValidSpanId($spanData->getParentSpanId())) {
             $this->root = $span;
         }
 
-        // Use SpanData end epoch nanos for accurate durations
-        try {
-            $end = $span->toSpanData()->getEndEpochNanos();
-        } catch (\Throwable $e) {
-            $end = null;
-        }
+        $this->firstEndEpochNanos ??= $spanData->getEndEpochNanos();
+        $this->lastEndEpochNanos = max($this->lastEndEpochNanos ?? 0, $spanData->getEndEpochNanos());
+    }
 
-        if ($end !== null) {
-            if ($this->firstEndEpochNanos === null) {
-                $this->firstEndEpochNanos = $end;
-            }
-
-            $this->lastEndEpochNanos = max($this->lastEndEpochNanos ?? 0, $end);
-        }
+    public function getTraceId(): string
+    {
+        return $this->traceId;
     }
 
     /** @return ReadableSpanInterface[] */
@@ -80,36 +68,13 @@ final class TraceBuffer
     public function hasError(): bool
     {
         foreach ($this->spans as $span) {
-            try {
-                $spanData = $span->toSpanData();
-                $status = $spanData->getStatus();
+            $spanData = $span->toSpanData();
 
-                if ($status && $status->getCode() !== ApiStatusCode::STATUS_OK) {
-                    return true;
-                }
-            } catch (\Throwable $e) {
-                // ignore and continue
-            }
-
-            try {
-                if ($span->getAttribute('exception') !== null) {
-                    return true;
-                }
-            } catch (\Throwable $e) {
-                // ignore
+            if ($spanData->getStatus()->getCode() === ApiStatusCode::STATUS_ERROR) {
+                return true;
             }
         }
 
         return false;
-    }
-
-    public function getTraceId(): string
-    {
-        return $this->traceId;
-    }
-
-    public function getLastEndEpochNanos(): ?int
-    {
-        return $this->lastEndEpochNanos;
     }
 }

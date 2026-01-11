@@ -18,6 +18,8 @@ use Keepsuit\LaravelOpenTelemetry\Support\OpenTelemetryMonologHandler;
 use Keepsuit\LaravelOpenTelemetry\Support\PropagatorBuilder;
 use Keepsuit\LaravelOpenTelemetry\Support\ResourceBuilder;
 use Keepsuit\LaravelOpenTelemetry\Support\SamplerBuilder;
+use Keepsuit\LaravelOpenTelemetry\Support\TailSamplingProcessor;
+use Keepsuit\LaravelOpenTelemetry\Support\TailSamplingRuleInterface;
 use Keepsuit\LaravelOpenTelemetry\Support\UserContextResolver;
 use OpenTelemetry\API\Common\Time\Clock;
 use OpenTelemetry\API\Instrumentation\CachedInstrumentation;
@@ -60,6 +62,8 @@ use OpenTelemetry\SDK\Metrics\NoopMeterProvider;
 use OpenTelemetry\SDK\Resource\ResourceInfo;
 use OpenTelemetry\SDK\Sdk;
 use OpenTelemetry\SDK\Trace\NoopTracerProvider;
+use OpenTelemetry\SDK\Trace\Sampler\AlwaysOnSampler;
+use OpenTelemetry\SDK\Trace\SamplerInterface;
 use OpenTelemetry\SDK\Trace\SpanExporter\ConsoleSpanExporterFactory;
 use OpenTelemetry\SDK\Trace\SpanExporter\InMemorySpanExporterFactory;
 use OpenTelemetry\SDK\Trace\SpanExporterInterface;
@@ -191,48 +195,19 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
             $samplerConfig['args'] ?? []
         );
 
+        $tailSamplingConfig = config('opentelemetry.traces.tail_sampling', []);
+        $tailSamplingEnabled = $tailSamplingConfig['enabled'] ?? false;
+
         $builder = TracerProvider::builder()
             ->setResource($resource)
-            ->setSampler($sampler);
-
-        $tailConfig = config('opentelemetry.traces.tail_sampling', []);
-
-        if (! empty($tailConfig['enabled'])) {
-            $ruleConfigs = $tailConfig['rules'] ?? [];
-            $ruleInstances = [];
-
-            foreach ($ruleConfigs as $ruleClass => $options) {
-                if (! ($options['enabled'] ?? true)) {
-                    continue;
-                }
-
-                if (! class_exists($ruleClass)) {
-                    continue;
-                }
-
-                $rule = $this->app->make($ruleClass);
-
-                if (! $rule instanceof \Keepsuit\LaravelOpenTelemetry\Support\TailSamplingRuleInterface) {
-                    continue;
-                }
-
-                $rule->initialize($options ?: []);
-                $ruleInstances[] = $rule;
-            }
-
-            $tailProcessor = new \Keepsuit\LaravelOpenTelemetry\Support\TailSamplingProcessor(
-                $batchProcessor,
-                $ruleInstances,
-                [
-                    'evaluation_window_ms' => $tailConfig['evaluation_window_ms'] ?? 5000,
-                    'max_buffered_traces' => $tailConfig['max_buffered_traces'] ?? 10000,
-                ]
-            );
-
-            $builder->addSpanProcessor($tailProcessor);
-        } else {
-            $builder->addSpanProcessor($batchProcessor);
-        }
+            ->setSampler(match ($tailSamplingEnabled) {
+                true => new AlwaysOnSampler,
+                default => $sampler,
+            })
+            ->addSpanProcessor(match ($tailSamplingEnabled) {
+                true => $this->buildTailSamplingProcessor($batchProcessor, $sampler, $tailSamplingConfig),
+                default => $batchProcessor,
+            });
 
         foreach (config('opentelemetry.traces.processors', []) as $processorClass) {
             if (class_exists($processorClass)) {
@@ -449,5 +424,46 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
                 'level' => 'debug',
             ]);
         });
+    }
+
+    /**
+     * @param  array{
+     *     rules?: array<class-string<TailSamplingRuleInterface>, array<string, mixed>|bool>,
+     *     decision_wait?: int,
+     * }  $config
+     */
+    protected function buildTailSamplingProcessor(SpanProcessorInterface $downstreamProcessor, SamplerInterface $sampler, array $config): SpanProcessorInterface
+    {
+        $rules = [];
+
+        foreach (($config['rules'] ?? []) as $ruleClass => $options) {
+            if (is_bool($options)) {
+                $options = ['enabled' => $options];
+            }
+
+            if (! ($options['enabled'] ?? true)) {
+                continue;
+            }
+
+            if (! class_exists($ruleClass)) {
+                continue;
+            }
+
+            $rule = $this->app->make($ruleClass);
+
+            if (! $rule instanceof TailSamplingRuleInterface) {
+                continue;
+            }
+
+            $rule->initialize($options ?? []);
+            $rules[] = $rule;
+        }
+
+        return new TailSamplingProcessor(
+            $downstreamProcessor,
+            $sampler,
+            $rules,
+            decisionWait: $config['decision_wait'] ?? 5000
+        );
     }
 }

@@ -8,6 +8,7 @@ use Keepsuit\LaravelOpenTelemetry\Support\TailSamplingProcessor;
 use Keepsuit\LaravelOpenTelemetry\Support\TraceBuffer;
 use Keepsuit\LaravelOpenTelemetry\Tests\Support\TestSpanProcessor;
 use Keepsuit\LaravelOpenTelemetry\Tests\Support\TestTailSamplingRule;
+use OpenTelemetry\SDK\Trace\Sampler\AlwaysOffSampler;
 use Spatie\TestTime\TestTime;
 
 beforeEach(function () {
@@ -20,7 +21,7 @@ test('keep errors rules detects errors', function () {
 
     $rule = new KeepErrorsRule;
     $rule->initialize([]);
-    expect($rule->evaluate($buffer))->toBeNull();
+    expect($rule->evaluate($buffer))->toBe(SamplingResult::Forward);
 });
 
 test('slow trace rule', function () {
@@ -28,14 +29,14 @@ test('slow trace rule', function () {
     $rule = new SlowTraceRule;
     $rule->initialize(['threshold_ms' => 10]);
 
-    expect($rule->evaluate($buffer))->toBeNull();
+    expect($rule->evaluate($buffer))->toBe(SamplingResult::Forward);
 });
 
 it('forwards buffered spans when a rule returns Keep (root ends triggers evaluation)', function () {
     $downstream = new TestSpanProcessor;
     $rule = new TestTailSamplingRule(SamplingResult::Keep);
 
-    $processor = new TailSamplingProcessor($downstream, [$rule], ['evaluation_window_ms' => 5000]);
+    $processor = new TailSamplingProcessor($downstream, new AlwaysOffSampler, [$rule], decisionWait: 5000);
 
     // create parent and child spans using the package tracer helpers
     $root = Tracer::newSpan('root')->start();
@@ -68,7 +69,7 @@ it('evaluates opportunistically when evaluation window is exceeded', function ()
     $rule = new TestTailSamplingRule(SamplingResult::Keep);
 
     // set evaluation window to 0 to force opportunistic evaluation
-    $processor = new TailSamplingProcessor($downstream, [$rule], ['evaluation_window_ms' => 0]);
+    $processor = new TailSamplingProcessor($downstream, new AlwaysOffSampler, [$rule], decisionWait: 0);
 
     // create an active parent so the span we end is not considered the root
     $parent = Tracer::newSpan('parent')->start();

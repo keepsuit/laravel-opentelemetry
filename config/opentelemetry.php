@@ -81,16 +81,14 @@ return [
 
             'tail_sampling' => [
                 'enabled' => env('OTEL_TRACES_TAIL_SAMPLING_ENABLED', false),
-                'evaluation_window_ms' => env('OTEL_TRACES_TAIL_SAMPLING_WINDOW_MS', 5000),
-                'max_buffered_traces' => env('OTEL_TRACES_TAIL_SAMPLING_MAX_BUFFERED_TRACES', 10000),
+                // Maximum time to wait for the end of the trace before making a sampling decision (in milliseconds)
+                'decision_wait' => env('OTEL_TRACES_TAIL_SAMPLING_DECISION_WAIT', 5000),
 
                 'rules' => [
-                    \Keepsuit\LaravelOpenTelemetry\Support\Rules\KeepErrorsRule::class => [
-                        'enabled' => true,
-                    ],
+                    \Keepsuit\LaravelOpenTelemetry\Support\Rules\KeepErrorsRule::class => env('OTEL_TRACES_TAIL_SAMPLING_RULE_KEEP_ERRORS', true),
                     \Keepsuit\LaravelOpenTelemetry\Support\Rules\SlowTraceRule::class => [
-                        'enabled' => true,
-                        'threshold_ms' => env('OTEL_TRACES_TAIL_SAMPLING_SLOW_THRESHOLD_MS', 2000),
+                        'enabled' => env('OTEL_TRACES_TAIL_SAMPLING_RULE_SLOW_TRACES', true),
+                        'threshold_ms' => env('OTEL_TRACES_TAIL_SAMPLING_SLOW_TRACES_THRESHOLD_MS', 2000),
                     ],
                 ],
             ],
