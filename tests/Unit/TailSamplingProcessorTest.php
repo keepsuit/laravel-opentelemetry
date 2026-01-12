@@ -9,6 +9,7 @@ use Keepsuit\LaravelOpenTelemetry\TailSamplingRules\SlowTraceRule;
 use Keepsuit\LaravelOpenTelemetry\Tests\Support\TestSpanProcessor;
 use Keepsuit\LaravelOpenTelemetry\Tests\Support\TestTailSamplingRule;
 use OpenTelemetry\SDK\Trace\Sampler\AlwaysOffSampler;
+use OpenTelemetry\SDK\Trace\Sampler\AlwaysOnSampler;
 use Spatie\TestTime\TestTime;
 
 beforeEach(function () {
@@ -128,6 +129,82 @@ it('evaluates opportunistically when evaluation window is exceeded', function ()
     // cleanup
     $scope->detach();
     $parent->end();
+});
+
+it('uses fallback sampler when all rules return Forward and sampler returns RECORD_AND_SAMPLE', function () {
+    $downstream = new TestSpanProcessor;
+    $rule = new TestTailSamplingRule(SamplingResult::Forward);
+
+    // Use AlwaysOnSampler which returns RECORD_AND_SAMPLE
+    $processor = new TailSamplingProcessor($downstream, new AlwaysOnSampler, [$rule], decisionWait: 5000);
+
+    $root = Tracer::newSpan('root')->start();
+    assert($root instanceof \OpenTelemetry\SDK\Trace\Span);
+    $scope = $root->activate();
+
+    $child = Tracer::newSpan('child')->start();
+    assert($child instanceof \OpenTelemetry\SDK\Trace\Span);
+    $child->end();
+
+    $scope->detach();
+    $root->end();
+
+    // Process spans
+    $processor->onEnd($child);
+    $processor->onEnd($root);
+
+    // Trace should be kept because AlwaysOnSampler returns RECORD_AND_SAMPLE
+    expect($downstream->ended)
+        ->toHaveCount(2)
+        ->{0}->toBe($child)
+        ->{1}->toBe($root);
+});
+
+it('uses fallback sampler when all rules return Forward and sampler returns DROP', function () {
+    $downstream = new TestSpanProcessor;
+    $rule = new TestTailSamplingRule(SamplingResult::Forward);
+
+    // Use AlwaysOffSampler which returns DROP
+    $processor = new TailSamplingProcessor($downstream, new AlwaysOffSampler, [$rule], decisionWait: 5000);
+
+    $root = Tracer::newSpan('root')->start();
+    assert($root instanceof \OpenTelemetry\SDK\Trace\Span);
+    $scope = $root->activate();
+
+    $child = Tracer::newSpan('child')->start();
+    assert($child instanceof \OpenTelemetry\SDK\Trace\Span);
+    $child->end();
+
+    $scope->detach();
+    $root->end();
+
+    // Process spans
+    $processor->onEnd($child);
+    $processor->onEnd($root);
+
+    // Trace should be dropped because AlwaysOffSampler returns DROP
+    expect($downstream->ended)->toBeEmpty();
+});
+
+it('uses fallback sampler with multiple Forward rules', function () {
+    $downstream = new TestSpanProcessor;
+    $rule1 = new TestTailSamplingRule(SamplingResult::Forward);
+    $rule2 = new TestTailSamplingRule(SamplingResult::Forward);
+    $rule3 = new TestTailSamplingRule(SamplingResult::Forward);
+
+    // Use AlwaysOnSampler - should keep trace when all rules forward
+    $processor = new TailSamplingProcessor($downstream, new AlwaysOnSampler, [$rule1, $rule2, $rule3], decisionWait: 5000);
+
+    $root = Tracer::newSpan('root')->start();
+    assert($root instanceof \OpenTelemetry\SDK\Trace\Span);
+    $root->end();
+
+    $processor->onEnd($root);
+
+    // Trace should be kept because all rules forwarded and sampler says RECORD_AND_SAMPLE
+    expect($downstream->ended)
+        ->toHaveCount(1)
+        ->{0}->toBe($root);
 });
 
 it('does not forward buffered spans when a rule returns Drop', function () {
