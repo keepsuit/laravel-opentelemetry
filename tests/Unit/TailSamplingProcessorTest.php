@@ -141,14 +141,14 @@ it('uses fallback sampler when all rules return Forward and sampler returns RECO
     $root = Tracer::newSpan('root')->start();
     assert($root instanceof \OpenTelemetry\SDK\Trace\Span);
     $scope = $root->activate();
-    
+
     $child = Tracer::newSpan('child')->start();
     assert($child instanceof \OpenTelemetry\SDK\Trace\Span);
     $child->end();
-    
+
     $scope->detach();
     $root->end();
-    
+
     // Process spans
     $processor->onEnd($child);
     $processor->onEnd($root);
@@ -170,14 +170,14 @@ it('uses fallback sampler when all rules return Forward and sampler returns DROP
     $root = Tracer::newSpan('root')->start();
     assert($root instanceof \OpenTelemetry\SDK\Trace\Span);
     $scope = $root->activate();
-    
+
     $child = Tracer::newSpan('child')->start();
     assert($child instanceof \OpenTelemetry\SDK\Trace\Span);
     $child->end();
-    
+
     $scope->detach();
     $root->end();
-    
+
     // Process spans
     $processor->onEnd($child);
     $processor->onEnd($root);
@@ -198,7 +198,7 @@ it('uses fallback sampler with multiple Forward rules', function () {
     $root = Tracer::newSpan('root')->start();
     assert($root instanceof \OpenTelemetry\SDK\Trace\Span);
     $root->end();
-    
+
     $processor->onEnd($root);
 
     // Trace should be kept because all rules forwarded and sampler says RECORD_AND_SAMPLE
