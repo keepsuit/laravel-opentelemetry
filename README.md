@@ -523,10 +523,10 @@ Head sampling is configured in the `traces.sampler` section of the config file:
 
 Tail sampling makes decisions after a trace has completed, allowing you to keep only "interesting" traces while discarding the rest. For example, you can:
 
-- Keeping traces that contain errors
-- Keeping traces that exceed a duration threshold
-- Custom sampling rules based on span attributes
-- Fallback to ratio sampling for other traces
+- Keep traces that contain errors
+- Keep traces that exceed a duration threshold
+- Define custom sampling rules based on span attributes
+- Fall back to ratio sampling for other traces
 
 > [!NOTE]
 > Tail sampling implemented at the application-level should only be used for single-service scenarios.
@@ -541,7 +541,7 @@ By default, two tail sampling rules are included:
 - Errors Rule: keeps traces with any span that has an error status
 - Slow Trace Rule: keeps traces that exceed a duration threshold (default 2000ms)
 
-Tail sampling can be configured with this environment variables (or editing the config file directly):
+Tail sampling can be configured with these environment variables (or editing the config file directly):
 
 | Variable                                             | Description                                                                          | Default |
 |------------------------------------------------------|--------------------------------------------------------------------------------------|---------|

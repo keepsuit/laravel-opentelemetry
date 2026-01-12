@@ -41,7 +41,7 @@ final class TailSamplingProcessor implements SpanProcessorInterface
 
         $buffer->addSpan($span);
 
-        // If this span is the root span (no parent), evaluate immediately
+        // If a root span (span with no valid parent) has been identified, evaluate immediately
         if ($buffer->getRootSpan() !== null) {
             $this->evaluateTrace($buffer);
             unset($this->buffers[$traceId]);
