@@ -220,7 +220,7 @@ test('addSpan updates buffer created timestamp on first span', function () {
     expect($buffer->getDecisionDurationMs())->toBe(100);
 });
 
-test('addSpan maintains chronological order when spans end in different order', function () {
+test('addSpan maintains insertion order regardless of span end times', function () {
     $buffer = new TraceBuffer('trace-1');
 
     // Create parent
