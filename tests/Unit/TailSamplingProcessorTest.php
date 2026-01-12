@@ -129,3 +129,32 @@ it('evaluates opportunistically when evaluation window is exceeded', function ()
     $scope->detach();
     $parent->end();
 });
+
+it('does not forward buffered spans when a rule returns Drop', function () {
+    $downstream = new TestSpanProcessor;
+    $rule = new TestTailSamplingRule(SamplingResult::Drop);
+
+    $processor = new TailSamplingProcessor($downstream, new AlwaysOffSampler, [$rule], decisionWait: 5000);
+
+    // create parent and child spans
+    $root = Tracer::newSpan('root')->start();
+    assert($root instanceof \OpenTelemetry\SDK\Trace\Span);
+    $scope = $root->activate();
+
+    $child = Tracer::newSpan('child')->start();
+    assert($child instanceof \OpenTelemetry\SDK\Trace\Span);
+
+    // advance time and end child first
+    TestTime::addSecond();
+    $child->end();
+    $processor->onEnd($child);
+
+    // end root after (triggers evaluation)
+    TestTime::addSecond();
+    $scope->detach();
+    $root->end();
+    $processor->onEnd($root);
+
+    // verify that no spans were forwarded to downstream
+    expect($downstream->ended)->toBeEmpty();
+});
