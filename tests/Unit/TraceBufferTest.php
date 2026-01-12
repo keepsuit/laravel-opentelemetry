@@ -106,12 +106,12 @@ test('getDecisionDurationMs returns elapsed time since first span added', functi
     $buffer->addSpan($span);
 
     // Advance time by 500ms
-    TestTime::addMilliseconds(500);
+    TestTime::addMillis(500);
 
     expect($buffer->getDecisionDurationMs())->toBe(500);
 
     // Advance time by another 300ms
-    TestTime::addMilliseconds(300);
+    TestTime::addMillis(300);
 
     expect($buffer->getDecisionDurationMs())->toBe(800);
 });
@@ -128,7 +128,7 @@ test('getTraceDurationMs returns duration of single span', function () {
     $span = Tracer::newSpan('span')->start();
     assert($span instanceof \OpenTelemetry\SDK\Trace\Span);
 
-    TestTime::addMilliseconds(250);
+    TestTime::addMillis(250);
     $span->end();
 
     $buffer->addSpan($span);
@@ -144,16 +144,16 @@ test('getTraceDurationMs returns duration from earliest start to latest end acro
     assert($rootSpan instanceof \OpenTelemetry\SDK\Trace\Span);
     $scope = $rootSpan->activate();
 
-    TestTime::addMilliseconds(100);
+    TestTime::addMillis(100);
 
     // Create child span
     $childSpan = Tracer::newSpan('child')->start();
     assert($childSpan instanceof \OpenTelemetry\SDK\Trace\Span);
 
-    TestTime::addMilliseconds(200);
+    TestTime::addMillis(200);
     $childSpan->end();
 
-    TestTime::addMilliseconds(100);
+    TestTime::addMillis(100);
     $scope->detach();
     $rootSpan->end();
 
@@ -172,23 +172,23 @@ test('getTraceDurationMs handles overlapping spans correctly', function () {
     assert($parentSpan instanceof \OpenTelemetry\SDK\Trace\Span);
     $scope = $parentSpan->activate();
 
-    TestTime::addMilliseconds(50);
+    TestTime::addMillis(50);
 
     // Create first child
     $child1 = Tracer::newSpan('child-1')->start();
     assert($child1 instanceof \OpenTelemetry\SDK\Trace\Span);
-    TestTime::addMilliseconds(100);
+    TestTime::addMillis(100);
     $child1->end();
 
-    TestTime::addMilliseconds(50);
+    TestTime::addMillis(50);
 
     // Create second child
     $child2 = Tracer::newSpan('child-2')->start();
     assert($child2 instanceof \OpenTelemetry\SDK\Trace\Span);
-    TestTime::addMilliseconds(150);
+    TestTime::addMillis(150);
     $child2->end();
 
-    TestTime::addMilliseconds(50);
+    TestTime::addMillis(50);
     $scope->detach();
     $parentSpan->end();
 
@@ -215,7 +215,7 @@ test('addSpan updates buffer created timestamp on first span', function () {
     // After adding first span, decision duration should start tracking
     expect($buffer->getDecisionDurationMs())->toBe(0);
 
-    TestTime::addMilliseconds(100);
+    TestTime::addMillis(100);
 
     // After time passes, decision duration should reflect elapsed time
     expect($buffer->getDecisionDurationMs())->toBe(100);
@@ -229,16 +229,16 @@ test('addSpan maintains chronological order when spans end in different order', 
     assert($parent instanceof \OpenTelemetry\SDK\Trace\Span);
     $scope = $parent->activate();
 
-    TestTime::addMilliseconds(50);
+    TestTime::addMillis(50);
 
     // Create child
     $child = Tracer::newSpan('child')->start();
     assert($child instanceof \OpenTelemetry\SDK\Trace\Span);
 
-    TestTime::addMilliseconds(100);
+    TestTime::addMillis(100);
     $child->end();
 
-    TestTime::addMilliseconds(50);
+    TestTime::addMillis(50);
     $scope->detach();
     $parent->end();
 
