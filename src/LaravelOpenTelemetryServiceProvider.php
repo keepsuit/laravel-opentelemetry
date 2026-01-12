@@ -195,7 +195,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
             $samplerConfig['args'] ?? []
         );
 
-        $tailSamplingConfig = config('opentelemetry.traces.tail_sampling', []);
+        $tailSamplingConfig = config('opentelemetry.traces.sampler.tail_sampling', []);
         $tailSamplingEnabled = $tailSamplingConfig['enabled'] ?? false;
 
         $builder = TracerProvider::builder()
