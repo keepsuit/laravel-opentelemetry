@@ -487,7 +487,7 @@ This package supports two types of sampling that work together:
 | **Use case**           | Rate limiting, percentage sampling | Error traces, slow traces, custom rules |
 | **Multi-service**      | Works per-service                  | Must use Collector                      |
 
-### Head Sampling
+#### Head Sampling
 
 Head sampling makes decisions at the beginning of a trace, based on the trace ID and parent context. This is fast and works well for:
 
@@ -519,7 +519,7 @@ Head sampling is configured in the `traces.sampler` section of the config file:
 ],
 ```
 
-### Tail Sampling
+#### Tail Sampling
 
 Tail sampling makes decisions after a trace has completed, allowing you to keep only "interesting" traces while discarding the rest. For example, you can:
 
@@ -529,16 +529,16 @@ Tail sampling makes decisions after a trace has completed, allowing you to keep 
 - Fallback to ratio sampling for other traces
 
 > [!NOTE]
-> Tail sampling implemented at the application level should only be used for single-service scenarios.
+> Tail sampling implemented at the application-level should only be used for single-service scenarios.
 > For multi-service tail sampling, use the OpenTelemetry Collector instead because it has visibility into the complete trace across all services.
 
-When tail sampling is enabled it wait for the trace to complete (or a timeout (the `decision_wait` config)) before making a sampling decision based on the entire trace.
-It evaluates the trace against a set of rules in order, and the first rule that returns `Keep` or `Drop` determines the outcome.
+When tail sampling is enabled, it waits for the trace to complete (or a timeout defined by the `decision_wait` config) before making a sampling decision based on the entire trace.
+It evaluates the trace against a set of rules in the order they appear in the configuration, and the first rule that returns `Keep` or `Drop` determines the outcome.
 If none of the rules make a decision, the configured head sampler is used. (We suggest using the `traceidratio` sampler as fallback).
 
 By default, two tail sampling rules are included:
 
-- Errors Rule: keeps traces with any trace that has a span with an error status
+- Errors Rule: keeps traces with any span that has an error status
 - Slow Trace Rule: keeps traces that exceed a duration threshold (default 2000ms)
 
 Tail sampling can be configured with this environment variables (or editing the config file directly):

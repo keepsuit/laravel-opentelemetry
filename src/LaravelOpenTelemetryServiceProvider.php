@@ -107,7 +107,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 
         $propagator = match (Sdk::isDisabled()) {
             true => new NoopTextMapPropagator,
-            default => PropagatorBuilder::new()->build(config('opentelemetry.propagators'))
+            false => PropagatorBuilder::new()->build(config('opentelemetry.propagators'))
         };
 
         $meterProvider = $this->buildMeterProvider($resource);
@@ -178,7 +178,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
     {
         $spanExporter = match (Sdk::isDisabled()) {
             true => (new InMemorySpanExporterFactory)->create(),
-            default => $this->buildSpanExporter(),
+            false => $this->buildSpanExporter(),
         };
         $this->app->bind(SpanExporterInterface::class, fn () => $spanExporter);
 
@@ -196,17 +196,17 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         );
 
         $tailSamplingConfig = config('opentelemetry.traces.sampler.tail_sampling', []);
-        $tailSamplingEnabled = $tailSamplingConfig['enabled'] ?? false;
+        $tailSamplingEnabled = (bool) ($tailSamplingConfig['enabled'] ?? false);
 
         $builder = TracerProvider::builder()
             ->setResource($resource)
             ->setSampler(match ($tailSamplingEnabled) {
                 true => new AlwaysOnSampler,
-                default => $sampler,
+                false => $sampler,
             })
             ->addSpanProcessor(match ($tailSamplingEnabled) {
                 true => $this->buildTailSamplingProcessor($batchProcessor, $sampler, $tailSamplingConfig),
-                default => $batchProcessor,
+                false => $batchProcessor,
             });
 
         foreach (config('opentelemetry.traces.processors', []) as $processorClass) {
@@ -226,7 +226,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
     {
         $metricsExporter = match (Sdk::isDisabled()) {
             true => (new InMemoryExporterFactory)->create(),
-            default => $this->buildMetricsExporter(),
+            false => $this->buildMetricsExporter(),
         };
         $this->app->bind(MetricExporterInterface::class, fn () => $metricsExporter);
         $metricsReader = new ExportingReader($metricsExporter);
@@ -246,7 +246,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
     {
         $logExporter = match (Sdk::isDisabled()) {
             true => (new LogsInMemoryExporterFactory)->create(),
-            default => $this->buildLogsExporter(),
+            false => $this->buildLogsExporter(),
         };
         $this->app->bind(LogRecordExporterInterface::class, fn () => $logExporter);
 
@@ -463,7 +463,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
             $downstreamProcessor,
             $sampler,
             $rules,
-            decisionWait: $config['decision_wait'] ?? 5000
+            decisionWait: max(1, (int) ($config['decision_wait'] ?? 5000))
         );
     }
 }

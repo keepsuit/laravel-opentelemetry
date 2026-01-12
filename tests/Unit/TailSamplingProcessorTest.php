@@ -87,13 +87,12 @@ it('forwards buffered spans when a rule returns Keep (root ends triggers evaluat
     // advance time and end child first
     TestTime::addSecond();
     $child->end();
+    $processor->onEnd($child);
 
     // end root after
     TestTime::addSecond();
     $scope->detach();
     $root->end();
-
-    $processor->onEnd($child);
     $processor->onEnd($root);
 
     expect($downstream->ended)
