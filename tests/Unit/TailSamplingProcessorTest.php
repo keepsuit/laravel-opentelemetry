@@ -140,11 +140,13 @@ it('uses fallback sampler when all rules return Forward and sampler returns RECO
 
     $root = Tracer::newSpan('root')->start();
     assert($root instanceof \OpenTelemetry\SDK\Trace\Span);
+    $scope = $root->activate();
     
     $child = Tracer::newSpan('child')->start();
     assert($child instanceof \OpenTelemetry\SDK\Trace\Span);
     $child->end();
     
+    $scope->detach();
     $root->end();
     
     // Process spans
@@ -167,11 +169,13 @@ it('uses fallback sampler when all rules return Forward and sampler returns DROP
 
     $root = Tracer::newSpan('root')->start();
     assert($root instanceof \OpenTelemetry\SDK\Trace\Span);
+    $scope = $root->activate();
     
     $child = Tracer::newSpan('child')->start();
     assert($child instanceof \OpenTelemetry\SDK\Trace\Span);
     $child->end();
     
+    $scope->detach();
     $root->end();
     
     // Process spans
