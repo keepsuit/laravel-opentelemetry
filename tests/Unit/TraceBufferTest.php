@@ -2,7 +2,6 @@
 
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Support\TraceBuffer;
-use OpenTelemetry\API\Trace\SpanContextInterface;
 use Spatie\TestTime\TestTime;
 
 beforeEach(function () {
