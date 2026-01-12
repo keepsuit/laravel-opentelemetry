@@ -39,8 +39,8 @@ final class TraceBuffer
             $this->root = $span;
         }
 
-        $this->traceStartedMs = min($this->traceStartedMs ?? PHP_INT_MAX, (int) ($span->toSpanData()->getStartEpochNanos() / ClockInterface::NANOS_PER_MILLISECOND));
-        $this->traceEndedMs = max($this->traceEndedMs ?? 0, (int) ($span->toSpanData()->getEndEpochNanos() / ClockInterface::NANOS_PER_MILLISECOND));
+        $this->traceStartedMs = min($this->traceStartedMs ?? PHP_INT_MAX, (int) ($spanData->getStartEpochNanos() / ClockInterface::NANOS_PER_MILLISECOND));
+        $this->traceEndedMs = max($this->traceEndedMs ?? 0, (int) ($spanData->getEndEpochNanos() / ClockInterface::NANOS_PER_MILLISECOND));
     }
 
     public function getTraceId(): string
