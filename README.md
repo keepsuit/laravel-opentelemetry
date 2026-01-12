@@ -104,6 +104,20 @@ return [
                  */
                 'ratio' => env('OTEL_TRACES_SAMPLER_TRACEIDRATIO_RATIO', 0.05),
             ],
+
+            'tail_sampling' => [
+                'enabled' => env('OTEL_TRACES_TAIL_SAMPLING_ENABLED', false),
+                // Maximum time to wait for the end of the trace before making a sampling decision (in milliseconds)
+                'decision_wait' => env('OTEL_TRACES_TAIL_SAMPLING_DECISION_WAIT', 5000),
+
+                'rules' => [
+                    \Keepsuit\LaravelOpenTelemetry\TailSamplingRules\ErrorsRule::class => env('OTEL_TRACES_TAIL_SAMPLING_RULE_KEEP_ERRORS', true),
+                    \Keepsuit\LaravelOpenTelemetry\TailSamplingRules\SlowTraceRule::class => [
+                        'enabled' => env('OTEL_TRACES_TAIL_SAMPLING_RULE_SLOW_TRACES', true),
+                        'threshold_ms' => env('OTEL_TRACES_TAIL_SAMPLING_SLOW_TRACES_THRESHOLD_MS', 2000),
+                    ],
+                ],
+            ],
         ],
 
         /**
@@ -286,10 +300,8 @@ You can disable or customize each integration in the config file in the `instrum
 - [View](#view)
 - [Livewire](#livewire)
 - [Console commands](#console-commands)
-- [Logs context](#logs-context)
-- [Manual traces](#manual-traces)
 
-### Http server requests
+#### Http server requests
 
 Http server requests are automatically traced by injecting `\Keepsuit\LaravelOpenTelemetry\Support\HttpServer\TraceRequestMiddleware::class` to the global middlewares.
 You can disable it by setting `OT_INSTRUMENTATION_HTTP_SERVER` to `false` or removing the `HttpServerInstrumentation::class` from the config file.
@@ -301,7 +313,7 @@ Configuration options:
 - `allowed_headers`: list of headers to include in the trace
 - `sensitive_headers`: list of headers with sensitive data to hide in the trace
 
-### Http client
+#### Http client
 
 Http client requests are automatically traced by default, but you can set it to manual mode by setting `manual` to `true` in the config file.
 
@@ -339,51 +351,51 @@ Configuration options:
 - `allowed_headers`: list of headers to include in the trace
 - `sensitive_headers`: list of headers with sensitive data to hide in the trace
 
-### Database
+#### Database
 
 Database queries are automatically traced. A span is created for each query executed.
 
 You can disable it by setting `OT_INSTRUMENTATION_QUERY` to `false` or removing the `QueryInstrumentation::class` from the config file.
 
-### Redis
+#### Redis
 
 Redis commands are automatically traced. A span is created for each command executed.
 
 You can disable it by setting `OT_INSTRUMENTATION_REDIS` to `false` or removing the `RedisInstrumentation::class` from the config file.
 
-### Queue jobs
+#### Queue jobs
 
 Queue jobs are automatically traced.
 It will automatically create a parent span with kind `PRODUCER` when a job is dispatched and a child span with kind `CONSUMER` when the job is executed.
 
 You can disable it by setting `OT_INSTRUMENTATION_QUEUE` to `false` or removing the `QueueInstrumentation::class` from the config file.
 
-### Cache
+#### Cache
 
 Cache operations are recorded as events in the current active span.
 
 You can disable it by setting `OT_INSTRUMENTATION_CACHE` to `false` or removing the `CacheInstrumentation::class` from the config file.
 
-### Events
+#### Events
 
 Events are recorded as events in the current active span. Some internal laravel events are excluded by default.
 You can customize the excluded events in the config file.
 
 You can disable it by setting `OT_INSTRUMENTATION_EVENT` to `false` or removing the `EventInstrumentation::class` from the config file.
 
-### View
+#### View
 
 View rendering is automatically traced. A span is created for each rendered view.
 
 You can disable it by setting `OT_INSTRUMENTATION_VIEW` to `false` or removing the `ViewInstrumentation::class` from the config file.
 
-### Livewire
+#### Livewire
 
 Livewire components rendering is automatically traced. A span is created for each rendered component.
 
 You can disable it by setting `OT_INSTRUMENTATION_LIVEWIRE` to `false` or removing the `LivewireInstrumentation::class` from the config file.
 
-### Console commands
+#### Console commands
 
 Console commands are not traced by default.
 You can trace console commands by adding them to the `commands` option of `ConsoleInstrumentation`.
@@ -459,6 +471,122 @@ Tracer::activeScope(); // get the active scope
 Tracer::currentContext(); // get the current trace context (useful for advanced use cases)
 Tracer::propagationHeaders(); // get the propagation headers required to propagate the trace to other services
 Tracer::extractContextFromPropagationHeaders(array $headers); // extract the trace context from propagation headers
+```
+
+### Trace Sampling
+
+Sampling is the process of selecting which traces to collect and export.
+Since tracing every single request can be expensive at scale, sampling allows you to reduce costs while still maintaining visibility into your application's behavior.
+
+This package supports two types of sampling that work together:
+
+| Aspect                 | Head Sampling                      | Tail Sampling                           |
+|------------------------|------------------------------------|-----------------------------------------|
+| **Decision time**      | At span start                      | At trace end                            |
+| **Criteria available** | Trace ID, parent context           | Full trace data, errors, duration       |
+| **Use case**           | Rate limiting, percentage sampling | Error traces, slow traces, custom rules |
+| **Multi-service**      | Works per-service                  | Must use Collector                      |
+
+### Head Sampling
+
+Head sampling makes decisions at the beginning of a trace, based on the trace ID and parent context. This is fast and works well for:
+
+- Percentage-based sampling (e.g., keep 5% of traces)
+- Parent-based sampling (keep traces based on whether parent was sampled)
+- Rate limiting
+
+Head sampling is configured in the `traces.sampler` section of the config file:
+
+```php
+'sampler' => [
+    /**
+     * Wraps the sampler in a parent based sampler
+     */
+    'parent' => env('OTEL_TRACES_SAMPLER_PARENT', true),
+
+    /**
+     * Sampler type
+     * Supported values: "always_on", "always_off", "traceidratio"
+     */
+    'type' => env('OTEL_TRACES_SAMPLER_TYPE', 'always_on'),
+
+    'args' => [
+        /**
+         * Sampling ratio for traceidratio sampler
+         */
+        'ratio' => env('OTEL_TRACES_SAMPLER_TRACEIDRATIO_RATIO', 0.05),
+    ],
+],
+```
+
+### Tail Sampling
+
+Tail sampling makes decisions after a trace has completed, allowing you to keep only "interesting" traces while discarding the rest. For example, you can:
+
+- Keeping traces that contain errors
+- Keeping traces that exceed a duration threshold
+- Custom sampling rules based on span attributes
+- Fallback to ratio sampling for other traces
+
+> [!NOTE]
+> Tail sampling implemented at the application level should only be used for single-service scenarios.
+> For multi-service tail sampling, use the OpenTelemetry Collector instead because it has visibility into the complete trace across all services.
+
+When tail sampling is enabled it wait for the trace to complete (or a timeout (the `decision_wait` config)) before making a sampling decision based on the entire trace.
+It evaluates the trace against a set of rules in order, and the first rule that returns `Keep` or `Drop` determines the outcome.
+If none of the rules make a decision, the configured head sampler is used. (We suggest using the `traceidratio` sampler as fallback).
+
+By default, two tail sampling rules are included:
+
+- Errors Rule: keeps traces with any trace that has a span with an error status
+- Slow Trace Rule: keeps traces that exceed a duration threshold (default 2000ms)
+
+Tail sampling can be configured with this environment variables (or editing the config file directly):
+
+| Variable                                             | Description                                                                          | Default |
+|------------------------------------------------------|--------------------------------------------------------------------------------------|---------|
+| `OTEL_TRACES_TAIL_SAMPLING_ENABLED`                  | Enable tail sampling                                                                 | `false` |
+| `OTEL_TRACES_TAIL_SAMPLING_DECISION_WAIT`            | Maximum time to wait for trace completion before making a decision (in milliseconds) | `5000`  |
+| `OTEL_TRACES_TAIL_SAMPLING_RULE_KEEP_ERRORS`         | Enable the built-in Errors Rule                                                      | `true`  |
+| `OTEL_TRACES_TAIL_SAMPLING_RULE_SLOW_TRACES`         | Enable the built-in Slow Trace Rule                                                  | `true`  |
+| `OTEL_TRACES_TAIL_SAMPLING_SLOW_TRACES_THRESHOLD_MS` | Duration threshold for the Slow Trace Rule (in milliseconds)                         | `2000`  |
+
+#### Custom Rules
+
+You can create custom tail sampling rules by implementing the `TailSamplingRuleInterface`:
+
+```php
+use Keepsuit\LaravelOpenTelemetry\TailSamplingRules\TailSamplingRuleInterface;
+use Keepsuit\LaravelOpenTelemetry\Support\SamplingResult;
+use Keepsuit\LaravelOpenTelemetry\Support\TraceBuffer;
+
+class MyCustomRule implements TailSamplingRuleInterface
+{
+    public function initialize(array $options): void
+    {
+        // Configure the rule using options from config
+    }
+
+    public function evaluate(TraceBuffer $trace): SamplingResult
+    {
+        // Evaluate the trace and return a SamplingResult
+        // Return SamplingResult::Keep to keep the trace
+        // Return SamplingResult::Drop to drop the trace
+        // Return SamplingResult::Forward to let the next rule decide
+    }
+}
+```
+
+Register your custom rule in the configuration:
+
+```php
+// config/opentelemetry.php
+'tail_sampling' => [
+    'enabled' => true,
+    'rules' => [
+        MyCustomRule::class => [...], // Your rule configuration
+    ],
+],
 ```
 
 ## Metrics
