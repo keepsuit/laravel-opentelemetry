@@ -2,6 +2,7 @@
 
 namespace Keepsuit\LaravelOpenTelemetry\Support;
 
+use Illuminate\Support\Arr;
 use Keepsuit\LaravelOpenTelemetry\TailSamplingRules\TailSamplingRuleInterface;
 use OpenTelemetry\Context\Context;
 use OpenTelemetry\Context\ContextInterface;
@@ -96,7 +97,7 @@ final class TailSamplingProcessor implements SpanProcessorInterface
 
         // Fallback to sampler when rules return Forward
         // Use root span if available, otherwise use the first span in the buffer to make sampling decision
-        $span = $buffer->getRootSpan() ?? array_first($buffer->getSpans());
+        $span = $buffer->getRootSpan() ?? Arr::first($buffer->getSpans());
 
         if ($span === null) {
             return;
