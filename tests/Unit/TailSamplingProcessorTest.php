@@ -131,6 +131,35 @@ it('evaluates opportunistically when evaluation window is exceeded', function ()
     $parent->end();
 });
 
+it('evaluates opportunistically when evaluation window is exceeded and rules returns Forward', function () {
+    $downstream = new TestSpanProcessor;
+    $rule = new TestTailSamplingRule(SamplingResult::Forward);
+
+    // set evaluation window to 0 to force opportunistic evaluation
+    $processor = new TailSamplingProcessor($downstream, new AlwaysOnSampler(), [$rule], decisionWait: 0);
+
+    // create an active parent so the span we end is not considered the root
+    $parent = Tracer::newSpan('parent')->start();
+    assert($parent instanceof \OpenTelemetry\SDK\Trace\Span);
+    $scope = $parent->activate();
+
+    $child = Tracer::newSpan('child-opportunistic')->start();
+    assert($child instanceof \OpenTelemetry\SDK\Trace\Span);
+    TestTime::addSecond();
+    $child->end();
+
+    // do not end parent yet; call onEnd for the child only
+    $processor->onEnd($child);
+
+    expect($downstream->ended)
+        ->toHaveCount(1)
+        ->{0}->toBe($child);
+
+    // cleanup
+    $scope->detach();
+    $parent->end();
+});
+
 it('uses fallback sampler when all rules return Forward and sampler returns RECORD_AND_SAMPLE', function () {
     $downstream = new TestSpanProcessor;
     $rule = new TestTailSamplingRule(SamplingResult::Forward);

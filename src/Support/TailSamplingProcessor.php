@@ -95,24 +95,25 @@ final class TailSamplingProcessor implements SpanProcessorInterface
         }
 
         // Fallback to sampler when rules return Forward
-        $rootSpan = $buffer->getRootSpan();
+        // Use root span if available, otherwise use the first span in the buffer to make sampling decision
+        $span = $buffer->getRootSpan() ?? array_first($buffer->getSpans());
 
-        if ($rootSpan === null) {
+        if ($span === null) {
             return;
         }
 
-        $rootSpanData = $rootSpan->toSpanData();
+        $spanData = $span->toSpanData();
 
         $parentContext = Context::getCurrent()
-            ->with(ContextKeys::span(), Span::wrap($rootSpan->getParentContext()));
+            ->with(ContextKeys::span(), Span::wrap($spanData->getParentContext()));
 
         $shouldSample = $this->sampler->shouldSample(
             parentContext: $parentContext,
-            traceId: $rootSpan->getContext()->getTraceId(),
-            spanName: $rootSpan->getName(),
-            spanKind: $rootSpan->getKind(),
-            attributes: $rootSpanData->getAttributes(),
-            links: $rootSpanData->getLinks(),
+            traceId: $span->getContext()->getTraceId(),
+            spanName: $span->getName(),
+            spanKind: $span->getKind(),
+            attributes: $spanData->getAttributes(),
+            links: $spanData->getLinks(),
         );
 
         if ($shouldSample->getDecision() === \OpenTelemetry\SDK\Trace\SamplingResult::RECORD_AND_SAMPLE) {
