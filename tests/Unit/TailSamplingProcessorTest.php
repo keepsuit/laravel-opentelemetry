@@ -136,7 +136,7 @@ it('evaluates opportunistically when evaluation window is exceeded and rules ret
     $rule = new TestTailSamplingRule(SamplingResult::Forward);
 
     // set evaluation window to 0 to force opportunistic evaluation
-    $processor = new TailSamplingProcessor($downstream, new AlwaysOnSampler(), [$rule], decisionWait: 0);
+    $processor = new TailSamplingProcessor($downstream, new AlwaysOnSampler, [$rule], decisionWait: 0);
 
     // create an active parent so the span we end is not considered the root
     $parent = Tracer::newSpan('parent')->start();
