@@ -4,6 +4,7 @@ namespace Keepsuit\LaravelOpenTelemetry\Support;
 
 use Illuminate\Support\Arr;
 use Keepsuit\LaravelOpenTelemetry\TailSamplingRules\TailSamplingRuleInterface;
+use OpenTelemetry\API\Trace\SpanContextValidator;
 use OpenTelemetry\Context\Context;
 use OpenTelemetry\Context\ContextInterface;
 use OpenTelemetry\Context\ContextKeys;
@@ -34,6 +35,10 @@ final class TailSamplingProcessor implements SpanProcessorInterface
     public function onEnd(ReadableSpanInterface $span): void
     {
         $traceId = $span->getContext()->getTraceId();
+
+        if (! SpanContextValidator::isValidTraceId($traceId)) {
+            return;
+        }
 
         if (! isset($this->buffers[$traceId])) {
             $this->buffers[$traceId] = new TraceBuffer($traceId);
