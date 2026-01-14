@@ -219,9 +219,9 @@ return [
          * - QueueDetector: Detects Laravel Queue workers
          */
         'detectors' => [
-            WorkerMode\Detectors\OctaneDetector::class,
-            WorkerMode\Detectors\HorizonDetector::class,
-            WorkerMode\Detectors\QueueDetector::class,
+            WorkerMode\Detectors\OctaneWorkerModeDetector::class,
+            WorkerMode\Detectors\HorizonWorkerModeDetector::class,
+            WorkerMode\Detectors\QueueWorkerModeDetector::class,
         ],
     ],
 

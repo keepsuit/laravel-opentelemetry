@@ -20,8 +20,7 @@ use Keepsuit\LaravelOpenTelemetry\Support\SamplerBuilder;
 use Keepsuit\LaravelOpenTelemetry\Support\UserContextResolver;
 use Keepsuit\LaravelOpenTelemetry\TailSampling\TailSamplingProcessor;
 use Keepsuit\LaravelOpenTelemetry\TailSampling\TailSamplingRuleInterface;
-use Keepsuit\LaravelOpenTelemetry\WorkerMode\Detectors\DefaultDetector;
-use Keepsuit\LaravelOpenTelemetry\WorkerMode\WorkerModeDetector;
+use Keepsuit\LaravelOpenTelemetry\WorkerMode\WorkerModeManager;
 use OpenTelemetry\API\Common\Time\Clock;
 use OpenTelemetry\API\Instrumentation\CachedInstrumentation;
 use OpenTelemetry\API\Logs\LoggerInterface;
@@ -136,11 +135,9 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 
         // Initialize worker mode detector
         $detectorClasses = config('opentelemetry.worker_mode.detectors', []);
-        // Always add DefaultDetector as fallback
-        $detectorClasses[] = DefaultDetector::class;
 
-        $workerModeDetector = new WorkerModeDetector($detectorClasses);
-        $this->app->singleton(WorkerModeDetector::class, fn () => $workerModeDetector);
+        $workerModeDetector = new WorkerModeManager($detectorClasses);
+        $this->app->singleton(WorkerModeManager::class, fn () => $workerModeDetector);
 
         $workerModeEnabled = config('opentelemetry.worker_mode.enabled', false);
         $isWorkerMode = $workerModeDetector->isWorkerMode();

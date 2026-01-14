@@ -2,7 +2,7 @@
 
 namespace Keepsuit\LaravelOpenTelemetry\WorkerMode\Detectors;
 
-use Keepsuit\LaravelOpenTelemetry\WorkerMode\DetectorInterface;
+use Keepsuit\LaravelOpenTelemetry\WorkerMode\WorkerModeDetectorInterface;
 
 /**
  * Detects Laravel Octane worker mode
@@ -12,7 +12,7 @@ use Keepsuit\LaravelOpenTelemetry\WorkerMode\DetectorInterface;
  * - Running in a supervised worker context
  * - Parent process name containing 'octane'
  */
-class OctaneDetector implements DetectorInterface
+class OctaneWorkerModeDetector implements WorkerModeDetectorInterface
 {
     public function detect(): bool
     {

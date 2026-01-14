@@ -2,7 +2,7 @@
 
 namespace Keepsuit\LaravelOpenTelemetry\WorkerMode\Detectors;
 
-use Keepsuit\LaravelOpenTelemetry\WorkerMode\DetectorInterface;
+use Keepsuit\LaravelOpenTelemetry\WorkerMode\WorkerModeDetectorInterface;
 
 /**
  * Detects Laravel Horizon worker mode
@@ -12,7 +12,7 @@ use Keepsuit\LaravelOpenTelemetry\WorkerMode\DetectorInterface;
  * - Running in a supervised worker context
  * - Parent process name containing 'horizon'
  */
-class HorizonDetector implements DetectorInterface
+class HorizonWorkerModeDetector implements WorkerModeDetectorInterface
 {
     public function detect(): bool
     {

@@ -5,7 +5,7 @@ namespace Keepsuit\LaravelOpenTelemetry;
 use Closure;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Foundation\Application;
-use Keepsuit\LaravelOpenTelemetry\WorkerMode\WorkerModeDetector;
+use Keepsuit\LaravelOpenTelemetry\WorkerMode\WorkerModeManager;
 use OpenTelemetry\SDK\Logs\LoggerProviderInterface;
 use OpenTelemetry\SDK\Metrics\MeterProviderInterface;
 use OpenTelemetry\SDK\Trace\TracerProviderInterface;
@@ -123,9 +123,9 @@ class OpenTelemetry
     /**
      * Get the current worker mode detector
      */
-    public function getWorkerModeDetector(): WorkerModeDetector
+    public function getWorkerModeDetector(): WorkerModeManager
     {
-        return $this->app->make(WorkerModeDetector::class);
+        return $this->app->make(WorkerModeManager::class);
     }
 
     /**

@@ -1,11 +1,11 @@
 <?php
 
-use Keepsuit\LaravelOpenTelemetry\WorkerMode\Detectors\QueueDetector;
+use Keepsuit\LaravelOpenTelemetry\WorkerMode\Detectors\QueueWorkerModeDetector;
 
 test('queue detector detects LARAVEL_QUEUE_WORKER env var set to 1', function () {
     putenv('LARAVEL_QUEUE_WORKER=1');
 
-    $detector = new QueueDetector;
+    $detector = new QueueWorkerModeDetector;
 
     expect($detector->detect())->toBeTrue();
     expect($detector->getModeName())->toBe('queue');
@@ -16,7 +16,7 @@ test('queue detector detects LARAVEL_QUEUE_WORKER env var set to 1', function ()
 test('queue detector detects LARAVEL_QUEUE_WORKER env var set to true', function () {
     putenv('LARAVEL_QUEUE_WORKER=true');
 
-    $detector = new QueueDetector;
+    $detector = new QueueWorkerModeDetector;
 
     expect($detector->detect())->toBeTrue();
 
@@ -26,7 +26,7 @@ test('queue detector detects LARAVEL_QUEUE_WORKER env var set to true', function
 test('queue detector detects QUEUE env var', function () {
     putenv('QUEUE=default');
 
-    $detector = new QueueDetector;
+    $detector = new QueueWorkerModeDetector;
 
     expect($detector->detect())->toBeTrue();
 
@@ -34,13 +34,13 @@ test('queue detector detects QUEUE env var', function () {
 });
 
 test('queue detector returns false when not in queue', function () {
-    $detector = new QueueDetector;
+    $detector = new QueueWorkerModeDetector;
 
     expect($detector->detect())->toBeFalse();
 });
 
 test('queue detector mode name', function () {
-    $detector = new QueueDetector;
+    $detector = new QueueWorkerModeDetector;
 
     expect($detector->getModeName())->toBe('queue');
 });

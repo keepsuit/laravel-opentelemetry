@@ -3,13 +3,9 @@
 namespace Keepsuit\LaravelOpenTelemetry\WorkerMode;
 
 /**
- * Detects the current worker mode (e.g., Octane, Horizon, Queue, standard HTTP requests)
- *
- * This interface allows for flexible worker mode detection, enabling the package to optimize
- * OpenTelemetry behavior based on the runtime context. Custom detectors can be implemented
- * to support additional worker modes.
+ * Detects if the application is running in worker mode
  */
-interface DetectorInterface
+interface WorkerModeDetectorInterface
 {
     /**
      * Detect if the application is running in this worker mode

@@ -2,7 +2,7 @@
 
 namespace Keepsuit\LaravelOpenTelemetry\WorkerMode\Detectors;
 
-use Keepsuit\LaravelOpenTelemetry\WorkerMode\DetectorInterface;
+use Keepsuit\LaravelOpenTelemetry\WorkerMode\WorkerModeDetectorInterface;
 
 /**
  * Detects Laravel Queue worker mode
@@ -12,7 +12,7 @@ use Keepsuit\LaravelOpenTelemetry\WorkerMode\DetectorInterface;
  * - QUEUE environment variable indicating queue context
  * - Running as a queue worker process
  */
-class QueueDetector implements DetectorInterface
+class QueueWorkerModeDetector implements WorkerModeDetectorInterface
 {
     public function detect(): bool
     {

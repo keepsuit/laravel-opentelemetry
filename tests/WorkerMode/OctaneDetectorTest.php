@@ -1,11 +1,11 @@
 <?php
 
-use Keepsuit\LaravelOpenTelemetry\WorkerMode\Detectors\OctaneDetector;
+use Keepsuit\LaravelOpenTelemetry\WorkerMode\Detectors\OctaneWorkerModeDetector;
 
 test('octane detector detects OCTANE_WORKERS env var', function () {
     putenv('OCTANE_WORKERS=4');
 
-    $detector = new OctaneDetector;
+    $detector = new OctaneWorkerModeDetector;
 
     expect($detector->detect())->toBeTrue();
     expect($detector->getModeName())->toBe('octane');
@@ -16,7 +16,7 @@ test('octane detector detects OCTANE_WORKERS env var', function () {
 test('octane detector detects OCTANE_SERVER env var', function () {
     putenv('OCTANE_SERVER=127.0.0.1:8000');
 
-    $detector = new OctaneDetector;
+    $detector = new OctaneWorkerModeDetector;
 
     expect($detector->detect())->toBeTrue();
     expect($detector->getModeName())->toBe('octane');
@@ -25,13 +25,13 @@ test('octane detector detects OCTANE_SERVER env var', function () {
 });
 
 test('octane detector returns false when not in octane', function () {
-    $detector = new OctaneDetector;
+    $detector = new OctaneWorkerModeDetector;
 
     expect($detector->detect())->toBeFalse();
 });
 
 test('octane detector mode name', function () {
-    $detector = new OctaneDetector;
+    $detector = new OctaneWorkerModeDetector;
 
     expect($detector->getModeName())->toBe('octane');
 });
