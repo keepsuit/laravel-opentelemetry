@@ -2,6 +2,8 @@
 
 namespace Keepsuit\LaravelOpenTelemetry\WorkerMode;
 
+use Closure;
+
 /**
  * Detects if the application is running in worker mode
  */
@@ -15,9 +17,7 @@ interface WorkerModeDetectorInterface
     public function detect(): bool;
 
     /**
-     * Get the name/identifier of this worker mode
-     *
-     * Examples: 'octane', 'horizon', 'queue', 'request'
+     * Register a callback to be executed at the end of each iteration of the worker loop
      */
-    public function getModeName(): string;
+    public function onIterationEnded(Closure $callback): void;
 }

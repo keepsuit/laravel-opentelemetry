@@ -2,47 +2,23 @@
 
 namespace Keepsuit\LaravelOpenTelemetry\WorkerMode\Detectors;
 
+use Closure;
+use Illuminate\Queue\Events\JobAttempted;
 use Keepsuit\LaravelOpenTelemetry\WorkerMode\WorkerModeDetectorInterface;
 
 /**
  * Detects Laravel Queue worker mode
- *
- * Checks for:
- * - LARAVEL_QUEUE_WORKER environment variable
- * - QUEUE environment variable indicating queue context
- * - Running as a queue worker process
  */
 class QueueWorkerModeDetector implements WorkerModeDetectorInterface
 {
     public function detect(): bool
     {
-        // Check for LARAVEL_QUEUE_WORKER env var (set by Laravel queue worker)
-        $queueWorker = env('LARAVEL_QUEUE_WORKER');
-        if ($queueWorker !== null && in_array((string) $queueWorker, ['1', 'true', 'yes'], true)) {
-            return true;
-        }
-
-        // Check for QUEUE env var indicating queue context
-        if (env('QUEUE') !== null) {
-            return true;
-        }
-
-        // Check if running as queue worker by checking parent process
-        if (function_exists('posix_getppid')) {
-            $ppid = posix_getppid();
-            if ($ppid !== false) {
-                $parentName = shell_exec("ps -p {$ppid} -o comm=");
-                if ($parentName && stripos($parentName, 'queue') !== false) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
+        return app()->runningConsoleCommand('queue:work')
+            || app()->runningConsoleCommand('horizon:work');
     }
 
-    public function getModeName(): string
+    public function onIterationEnded(Closure $callback): void
     {
-        return 'queue';
+        app('events')->listen(JobAttempted::class, $callback);
     }
 }

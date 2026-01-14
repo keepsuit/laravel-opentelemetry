@@ -3,32 +3,28 @@
 namespace Keepsuit\LaravelOpenTelemetry;
 
 use Closure;
+use Illuminate\Container\Container;
 use Illuminate\Contracts\Auth\Authenticatable;
-use Illuminate\Contracts\Foundation\Application;
-use Keepsuit\LaravelOpenTelemetry\WorkerMode\WorkerModeManager;
+use OpenTelemetry\API\Globals;
 use OpenTelemetry\SDK\Logs\LoggerProviderInterface;
 use OpenTelemetry\SDK\Metrics\MeterProviderInterface;
 use OpenTelemetry\SDK\Trace\TracerProviderInterface;
 
 class OpenTelemetry
 {
-    public function __construct(
-        protected Application $app
-    ) {}
-
     public function tracer(): Tracer
     {
-        return $this->app->make(Tracer::class);
+        return Container::getInstance()->make(Tracer::class);
     }
 
     public function meter(): Meter
     {
-        return $this->app->make(Meter::class);
+        return Container::getInstance()->make(Meter::class);
     }
 
     public function logger(): Logger
     {
-        return $this->app->make(Logger::class);
+        return Container::getInstance()->make(Logger::class);
     }
 
     /**
@@ -38,7 +34,7 @@ class OpenTelemetry
      */
     public function user(Closure $resolver): void
     {
-        $userContext = $this->app->make(Support\UserContextResolver::class);
+        $userContext = Container::getInstance()->make(Support\UserContextResolver::class);
 
         $userContext->setResolver($resolver);
     }
@@ -48,7 +44,7 @@ class OpenTelemetry
      */
     public function collectUserContext(Authenticatable $user): array
     {
-        $userContext = $this->app->make(Support\UserContextResolver::class);
+        $userContext = Container::getInstance()->make(Support\UserContextResolver::class);
 
         return $userContext->collect($user);
     }
@@ -61,86 +57,19 @@ class OpenTelemetry
      */
     public function flush(): void
     {
-        try {
-            /** @var TracerProviderInterface $tracerProvider */
-            $tracerProvider = $this->app->make(TracerProviderInterface::class);
+        $tracerProvider = Globals::tracerProvider();
+        if ($tracerProvider instanceof TracerProviderInterface) {
             $tracerProvider->forceFlush();
-        } catch (\Throwable) {
-            // Silently ignore if tracer provider is not available
         }
 
-        try {
-            /** @var MeterProviderInterface $meterProvider */
-            $meterProvider = $this->app->make(MeterProviderInterface::class);
+        $meterProvider = Globals::meterProvider();
+        if ($meterProvider instanceof MeterProviderInterface) {
             $meterProvider->forceFlush();
-        } catch (\Throwable) {
-            // Silently ignore if meter provider is not available
         }
 
-        try {
-            /** @var LoggerProviderInterface $loggerProvider */
-            $loggerProvider = $this->app->make(LoggerProviderInterface::class);
+        $loggerProvider = Globals::loggerProvider();
+        if ($loggerProvider instanceof LoggerProviderInterface) {
             $loggerProvider->forceFlush();
-        } catch (\Throwable) {
-            // Silently ignore if logger provider is not available
         }
-    }
-
-    /**
-     * Shutdown all OpenTelemetry providers
-     *
-     * This performs a graceful shutdown of all OpenTelemetry providers,
-     * flushing any pending data and cleaning up resources.
-     * Should typically only be called when the application is shutting down.
-     */
-    public function shutdown(): void
-    {
-        try {
-            /** @var TracerProviderInterface $tracerProvider */
-            $tracerProvider = $this->app->make(TracerProviderInterface::class);
-            $tracerProvider->shutdown();
-        } catch (\Throwable) {
-            // Silently ignore if tracer provider is not available
-        }
-
-        try {
-            /** @var MeterProviderInterface $meterProvider */
-            $meterProvider = $this->app->make(MeterProviderInterface::class);
-            $meterProvider->shutdown();
-        } catch (\Throwable) {
-            // Silently ignore if meter provider is not available
-        }
-
-        try {
-            /** @var LoggerProviderInterface $loggerProvider */
-            $loggerProvider = $this->app->make(LoggerProviderInterface::class);
-            $loggerProvider->shutdown();
-        } catch (\Throwable) {
-            // Silently ignore if logger provider is not available
-        }
-    }
-
-    /**
-     * Get the current worker mode detector
-     */
-    public function getWorkerModeDetector(): WorkerModeManager
-    {
-        return $this->app->make(WorkerModeManager::class);
-    }
-
-    /**
-     * Check if running in a worker mode (Octane, Horizon, Queue, etc.)
-     */
-    public function isRunningInWorkerMode(): bool
-    {
-        return $this->getWorkerModeDetector()->isWorkerMode();
-    }
-
-    /**
-     * Get the detected worker mode name
-     */
-    public function getDetectedMode(): string
-    {
-        return $this->getWorkerModeDetector()->getDetectedMode();
     }
 }

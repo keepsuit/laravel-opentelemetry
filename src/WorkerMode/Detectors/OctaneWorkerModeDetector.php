@@ -2,46 +2,24 @@
 
 namespace Keepsuit\LaravelOpenTelemetry\WorkerMode\Detectors;
 
+use Closure;
 use Keepsuit\LaravelOpenTelemetry\WorkerMode\WorkerModeDetectorInterface;
+use Laravel\Octane\Events\RequestTerminated;
 
 /**
  * Detects Laravel Octane worker mode
- *
- * Checks for:
- * - OCTANE_WORKERS environment variable
- * - Running in a supervised worker context
- * - Parent process name containing 'octane'
  */
 class OctaneWorkerModeDetector implements WorkerModeDetectorInterface
 {
     public function detect(): bool
     {
-        // Check for OCTANE_WORKERS env var (set by octane supervisor)
-        if (env('OCTANE_WORKERS') !== null) {
-            return true;
-        }
+        $octane = $_SERVER['LARAVEL_OCTANE'] ?? null;
 
-        // Check for OCTANE_SERVER env var (set by octane itself)
-        if (env('OCTANE_SERVER') !== null) {
-            return true;
-        }
-
-        // Check if running as octane worker by checking parent process
-        if (function_exists('posix_getppid')) {
-            $ppid = posix_getppid();
-            if ($ppid !== false) {
-                $parentName = shell_exec("ps -p {$ppid} -o comm=");
-                if ($parentName && stripos($parentName, 'octane') !== false) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
+        return $octane === '1' || $octane === 'true';
     }
 
-    public function getModeName(): string
+    public function onIterationEnded(Closure $callback): void
     {
-        return 'octane';
+        app('events')->listen(RequestTerminated::class, $callback);
     }
 }
