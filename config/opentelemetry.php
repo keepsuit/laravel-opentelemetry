@@ -1,6 +1,7 @@
 <?php
 
 use Keepsuit\LaravelOpenTelemetry\Instrumentation;
+use Keepsuit\LaravelOpenTelemetry\WorkerMode;
 use Keepsuit\LaravelOpenTelemetry\Support\ResourceAttributesParser;
 use OpenTelemetry\SDK\Common\Configuration\Variables;
 
@@ -215,13 +216,11 @@ return [
          * - OctaneDetector: Detects Laravel Octane worker mode
          * - HorizonDetector: Detects Laravel Horizon queue workers
          * - QueueDetector: Detects Laravel Queue workers
-         * - DefaultDetector: Fallback for standard HTTP requests
          */
         'detectors' => [
-            \Keepsuit\LaravelOpenTelemetry\Support\WorkerMode\Detectors\OctaneDetector::class,
-            \Keepsuit\LaravelOpenTelemetry\Support\WorkerMode\Detectors\HorizonDetector::class,
-            \Keepsuit\LaravelOpenTelemetry\Support\WorkerMode\Detectors\QueueDetector::class,
-            // DefaultDetector is automatically added as fallback
+            WorkerMode\Detectors\OctaneDetector::class,
+            WorkerMode\Detectors\HorizonDetector::class,
+            WorkerMode\Detectors\QueueDetector::class,
         ],
     ],
 

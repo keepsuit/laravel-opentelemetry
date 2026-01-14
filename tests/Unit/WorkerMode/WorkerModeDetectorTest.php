@@ -1,8 +1,8 @@
 <?php
 
-use Keepsuit\LaravelOpenTelemetry\Support\WorkerMode\Detectors\DefaultDetector;
-use Keepsuit\LaravelOpenTelemetry\Support\WorkerMode\Detectors\OctaneDetector;
-use Keepsuit\LaravelOpenTelemetry\Support\WorkerMode\WorkerModeDetector;
+use Keepsuit\LaravelOpenTelemetry\WorkerMode\Detectors\DefaultDetector;
+use Keepsuit\LaravelOpenTelemetry\WorkerMode\Detectors\OctaneDetector;
+use Keepsuit\LaravelOpenTelemetry\WorkerMode\WorkerModeDetector;
 
 test('detect mode with octane detector', function () {
     putenv('OCTANE_WORKERS=4');

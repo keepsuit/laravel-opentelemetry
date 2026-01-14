@@ -1,6 +1,6 @@
 <?php
 
-use Keepsuit\LaravelOpenTelemetry\Support\WorkerMode\Detectors\HorizonDetector;
+use Keepsuit\LaravelOpenTelemetry\WorkerMode\Detectors\HorizonDetector;
 
 test('horizon detector detects HORIZON env var set to true', function () {
     putenv('HORIZON=true');

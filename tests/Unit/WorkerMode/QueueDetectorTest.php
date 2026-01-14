@@ -1,6 +1,6 @@
 <?php
 
-use Keepsuit\LaravelOpenTelemetry\Support\WorkerMode\Detectors\QueueDetector;
+use Keepsuit\LaravelOpenTelemetry\WorkerMode\Detectors\QueueDetector;
 
 test('queue detector detects LARAVEL_QUEUE_WORKER env var set to 1', function () {
     putenv('LARAVEL_QUEUE_WORKER=1');

@@ -1,6 +1,6 @@
 <?php
 
-use Keepsuit\LaravelOpenTelemetry\Support\WorkerMode\Detectors\DefaultDetector;
+use Keepsuit\LaravelOpenTelemetry\WorkerMode\Detectors\DefaultDetector;
 
 test('default detector always returns true', function () {
     $detector = new DefaultDetector;

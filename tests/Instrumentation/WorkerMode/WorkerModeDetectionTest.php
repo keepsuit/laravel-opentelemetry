@@ -1,7 +1,7 @@
 <?php
 
 use Keepsuit\LaravelOpenTelemetry\OpenTelemetry;
-use Keepsuit\LaravelOpenTelemetry\Support\WorkerMode\WorkerModeDetector;
+use Keepsuit\LaravelOpenTelemetry\WorkerMode\WorkerModeDetector;
 
 test('worker mode detector is registered in container', function () {
     $detector = app(WorkerModeDetector::class);
@@ -20,7 +20,7 @@ test('octane mode is detected', function () {
 
     // Recreate detector with fresh detection
     $detectorClasses = config('opentelemetry.worker_mode.detectors', []);
-    $detectorClasses[] = \Keepsuit\LaravelOpenTelemetry\Support\WorkerMode\Detectors\DefaultDetector::class;
+    $detectorClasses[] = \Keepsuit\LaravelOpenTelemetry\WorkerMode\Detectors\DefaultDetector::class;
     $detector = new WorkerModeDetector($detectorClasses);
 
     expect($detector->getDetectedMode())->toBe('octane');

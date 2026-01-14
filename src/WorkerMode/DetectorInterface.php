@@ -1,6 +1,6 @@
 <?php
 
-namespace Keepsuit\LaravelOpenTelemetry\Support\WorkerMode;
+namespace Keepsuit\LaravelOpenTelemetry\WorkerMode;
 
 /**
  * Detects the current worker mode (e.g., Octane, Horizon, Queue, standard HTTP requests)

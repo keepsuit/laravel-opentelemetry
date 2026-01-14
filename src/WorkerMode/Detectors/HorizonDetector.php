@@ -1,8 +1,8 @@
 <?php
 
-namespace Keepsuit\LaravelOpenTelemetry\Support\WorkerMode\Detectors;
+namespace Keepsuit\LaravelOpenTelemetry\WorkerMode\Detectors;
 
-use Keepsuit\LaravelOpenTelemetry\Support\WorkerMode\DetectorInterface;
+use Keepsuit\LaravelOpenTelemetry\WorkerMode\DetectorInterface;
 
 /**
  * Detects Laravel Horizon worker mode

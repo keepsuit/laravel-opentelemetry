@@ -1,6 +1,6 @@
 <?php
 
-use Keepsuit\LaravelOpenTelemetry\Support\WorkerMode\Detectors\OctaneDetector;
+use Keepsuit\LaravelOpenTelemetry\WorkerMode\Detectors\OctaneDetector;
 
 test('octane detector detects OCTANE_WORKERS env var', function () {
     putenv('OCTANE_WORKERS=4');

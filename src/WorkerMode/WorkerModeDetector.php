@@ -1,6 +1,6 @@
 <?php
 
-namespace Keepsuit\LaravelOpenTelemetry\Support\WorkerMode;
+namespace Keepsuit\LaravelOpenTelemetry\WorkerMode;
 
 /**
  * Orchestrates worker mode detection by running configured detectors in order
