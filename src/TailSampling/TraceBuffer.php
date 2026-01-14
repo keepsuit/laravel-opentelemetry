@@ -1,6 +1,6 @@
 <?php
 
-namespace Keepsuit\LaravelOpenTelemetry\Support;
+namespace Keepsuit\LaravelOpenTelemetry\TailSampling;
 
 use Carbon\CarbonImmutable;
 use OpenTelemetry\API\Common\Time\ClockInterface;

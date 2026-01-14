@@ -27,6 +27,7 @@ This is the contents of the published config file:
 
 ```php
 use Keepsuit\LaravelOpenTelemetry\Instrumentation;
+use Keepsuit\LaravelOpenTelemetry\TailSampling;
 use Keepsuit\LaravelOpenTelemetry\Support\ResourceAttributesParser;
 use OpenTelemetry\SDK\Common\Configuration\Variables;
 
@@ -111,8 +112,8 @@ return [
                 'decision_wait' => env('OTEL_TRACES_TAIL_SAMPLING_DECISION_WAIT', 5000),
 
                 'rules' => [
-                    \Keepsuit\LaravelOpenTelemetry\TailSamplingRules\ErrorsRule::class => env('OTEL_TRACES_TAIL_SAMPLING_RULE_KEEP_ERRORS', true),
-                    \Keepsuit\LaravelOpenTelemetry\TailSamplingRules\SlowTraceRule::class => [
+                    TailSampling\Rules\ErrorsRule::class => env('OTEL_TRACES_TAIL_SAMPLING_RULE_KEEP_ERRORS', true),
+                    TailSampling\Rules\SlowTraceRule::class => [
                         'enabled' => env('OTEL_TRACES_TAIL_SAMPLING_RULE_SLOW_TRACES', true),
                         'threshold_ms' => env('OTEL_TRACES_TAIL_SAMPLING_SLOW_TRACES_THRESHOLD_MS', 2000),
                     ],
@@ -556,9 +557,9 @@ Tail sampling can be configured with these environment variables (or editing the
 You can create custom tail sampling rules by implementing the `TailSamplingRuleInterface`:
 
 ```php
-use Keepsuit\LaravelOpenTelemetry\TailSamplingRules\TailSamplingRuleInterface;
-use Keepsuit\LaravelOpenTelemetry\Support\SamplingResult;
-use Keepsuit\LaravelOpenTelemetry\Support\TraceBuffer;
+use Keepsuit\LaravelOpenTelemetry\TailSampling\TailSamplingRuleInterface;
+use Keepsuit\LaravelOpenTelemetry\TailSampling\SamplingResult;
+use Keepsuit\LaravelOpenTelemetry\TailSampling\TraceBuffer;
 
 class MyCustomRule implements TailSamplingRuleInterface
 {

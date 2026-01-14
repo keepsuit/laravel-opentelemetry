@@ -1,9 +1,10 @@
 <?php
 
-namespace Keepsuit\LaravelOpenTelemetry\TailSamplingRules;
+namespace Keepsuit\LaravelOpenTelemetry\TailSampling\Rules;
 
-use Keepsuit\LaravelOpenTelemetry\Support\SamplingResult;
-use Keepsuit\LaravelOpenTelemetry\Support\TraceBuffer;
+use Keepsuit\LaravelOpenTelemetry\TailSampling\SamplingResult;
+use Keepsuit\LaravelOpenTelemetry\TailSampling\TailSamplingRuleInterface;
+use Keepsuit\LaravelOpenTelemetry\TailSampling\TraceBuffer;
 
 final class SlowTraceRule implements TailSamplingRuleInterface
 {

@@ -1,9 +1,6 @@
 <?php
 
-namespace Keepsuit\LaravelOpenTelemetry\TailSamplingRules;
-
-use Keepsuit\LaravelOpenTelemetry\Support\SamplingResult;
-use Keepsuit\LaravelOpenTelemetry\Support\TraceBuffer;
+namespace Keepsuit\LaravelOpenTelemetry\TailSampling;
 
 interface TailSamplingRuleInterface
 {

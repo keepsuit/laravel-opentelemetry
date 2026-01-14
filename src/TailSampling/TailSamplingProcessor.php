@@ -1,9 +1,8 @@
 <?php
 
-namespace Keepsuit\LaravelOpenTelemetry\Support;
+namespace Keepsuit\LaravelOpenTelemetry\TailSampling;
 
 use Illuminate\Support\Arr;
-use Keepsuit\LaravelOpenTelemetry\TailSamplingRules\TailSamplingRuleInterface;
 use OpenTelemetry\API\Trace\SpanContextValidator;
 use OpenTelemetry\Context\Context;
 use OpenTelemetry\Context\ContextInterface;

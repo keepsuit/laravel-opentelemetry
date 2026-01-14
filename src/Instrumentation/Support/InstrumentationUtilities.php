@@ -1,6 +1,6 @@
 <?php
 
-namespace Keepsuit\LaravelOpenTelemetry\Support;
+namespace Keepsuit\LaravelOpenTelemetry\Instrumentation\Support;
 
 trait InstrumentationUtilities
 {
