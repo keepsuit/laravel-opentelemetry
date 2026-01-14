@@ -3,28 +3,28 @@
 namespace Keepsuit\LaravelOpenTelemetry;
 
 use Closure;
+use Illuminate\Container\Container;
 use Illuminate\Contracts\Auth\Authenticatable;
-use Illuminate\Contracts\Foundation\Application;
+use OpenTelemetry\API\Globals;
+use OpenTelemetry\SDK\Logs\LoggerProviderInterface;
+use OpenTelemetry\SDK\Metrics\MeterProviderInterface;
+use OpenTelemetry\SDK\Trace\TracerProviderInterface;
 
 class OpenTelemetry
 {
-    public function __construct(
-        protected Application $app
-    ) {}
-
     public function tracer(): Tracer
     {
-        return $this->app->make(Tracer::class);
+        return Container::getInstance()->make(Tracer::class);
     }
 
     public function meter(): Meter
     {
-        return $this->app->make(Meter::class);
+        return Container::getInstance()->make(Meter::class);
     }
 
     public function logger(): Logger
     {
-        return $this->app->make(Logger::class);
+        return Container::getInstance()->make(Logger::class);
     }
 
     /**
@@ -34,7 +34,7 @@ class OpenTelemetry
      */
     public function user(Closure $resolver): void
     {
-        $userContext = $this->app->make(Support\UserContextResolver::class);
+        $userContext = Container::getInstance()->make(Support\UserContextResolver::class);
 
         $userContext->setResolver($resolver);
     }
@@ -44,8 +44,32 @@ class OpenTelemetry
      */
     public function collectUserContext(Authenticatable $user): array
     {
-        $userContext = $this->app->make(Support\UserContextResolver::class);
+        $userContext = Container::getInstance()->make(Support\UserContextResolver::class);
 
         return $userContext->collect($user);
+    }
+
+    /**
+     * Force flush all OpenTelemetry signals (traces, metrics, logs)
+     *
+     * This method explicitly flushes all pending telemetry data.
+     * Useful in long-running processes to ensure data is exported without waiting for process shutdown.
+     */
+    public function flush(): void
+    {
+        $tracerProvider = Globals::tracerProvider();
+        if ($tracerProvider instanceof TracerProviderInterface) {
+            $tracerProvider->forceFlush();
+        }
+
+        $meterProvider = Globals::meterProvider();
+        if ($meterProvider instanceof MeterProviderInterface) {
+            $meterProvider->forceFlush();
+        }
+
+        $loggerProvider = Globals::loggerProvider();
+        if ($loggerProvider instanceof LoggerProviderInterface) {
+            $loggerProvider->forceFlush();
+        }
     }
 }

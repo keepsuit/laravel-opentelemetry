@@ -3,6 +3,7 @@
 use Keepsuit\LaravelOpenTelemetry\Instrumentation;
 use Keepsuit\LaravelOpenTelemetry\Support\ResourceAttributesParser;
 use Keepsuit\LaravelOpenTelemetry\TailSampling;
+use Keepsuit\LaravelOpenTelemetry\WorkerMode;
 use OpenTelemetry\SDK\Common\Configuration\Variables;
 
 return [
@@ -227,6 +228,35 @@ return [
         Instrumentation\ConsoleInstrumentation::class => [
             'enabled' => env('OTEL_INSTRUMENTATION_CONSOLE', true),
             'commands' => [],
+        ],
+    ],
+
+    /**
+     * Worker mode detection configuration
+     *
+     * Detects worker modes (e.g., Octane, Horizon, Queue) and optimizes OpenTelemetry
+     * behavior for long-running processes.
+     */
+    'worker_mode' => [
+        /**
+         * Flush after each iteration (e.g. http request, queue job).
+         * If false, flushes are batched and executed periodically and on shutdown.
+         */
+        'flush_after_each_iteration' => env('OTEL_WORKER_MODE_FLUSH_AFTER_EACH_ITERATION', false),
+
+        /**
+         * Detectors to use for worker mode detection
+         *
+         * Detectors are checked in order, the first one that returns true determines the mode.
+         * Custom detectors implementing DetectorInterface can be added here.
+         *
+         * Built-in detectors:
+         * - OctaneDetector: Detects Laravel Octane
+         * - QueueDetector: Detects Laravel default queue worker and Laravel Horizon
+         */
+        'detectors' => [
+            WorkerMode\Detectors\OctaneWorkerModeDetector::class,
+            WorkerMode\Detectors\QueueWorkerModeDetector::class,
         ],
     ],
 ];

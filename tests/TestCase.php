@@ -25,6 +25,7 @@ class TestCase extends Orchestra
         $app['config']->set('opentelemetry.metrics.exporter', null);
         $app['config']->set('opentelemetry.logs.exporter', null);
         $app['config']->set('opentelemetry.instrumentation', []);
+        $app['config']->set('opentelemetry.worker_mode.flush_after_each_iteration', true);
 
         $app['config']->set('database.default', 'sqlite');
         $app['config']->set('database.connections.sqlite.database', ':memory:');
