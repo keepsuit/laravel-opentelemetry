@@ -467,7 +467,6 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
     {
         $flushAfterEachIteration = config()->boolean('opentelemetry.worker_mode.flush_after_each_iteration', false);
 
-        ray($flushAfterEachIteration);
         if (! $flushAfterEachIteration) {
             return;
         }
