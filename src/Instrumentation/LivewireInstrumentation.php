@@ -3,7 +3,7 @@
 namespace Keepsuit\LaravelOpenTelemetry\Instrumentation;
 
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
-use Keepsuit\LaravelOpenTelemetry\Support\InstrumentationUtilities;
+use Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\InstrumentationUtilities;
 use Livewire\Component;
 use Livewire\EventBus;
 use Livewire\LivewireManager;

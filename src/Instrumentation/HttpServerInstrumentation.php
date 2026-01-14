@@ -5,7 +5,7 @@ namespace Keepsuit\LaravelOpenTelemetry\Instrumentation;
 use Illuminate\Contracts\Http\Kernel as HttpKernelContract;
 use Illuminate\Foundation\Http\Kernel as FoundationHttpKernel;
 use Illuminate\Support\Arr;
-use Keepsuit\LaravelOpenTelemetry\Support\HttpServer\TraceRequestMiddleware;
+use Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\HttpServer\TraceRequestMiddleware;
 
 class HttpServerInstrumentation implements Instrumentation
 {
