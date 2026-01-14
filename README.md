@@ -9,6 +9,23 @@ _OpenTelemetry is a collection of tools, APIs, and SDKs. Use it to instrument, g
 
 This package allow to integrate OpenTelemetry in a Laravel application.
 
+- [Installation](#installation)
+- [User Context](#user-context)
+- [Traces](#traces)
+    - [Provided tracing integrations](#provided-tracing-integrations)
+    - [Logs context](#logs-context)
+    - [Manual traces](#manual-traces)
+    - [Trace Sampling](#trace-sampling)
+- [Metrics](#metrics)
+    - [Metrics Temporality](#metrics-temporality)
+- [Logs](#logs)
+- [Worker Mode](#worker-mode)
+- [Development Setup](#development-setup)
+- [Testing](#testing)
+- [Changelog](#changelog)
+- [Credits](#credits)
+- [License](#license)
+
 ## Installation
 
 You can install the package via composer:
@@ -27,8 +44,9 @@ This is the contents of the published config file:
 
 ```php
 use Keepsuit\LaravelOpenTelemetry\Instrumentation;
-use Keepsuit\LaravelOpenTelemetry\TailSampling;
 use Keepsuit\LaravelOpenTelemetry\Support\ResourceAttributesParser;
+use Keepsuit\LaravelOpenTelemetry\TailSampling;
+use Keepsuit\LaravelOpenTelemetry\WorkerMode;
 use OpenTelemetry\SDK\Common\Configuration\Variables;
 
 return [
@@ -253,6 +271,35 @@ return [
         Instrumentation\ConsoleInstrumentation::class => [
             'enabled' => env('OTEL_INSTRUMENTATION_CONSOLE', true),
             'commands' => [],
+        ],
+    ],
+
+    /**
+     * Worker mode detection configuration
+     *
+     * Detects worker modes (e.g., Octane, Horizon, Queue) and optimizes OpenTelemetry
+     * behavior for long-running processes.
+     */
+    'worker_mode' => [
+        /**
+         * Flush after each iteration (e.g. http request, queue job).
+         * If false, flushes are batched and executed periodically and on shutdown.
+         */
+        'flush_after_each_iteration' => env('OTEL_WORKER_MODE_FLUSH_AFTER_EACH_ITERATION', false),
+
+        /**
+         * Detectors to use for worker mode detection
+         *
+         * Detectors are checked in order, the first one that returns true determines the mode.
+         * Custom detectors implementing DetectorInterface can be added here.
+         *
+         * Built-in detectors:
+         * - OctaneDetector: Detects Laravel Octane
+         * - QueueDetector: Detects Laravel default queue worker and Laravel Horizon
+         */
+        'detectors' => [
+            WorkerMode\Detectors\OctaneWorkerModeDetector::class,
+            WorkerMode\Detectors\QueueWorkerModeDetector::class,
         ],
     ],
 ];
@@ -649,11 +696,25 @@ Logger::info('my log message');
 Logger::debug('my log message');
 ```
 
-### Development Setup
+## Worker Mode
+
+When Laravel is running in worker mode (e.g., Octane, Horizon, Queue workers), the application runs as a long-lived process that handles multiple requests or jobs in a single process lifecycle.
+By default, exports are batched and flushed periodically or on process shutdown.
+The `worker_mode.flush_after_each_iteration` config option allows to flush telemetry at the end of each iteration.
+
+Worker mode is automatically detected using built-in detectors (for Laravel octane, horizon and queue workers), but you can also implement custom detectors for other runtimes.
+
+Worker mode can be configured with these environment variables (or editing the config file directly):
+
+| Variable                                      | Description                   | Default |
+|-----------------------------------------------|-------------------------------|---------|
+| `OTEL_WORKER_MODE_FLUSH_AFTER_EACH_ITERATION` | Enable per-iteration flushing | `false` |
+
+## Development Setup
 
 To simplify development, a `Makefile` is provided. The project runs in a Docker container that mirrors your host user's UID and GID to avoid permission issues.
 
-#### Available Makefile Commands
+### Available Makefile Commands
 
 | Command      | Description                                                                |
 |--------------|----------------------------------------------------------------------------|
