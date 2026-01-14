@@ -22,8 +22,6 @@ interface DetectorInterface
      * Get the name/identifier of this worker mode
      *
      * Examples: 'octane', 'horizon', 'queue', 'request'
-     *
-     * @return string
      */
     public function getModeName(): string;
 }

@@ -10,23 +10,16 @@ namespace Keepsuit\LaravelOpenTelemetry\Support\WorkerMode;
  */
 class WorkerModeDetector
 {
-    /**
-     * @var string|null
-     */
     private ?string $detectedMode = null;
 
-    /**
-     * @var bool
-     */
     private bool $detected = false;
 
     /**
-     * @param array<class-string<DetectorInterface>> $detectors
+     * @param  array<class-string<DetectorInterface>>  $detectors
      */
     public function __construct(
         private array $detectors = [],
-    ) {
-    }
+    ) {}
 
     /**
      * Detect the current worker mode
@@ -70,8 +63,6 @@ class WorkerModeDetector
      * Check if the application is running in a worker mode
      *
      * Worker modes are long-running processes like Octane, Horizon, or Queue.
-     *
-     * @return bool
      */
     public function isWorkerMode(): bool
     {
@@ -80,12 +71,9 @@ class WorkerModeDetector
 
     /**
      * Get the detected worker mode name
-     *
-     * @return string
      */
     public function getDetectedMode(): string
     {
         return $this->detect();
     }
 }
-

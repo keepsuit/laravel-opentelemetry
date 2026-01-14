@@ -10,18 +10,17 @@ use Illuminate\Contracts\Debug\ExceptionHandler as ExceptionHandlerContract;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Env;
-use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Support\CarbonClock;
-use Keepsuit\LaravelOpenTelemetry\Support\WorkerMode\Detectors\DefaultDetector;
-use Keepsuit\LaravelOpenTelemetry\Support\WorkerMode\WorkerModeDetector;
 use Keepsuit\LaravelOpenTelemetry\Support\OpenTelemetryMonologHandler;
 use Keepsuit\LaravelOpenTelemetry\Support\PropagatorBuilder;
 use Keepsuit\LaravelOpenTelemetry\Support\ResourceBuilder;
 use Keepsuit\LaravelOpenTelemetry\Support\SamplerBuilder;
 use Keepsuit\LaravelOpenTelemetry\Support\TailSamplingProcessor;
 use Keepsuit\LaravelOpenTelemetry\Support\UserContextResolver;
+use Keepsuit\LaravelOpenTelemetry\Support\WorkerMode\Detectors\DefaultDetector;
+use Keepsuit\LaravelOpenTelemetry\Support\WorkerMode\WorkerModeDetector;
 use Keepsuit\LaravelOpenTelemetry\TailSamplingRules\TailSamplingRuleInterface;
 use OpenTelemetry\API\Common\Time\Clock;
 use OpenTelemetry\API\Instrumentation\CachedInstrumentation;
@@ -139,10 +138,10 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         $detectorClasses = config('opentelemetry.worker_mode.detectors', []);
         // Always add DefaultDetector as fallback
         $detectorClasses[] = DefaultDetector::class;
-        
+
         $workerModeDetector = new WorkerModeDetector($detectorClasses);
         $this->app->singleton(WorkerModeDetector::class, fn () => $workerModeDetector);
-        
+
         $workerModeEnabled = config('opentelemetry.worker_mode.enabled', false);
         $isWorkerMode = $workerModeDetector->isWorkerMode();
 
@@ -153,7 +152,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         };
 
         // Register periodic flush if: standard request OR worker mode disabled
-        if (!$isWorkerMode || !$workerModeEnabled) {
+        if (! $isWorkerMode || ! $workerModeEnabled) {
             $this->app->terminating($flushCallback);
         }
     }

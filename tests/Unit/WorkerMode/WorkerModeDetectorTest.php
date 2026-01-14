@@ -6,7 +6,7 @@ use Keepsuit\LaravelOpenTelemetry\Support\WorkerMode\WorkerModeDetector;
 
 test('detect mode with octane detector', function () {
     putenv('OCTANE_WORKERS=4');
-    
+
     $detector = new WorkerModeDetector([
         OctaneDetector::class,
         DefaultDetector::class,
@@ -27,7 +27,7 @@ test('fallback to default detector', function () {
 
 test('caches detected mode', function () {
     putenv('OCTANE_WORKERS=4');
-    
+
     $detector = new WorkerModeDetector([
         OctaneDetector::class,
         DefaultDetector::class,
@@ -43,7 +43,7 @@ test('caches detected mode', function () {
 
 test('check if worker mode', function () {
     putenv('OCTANE_WORKERS=4');
-    
+
     $detector = new WorkerModeDetector([
         OctaneDetector::class,
         DefaultDetector::class,
@@ -56,7 +56,7 @@ test('check if worker mode', function () {
 
 test('get detected mode', function () {
     putenv('OCTANE_WORKERS=4');
-    
+
     $detector = new WorkerModeDetector([
         OctaneDetector::class,
         DefaultDetector::class,

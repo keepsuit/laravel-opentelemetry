@@ -57,8 +57,6 @@ class OpenTelemetry
      *
      * This method explicitly flushes all pending telemetry data.
      * Useful in long-running processes to ensure data is exported without waiting for process shutdown.
-     *
-     * @return void
      */
     public function flush(): void
     {
@@ -93,8 +91,6 @@ class OpenTelemetry
      * This performs a graceful shutdown of all OpenTelemetry providers,
      * flushing any pending data and cleaning up resources.
      * Should typically only be called when the application is shutting down.
-     *
-     * @return void
      */
     public function shutdown(): void
     {
@@ -125,8 +121,6 @@ class OpenTelemetry
 
     /**
      * Get the current worker mode detector
-     *
-     * @return Support\WorkerMode\WorkerModeDetector
      */
     public function getWorkerModeDetector(): Support\WorkerMode\WorkerModeDetector
     {
@@ -135,8 +129,6 @@ class OpenTelemetry
 
     /**
      * Check if running in a worker mode (Octane, Horizon, Queue, etc.)
-     *
-     * @return bool
      */
     public function isRunningInWorkerMode(): bool
     {
@@ -145,12 +137,9 @@ class OpenTelemetry
 
     /**
      * Get the detected worker mode name
-     *
-     * @return string
      */
     public function getDetectedMode(): string
     {
         return $this->getWorkerModeDetector()->getDetectedMode();
     }
 }
-
