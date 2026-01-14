@@ -188,6 +188,44 @@ return [
     ],
 
     /**
+     * Worker mode detection configuration
+     *
+     * Detects worker modes (e.g., Octane, Horizon, Queue) and optimizes OpenTelemetry
+     * behavior for long-running processes.
+     */
+    'worker_mode' => [
+        /**
+         * Enable worker mode optimization
+         *
+         * When enabled, periodic flush callbacks are skipped for detected worker modes.
+         * Only the final shutdown flush is executed, improving performance.
+         * When disabled, flushes after each request regardless of the detected mode.
+         *
+         * The BatchSpanProcessor will still flush automatically when batch size is reached.
+         */
+        'enabled' => env('OTEL_WORKER_MODE_ENABLED', false),
+
+        /**
+         * Detectors to use for worker mode detection
+         *
+         * Detectors are checked in order, the first one that returns true determines the mode.
+         * Custom detectors implementing DetectorInterface can be added here.
+         *
+         * Built-in detectors:
+         * - OctaneDetector: Detects Laravel Octane worker mode
+         * - HorizonDetector: Detects Laravel Horizon queue workers
+         * - QueueDetector: Detects Laravel Queue workers
+         * - DefaultDetector: Fallback for standard HTTP requests
+         */
+        'detectors' => [
+            \Keepsuit\LaravelOpenTelemetry\Support\WorkerMode\Detectors\OctaneDetector::class,
+            \Keepsuit\LaravelOpenTelemetry\Support\WorkerMode\Detectors\HorizonDetector::class,
+            \Keepsuit\LaravelOpenTelemetry\Support\WorkerMode\Detectors\QueueDetector::class,
+            // DefaultDetector is automatically added as fallback
+        ],
+    ],
+
+    /**
      * List of instrumentation used for application tracing
      */
     'instrumentation' => [

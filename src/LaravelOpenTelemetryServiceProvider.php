@@ -14,6 +14,8 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Support\CarbonClock;
+use Keepsuit\LaravelOpenTelemetry\Support\WorkerMode\Detectors\DefaultDetector;
+use Keepsuit\LaravelOpenTelemetry\Support\WorkerMode\WorkerModeDetector;
 use Keepsuit\LaravelOpenTelemetry\Support\OpenTelemetryMonologHandler;
 use Keepsuit\LaravelOpenTelemetry\Support\PropagatorBuilder;
 use Keepsuit\LaravelOpenTelemetry\Support\ResourceBuilder;
@@ -133,15 +135,27 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         $this->app->bind(TracerInterface::class, fn () => $instrumentation->tracer());
         $this->app->bind(LoggerInterface::class, fn () => $instrumentation->logger());
 
+        // Initialize worker mode detector
+        $detectorClasses = config('opentelemetry.worker_mode.detectors', []);
+        // Always add DefaultDetector as fallback
+        $detectorClasses[] = DefaultDetector::class;
+        
+        $workerModeDetector = new WorkerModeDetector($detectorClasses);
+        $this->app->singleton(WorkerModeDetector::class, fn () => $workerModeDetector);
+        
+        $workerModeEnabled = config('opentelemetry.worker_mode.enabled', false);
+        $isWorkerMode = $workerModeDetector->isWorkerMode();
+
         $flushCallback = function () use ($loggerProvider, $tracerProvider, $meterProvider) {
             $tracerProvider->forceFlush();
             $loggerProvider->forceFlush();
             $meterProvider->forceFlush();
         };
 
-        Queue::looping($flushCallback);
-
-        $this->app->terminating($flushCallback);
+        // Register periodic flush if: standard request OR worker mode disabled
+        if (!$isWorkerMode || !$workerModeEnabled) {
+            $this->app->terminating($flushCallback);
+        }
     }
 
     protected function registerInstrumentation(): void
