@@ -1,9 +1,9 @@
 <?php
 
 use Keepsuit\LaravelOpenTelemetry\Instrumentation;
-use Keepsuit\LaravelOpenTelemetry\WorkerMode;
 use Keepsuit\LaravelOpenTelemetry\Support\ResourceAttributesParser;
 use Keepsuit\LaravelOpenTelemetry\TailSampling;
+use Keepsuit\LaravelOpenTelemetry\WorkerMode;
 use OpenTelemetry\SDK\Common\Configuration\Variables;
 
 return [
