@@ -29,9 +29,10 @@
     },
     "require-dev": {
         "guzzlehttp/guzzle": "^7.3",
-        "guzzlehttp/test-server": "^0.1",
         "guzzlehttp/psr7": "^2.0",
+        "guzzlehttp/test-server": "^0.1",
         "larastan/larastan": "^3.0",
+        "laravel/octane": "^2.13",
         "laravel/pint": "^1.18",
         "livewire/livewire": "^3.4",
         "nesbot/carbon": "^2.69 || ^3.0",
