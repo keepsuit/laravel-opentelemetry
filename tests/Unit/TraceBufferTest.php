@@ -1,7 +1,7 @@
 <?php
 
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
-use Keepsuit\LaravelOpenTelemetry\Support\TraceBuffer;
+use Keepsuit\LaravelOpenTelemetry\TailSampling\TraceBuffer;
 use Spatie\TestTime\TestTime;
 
 beforeEach(function () {
