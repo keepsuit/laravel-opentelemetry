@@ -34,7 +34,7 @@
         "larastan/larastan": "^3.0",
         "laravel/octane": "^2.13",
         "laravel/pint": "^1.18",
-        "livewire/livewire": "^3.4",
+        "livewire/livewire": "^3.0 || ^4.0",
         "nesbot/carbon": "^2.69 || ^3.0",
         "nunomaduro/collision": "^8.0",
         "open-telemetry/exporter-zipkin": "^1.1",

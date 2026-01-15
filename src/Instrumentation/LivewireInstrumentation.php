@@ -5,7 +5,6 @@ namespace Keepsuit\LaravelOpenTelemetry\Instrumentation;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\InstrumentationUtilities;
 use Livewire\Component;
-use Livewire\EventBus;
 use Livewire\LivewireManager;
 use OpenTelemetry\API\Trace\SpanInterface;
 use OpenTelemetry\Context\ScopeInterface;
@@ -28,12 +27,10 @@ class LivewireInstrumentation implements Instrumentation
             return;
         }
 
-        if (class_exists(EventBus::class)) {
-            $this->callAfterResolving(LivewireManager::class, $this->registerLivewireV3(...));
-        }
+        $this->callAfterResolving(LivewireManager::class, $this->registerLivewire(...));
     }
 
-    protected function registerLivewireV3(LivewireManager $livewireManager): void
+    protected function registerLivewire(LivewireManager $livewireManager): void
     {
         $livewireManager->listen('mount', function (Component $component) {
             if (! Tracer::traceStarted()) {
