@@ -10,7 +10,6 @@ use Illuminate\Contracts\Debug\ExceptionHandler as ExceptionHandlerContract;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Env;
-use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Support\CarbonClock;
@@ -18,6 +17,10 @@ use Keepsuit\LaravelOpenTelemetry\Support\OpenTelemetryMonologHandler;
 use Keepsuit\LaravelOpenTelemetry\Support\PropagatorBuilder;
 use Keepsuit\LaravelOpenTelemetry\Support\ResourceBuilder;
 use Keepsuit\LaravelOpenTelemetry\Support\SamplerBuilder;
+use Keepsuit\LaravelOpenTelemetry\Support\UserContextResolver;
+use Keepsuit\LaravelOpenTelemetry\TailSampling\TailSamplingProcessor;
+use Keepsuit\LaravelOpenTelemetry\TailSampling\TailSamplingRuleInterface;
+use Keepsuit\LaravelOpenTelemetry\WorkerMode\WorkerModeDetectorInterface;
 use OpenTelemetry\API\Common\Time\Clock;
 use OpenTelemetry\API\Instrumentation\CachedInstrumentation;
 use OpenTelemetry\API\Logs\LoggerInterface;
@@ -28,6 +31,7 @@ use OpenTelemetry\API\Trace\TracerInterface;
 use OpenTelemetry\Context\Propagation\NoopTextMapPropagator;
 use OpenTelemetry\Context\Propagation\TextMapPropagatorInterface;
 use OpenTelemetry\Contrib\Grpc\GrpcTransportFactory;
+use OpenTelemetry\Contrib\Otlp\ContentTypes;
 use OpenTelemetry\Contrib\Otlp\HttpEndpointResolver;
 use OpenTelemetry\Contrib\Otlp\LogsExporter;
 use OpenTelemetry\Contrib\Otlp\MetricExporter;
@@ -58,10 +62,12 @@ use OpenTelemetry\SDK\Metrics\NoopMeterProvider;
 use OpenTelemetry\SDK\Resource\ResourceInfo;
 use OpenTelemetry\SDK\Sdk;
 use OpenTelemetry\SDK\Trace\NoopTracerProvider;
+use OpenTelemetry\SDK\Trace\Sampler\AlwaysOnSampler;
+use OpenTelemetry\SDK\Trace\SamplerInterface;
 use OpenTelemetry\SDK\Trace\SpanExporter\ConsoleSpanExporterFactory;
 use OpenTelemetry\SDK\Trace\SpanExporter\InMemorySpanExporterFactory;
 use OpenTelemetry\SDK\Trace\SpanExporterInterface;
-use OpenTelemetry\SDK\Trace\SpanProcessor\BatchSpanProcessorBuilder;
+use OpenTelemetry\SDK\Trace\SpanProcessor\BatchSpanProcessor;
 use OpenTelemetry\SDK\Trace\SpanProcessorInterface;
 use OpenTelemetry\SDK\Trace\TracerProvider;
 use OpenTelemetry\SDK\Trace\TracerProviderInterface;
@@ -72,11 +78,18 @@ use Throwable;
 
 class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 {
+    public function packageRegistered(): void
+    {
+        $this->app->singleton(OpenTelemetry::class);
+        $this->app->singleton(UserContextResolver::class);
+    }
+
     public function packageBooted(): void
     {
         $this->configureEnvironmentVariables();
         $this->injectConfig();
-        $this->init();
+        $this->initOtelSdk();
+        $this->initWorkerMode();
         $this->registerInstrumentation();
     }
 
@@ -87,7 +100,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
             ->hasConfigFile();
     }
 
-    protected function init(): void
+    protected function initOtelSdk(): void
     {
         Clock::setDefault(new CarbonClock);
 
@@ -95,12 +108,12 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 
         $propagator = match (Sdk::isDisabled()) {
             true => new NoopTextMapPropagator,
-            default => PropagatorBuilder::new()->build(config('opentelemetry.propagators'))
+            false => PropagatorBuilder::new()->build(config('opentelemetry.propagators'))
         };
 
         $meterProvider = $this->buildMeterProvider($resource);
-        $tracerProvider = $this->buildTracerProvider($resource);
-        $loggerProvider = $this->buildLoggerProvider($resource);
+        $tracerProvider = $this->buildTracerProvider($resource, meterProvider: $meterProvider);
+        $loggerProvider = $this->buildLoggerProvider($resource, meterProvider: $meterProvider);
 
         Sdk::builder()
             ->setTracerProvider($tracerProvider)
@@ -120,16 +133,6 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         $this->app->bind(MeterInterface::class, fn () => $instrumentation->meter());
         $this->app->bind(TracerInterface::class, fn () => $instrumentation->tracer());
         $this->app->bind(LoggerInterface::class, fn () => $instrumentation->logger());
-
-        $flushCallback = function () use ($loggerProvider, $tracerProvider, $meterProvider) {
-            $tracerProvider->forceFlush();
-            $loggerProvider->forceFlush();
-            $meterProvider->forceFlush();
-        };
-
-        Queue::looping($flushCallback);
-
-        $this->app->terminating($flushCallback);
     }
 
     protected function registerInstrumentation(): void
@@ -162,11 +165,11 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         $envRepository->set('OTEL_PHP_DEBUG_SCOPES_DISABLED', '1');
     }
 
-    protected function buildTracerProvider(ResourceInfo $resource): TracerProviderInterface
+    protected function buildTracerProvider(ResourceInfo $resource, MeterProviderInterface $meterProvider): TracerProviderInterface
     {
         $spanExporter = match (Sdk::isDisabled()) {
             true => (new InMemorySpanExporterFactory)->create(),
-            default => $this->buildSpanExporter(),
+            false => $this->buildSpanExporter(),
         };
         $this->app->bind(SpanExporterInterface::class, fn () => $spanExporter);
 
@@ -174,7 +177,11 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
             return new NoopTracerProvider;
         }
 
-        $spanProcessor = (new BatchSpanProcessorBuilder($spanExporter))->build();
+        $batchProcessor = new BatchSpanProcessor(
+            exporter: $spanExporter,
+            clock: Clock::getDefault(),
+            meterProvider: $meterProvider
+        );
 
         $samplerConfig = config('opentelemetry.traces.sampler', []);
         $sampler = SamplerBuilder::new()->build(
@@ -183,10 +190,19 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
             $samplerConfig['args'] ?? []
         );
 
+        $tailSamplingConfig = config('opentelemetry.traces.sampler.tail_sampling', []);
+        $tailSamplingEnabled = (bool) ($tailSamplingConfig['enabled'] ?? false);
+
         $builder = TracerProvider::builder()
             ->setResource($resource)
-            ->addSpanProcessor($spanProcessor)
-            ->setSampler($sampler);
+            ->setSampler(match ($tailSamplingEnabled) {
+                true => new AlwaysOnSampler,
+                false => $sampler,
+            })
+            ->addSpanProcessor(match ($tailSamplingEnabled) {
+                true => $this->buildTailSamplingProcessor($batchProcessor, $sampler, $tailSamplingConfig),
+                false => $batchProcessor,
+            });
 
         foreach (config('opentelemetry.traces.processors', []) as $processorClass) {
             if (class_exists($processorClass)) {
@@ -205,7 +221,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
     {
         $metricsExporter = match (Sdk::isDisabled()) {
             true => (new InMemoryExporterFactory)->create(),
-            default => $this->buildMetricsExporter(),
+            false => $this->buildMetricsExporter(),
         };
         $this->app->bind(MetricExporterInterface::class, fn () => $metricsExporter);
         $metricsReader = new ExportingReader($metricsExporter);
@@ -221,11 +237,11 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
             ->build();
     }
 
-    protected function buildLoggerProvider(ResourceInfo $resource): LoggerProviderInterface
+    protected function buildLoggerProvider(ResourceInfo $resource, MeterProviderInterface $meterProvider): LoggerProviderInterface
     {
         $logExporter = match (Sdk::isDisabled()) {
             true => (new LogsInMemoryExporterFactory)->create(),
-            default => $this->buildLogsExporter(),
+            false => $this->buildLogsExporter(),
         };
         $this->app->bind(LogRecordExporterInterface::class, fn () => $logExporter);
 
@@ -235,7 +251,8 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 
         $logProcessor = new BatchLogRecordProcessor(
             exporter: $logExporter,
-            clock: Clock::getDefault()
+            clock: Clock::getDefault(),
+            meterProvider: $meterProvider
         );
 
         $builder = LoggerProvider::builder()
@@ -299,7 +316,22 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
     }
 
     /**
-     * @phpstan-param Signals::TRACE|Signals::METRICS|Signals::LOGS $signal
+     * @param  array{
+     *     endpoint?: string,
+     *     protocol?: string,
+     *     max_retries?: int,
+     *     traces_protocol?: string,
+     *     traces_timeout?: int,
+     *     traces_headers?: string|array<string, string>,
+     *     metrics_protocol?: string,
+     *     metrics_timeout?: int,
+     *     metrics_headers?: string|array<string, string>,
+     *     logs_protocol?: string,
+     *     logs_timeout?: int,
+     *     logs_headers?: string|array<string, string>,
+     * }  $config
+     * @param  Signals::TRACE|Signals::METRICS|Signals::LOGS  $signal
+     * @return TransportInterface<ContentTypes::PROTOBUF|ContentTypes::JSON>
      */
     protected function buildOtlpTransport(array $config, string $signal): TransportInterface
     {
@@ -325,6 +357,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
             Signals::LOGS => $config['logs_headers'] ?? [],
         };
 
+        /** @var array<string, string> $headers */
         $headers = rescue(
             fn () => is_string($headers) ? MapParser::parse($headers) : $headers,
             [],
@@ -387,5 +420,75 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
                 'level' => 'debug',
             ]);
         });
+    }
+
+    /**
+     * @param  array{
+     *     rules?: array<class-string<TailSamplingRuleInterface>, array<string, mixed>|bool>,
+     *     decision_wait?: int,
+     * }  $config
+     */
+    protected function buildTailSamplingProcessor(SpanProcessorInterface $downstreamProcessor, SamplerInterface $sampler, array $config): SpanProcessorInterface
+    {
+        $rules = [];
+
+        foreach (($config['rules'] ?? []) as $ruleClass => $options) {
+            if (is_bool($options)) {
+                $options = ['enabled' => $options];
+            }
+
+            if (! ($options['enabled'] ?? true)) {
+                continue;
+            }
+
+            if (! class_exists($ruleClass)) {
+                continue;
+            }
+
+            $rule = $this->app->make($ruleClass);
+
+            if (! $rule instanceof TailSamplingRuleInterface) {
+                continue;
+            }
+
+            $rule->initialize($options ?? []);
+            $rules[] = $rule;
+        }
+
+        return new TailSamplingProcessor(
+            $downstreamProcessor,
+            $sampler,
+            $rules,
+            decisionWait: max(1, (int) ($config['decision_wait'] ?? 5000))
+        );
+    }
+
+    protected function initWorkerMode(): void
+    {
+        $flushAfterEachIteration = config()->boolean('opentelemetry.worker_mode.flush_after_each_iteration', false);
+
+        if (! $flushAfterEachIteration) {
+            return;
+        }
+
+        $detectorClasses = config()->array('opentelemetry.worker_mode.detectors', []);
+
+        foreach ($detectorClasses as $detectorClass) {
+            if (! class_exists($detectorClass)) {
+                continue;
+            }
+
+            $detector = $this->app->make($detectorClass);
+
+            if (! $detector instanceof WorkerModeDetectorInterface) {
+                continue;
+            }
+
+            if ($detector->detect()) {
+                $detector->onIterationEnded(fn () => \Keepsuit\LaravelOpenTelemetry\Facades\OpenTelemetry::flush());
+
+                return;
+            }
+        }
     }
 }

@@ -89,22 +89,28 @@ it('injects propagation headers manually to client request', function () {
         ->header('traceparent')->toBe([sprintf('00-%s-%s-01', $traceId, $httpSpan->getSpanId())]);
 });
 
-it('create http client span', function () {
-    registerInstrumentation(HttpClientInstrumentation::class);
+it('create http client span', function (array $options, bool $withTrace) {
+    registerInstrumentation(HttpClientInstrumentation::class, $options);
 
     Http::fake([
         '*' => Http::response('', 200, ['Content-Length' => 0]),
     ]);
 
-    withRootSpan(function () {
-        Http::get(Server::$url);
+    withRootSpan(function () use ($withTrace) {
+        if ($withTrace) {
+            Http::withTrace()->get(Server::$url);
+        } else {
+            Http::get(Server::$url);
+        }
     });
+
+    expect(getRecordedSpans()->count())->toBe(2);
 
     $httpSpan = getRecordedSpans()->first();
 
     expect($httpSpan)
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
-        ->getName()->toBe('HTTP GET')
+        ->getName()->toBe('GET')
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_UNSET)
         ->getAttributes()->toMatchArray([
             'url.full' => 'http://127.0.0.1/',
@@ -117,7 +123,20 @@ it('create http client span', function () {
             'server.port' => 8126,
             'http.response.status_code' => 200,
         ]);
-});
+})->with([
+    'global' => [
+        'options' => ['manual' => false],
+        'withTrace' => false,
+    ],
+    'manual' => [
+        'options' => ['manual' => true],
+        'withTrace' => true,
+    ],
+    'both' => [
+        'options' => ['manual' => false],
+        'withTrace' => true,
+    ],
+]);
 
 it('set span status to error on 4xx and 5xx status code', function () {
     registerInstrumentation(HttpClientInstrumentation::class);
@@ -134,7 +153,7 @@ it('set span status to error on 4xx and 5xx status code', function () {
 
     expect($httpSpan)
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
-        ->getName()->toBe('HTTP GET')
+        ->getName()->toBe('GET')
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_ERROR)
         ->getAttributes()->toMatchArray([
             'http.response.status_code' => 500,
@@ -245,5 +264,32 @@ it('mark some headers as sensitive by default', function () {
             'http.request.header.authorization' => ['*****'],
             'http.request.header.cookie' => ['*****'],
             'http.response.header.set-cookie' => ['*****'],
+        ]);
+});
+
+it('can resolve route name', function () {
+    registerInstrumentation(HttpClientInstrumentation::class);
+
+    HttpClientInstrumentation::setRouteNameResolver(function (\Psr\Http\Message\RequestInterface $request) {
+        return match (true) {
+            str_starts_with($request->getUri()->getPath(), '/products/') => '/products/{id}',
+            default => null,
+        };
+    });
+
+    Http::fake([
+        '*' => Http::response('', 200, ['Content-Length' => 0]),
+    ]);
+
+    withRootSpan(function () {
+        Http::get(Server::$url.'products/123');
+    });
+
+    $span = getRecordedSpans()->first();
+
+    expect($span)
+        ->getName()->toBe('GET /products/{id}')
+        ->getAttributes()->toMatchArray([
+            'url.template' => '/products/{id}',
         ]);
 });

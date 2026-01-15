@@ -2,6 +2,8 @@
 
 use Keepsuit\LaravelOpenTelemetry\Instrumentation;
 use Keepsuit\LaravelOpenTelemetry\Support\ResourceAttributesParser;
+use Keepsuit\LaravelOpenTelemetry\TailSampling;
+use Keepsuit\LaravelOpenTelemetry\WorkerMode;
 use OpenTelemetry\SDK\Common\Configuration\Variables;
 
 return [
@@ -23,6 +25,11 @@ return [
      * By default, reads and parses OTEL_RESOURCE_ATTRIBUTES environment variable (which should be in the format 'key1=value1,key2=value2').
      */
     'resource_attributes' => ResourceAttributesParser::parse((string) env(Variables::OTEL_RESOURCE_ATTRIBUTES, '')),
+
+    /**
+     * Include authenticated user context on traces and logs.
+     */
+    'user_context' => env('OTEL_USER_CONTEXT', true),
 
     /**
      * Comma separated list of propagators to use.
@@ -73,6 +80,20 @@ return [
                  */
                 'ratio' => env('OTEL_TRACES_SAMPLER_TRACEIDRATIO_RATIO', 0.05),
             ],
+
+            'tail_sampling' => [
+                'enabled' => env('OTEL_TRACES_TAIL_SAMPLING_ENABLED', false),
+                // Maximum time to wait for the end of the trace before making a sampling decision (in milliseconds)
+                'decision_wait' => env('OTEL_TRACES_TAIL_SAMPLING_DECISION_WAIT', 5000),
+
+                'rules' => [
+                    TailSampling\Rules\ErrorsRule::class => env('OTEL_TRACES_TAIL_SAMPLING_RULE_KEEP_ERRORS', true),
+                    TailSampling\Rules\SlowTraceRule::class => [
+                        'enabled' => env('OTEL_TRACES_TAIL_SAMPLING_RULE_SLOW_TRACES', true),
+                        'threshold_ms' => env('OTEL_TRACES_TAIL_SAMPLING_SLOW_TRACES_THRESHOLD_MS', 2000),
+                    ],
+                ],
+            ],
         ],
 
         /**
@@ -106,7 +127,7 @@ return [
         /**
          * Context field name for trace id
          */
-        'trace_id_field' => 'traceid',
+        'trace_id_field' => 'trace_id',
 
         /**
          * Logs record processors.
@@ -197,7 +218,7 @@ return [
 
         Instrumentation\EventInstrumentation::class => [
             'enabled' => env('OTEL_INSTRUMENTATION_EVENT', true),
-            'ignored' => [],
+            'excluded' => [],
         ],
 
         Instrumentation\ViewInstrumentation::class => env('OTEL_INSTRUMENTATION_VIEW', true),
@@ -206,7 +227,36 @@ return [
 
         Instrumentation\ConsoleInstrumentation::class => [
             'enabled' => env('OTEL_INSTRUMENTATION_CONSOLE', true),
-            'excluded' => [],
+            'commands' => [],
+        ],
+    ],
+
+    /**
+     * Worker mode detection configuration
+     *
+     * Detects worker modes (e.g., Octane, Horizon, Queue) and optimizes OpenTelemetry
+     * behavior for long-running processes.
+     */
+    'worker_mode' => [
+        /**
+         * Flush after each iteration (e.g. http request, queue job).
+         * If false, flushes are batched and executed periodically and on shutdown.
+         */
+        'flush_after_each_iteration' => env('OTEL_WORKER_MODE_FLUSH_AFTER_EACH_ITERATION', false),
+
+        /**
+         * Detectors to use for worker mode detection
+         *
+         * Detectors are checked in order, the first one that returns true determines the mode.
+         * Custom detectors implementing DetectorInterface can be added here.
+         *
+         * Built-in detectors:
+         * - OctaneDetector: Detects Laravel Octane
+         * - QueueDetector: Detects Laravel default queue worker and Laravel Horizon
+         */
+        'detectors' => [
+            WorkerMode\Detectors\OctaneWorkerModeDetector::class,
+            WorkerMode\Detectors\QueueWorkerModeDetector::class,
         ],
     ],
 ];

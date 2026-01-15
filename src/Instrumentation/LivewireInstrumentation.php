@@ -3,31 +3,34 @@
 namespace Keepsuit\LaravelOpenTelemetry\Instrumentation;
 
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
-use Keepsuit\LaravelOpenTelemetry\Support\InstrumentationUtilities;
+use Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\InstrumentationUtilities;
 use Livewire\Component;
-use Livewire\EventBus;
 use Livewire\LivewireManager;
+use OpenTelemetry\API\Trace\SpanInterface;
+use OpenTelemetry\Context\ScopeInterface;
+use WeakMap;
 
 class LivewireInstrumentation implements Instrumentation
 {
     use InstrumentationUtilities;
 
-    protected \WeakMap $components;
+    /**
+     * @var WeakMap<Component, array{0: SpanInterface, 1: ScopeInterface}>
+     */
+    protected WeakMap $components;
 
     public function register(array $options): void
     {
-        $this->components = new \WeakMap;
+        $this->components = new WeakMap;
 
         if (! class_exists(LivewireManager::class)) {
             return;
         }
 
-        if (class_exists(EventBus::class)) {
-            $this->callAfterResolving(LivewireManager::class, $this->registerLivewireV3(...));
-        }
+        $this->callAfterResolving(LivewireManager::class, $this->registerLivewire(...));
     }
 
-    protected function registerLivewireV3(LivewireManager $livewireManager): void
+    protected function registerLivewire(LivewireManager $livewireManager): void
     {
         $livewireManager->listen('mount', function (Component $component) {
             if (! Tracer::traceStarted()) {

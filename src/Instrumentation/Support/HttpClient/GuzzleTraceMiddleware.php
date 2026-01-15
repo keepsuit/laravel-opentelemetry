@@ -1,6 +1,6 @@
 <?php
 
-namespace Keepsuit\LaravelOpenTelemetry\Support\HttpClient;
+namespace Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\HttpClient;
 
 use Closure;
 use GuzzleHttp\Promise\PromiseInterface;
@@ -13,6 +13,7 @@ use OpenTelemetry\SemConv\Attributes\HttpAttributes;
 use OpenTelemetry\SemConv\Attributes\ServerAttributes;
 use OpenTelemetry\SemConv\Attributes\UrlAttributes;
 use OpenTelemetry\SemConv\Incubating\Attributes\HttpIncubatingAttributes;
+use OpenTelemetry\SemConv\Incubating\Attributes\UrlIncubatingAttributes;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 
@@ -26,8 +27,11 @@ class GuzzleTraceMiddleware
                     return $handler($request, $options);
                 }
 
-                $span = Tracer::newSpan(sprintf('HTTP %s', $request->getMethod()))
+                $route = HttpClientInstrumentation::routeName($request);
+
+                $span = Tracer::newSpan(trim(sprintf('%s %s', $request->getMethod(), $route ?? '')))
                     ->setSpanKind(SpanKind::KIND_CLIENT)
+                    ->setAttribute(UrlIncubatingAttributes::URL_TEMPLATE, $route)
                     ->setAttribute(UrlAttributes::URL_FULL, sprintf('%s://%s%s', $request->getUri()->getScheme(), $request->getUri()->getHost(), $request->getUri()->getPath()))
                     ->setAttribute(UrlAttributes::URL_PATH, $request->getUri()->getPath())
                     ->setAttribute(UrlAttributes::URL_QUERY, $request->getUri()->getQuery())

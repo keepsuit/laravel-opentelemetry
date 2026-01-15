@@ -31,10 +31,12 @@ it('can watch a redis call', function (string $client) {
 
     expect($span)
         ->toBeInstanceOf(ImmutableSpan::class)
-        ->getName()->toBe('redis default get')
+        ->getName()->toBe('GET')
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
         ->getAttributes()->toArray()->toBe([
             'db.system.name' => 'redis',
+            'db.operation.name' => 'GET',
+            'db.namespace' => '0',
             'db.query.text' => 'get test',
             'server.address' => $config['host'],
         ])
