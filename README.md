@@ -649,7 +649,7 @@ $meter = Meter::createCounter('my-meter', 'times', 'my custom meter');
 $meter->add(1);
 
 // create a histogram meter
-$meter = Meter::createHistogram('my-histogram', 'ms', 'my custom histogram');
+$meter = Meter::histogram('my-histogram', 'ms', 'my custom histogram');
 $meter->record(100, ['name' => 'value', 'app' => 'my-app']);
 
 // create a gauge meter

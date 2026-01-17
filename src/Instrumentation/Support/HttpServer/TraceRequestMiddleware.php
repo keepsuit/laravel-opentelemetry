@@ -6,19 +6,24 @@ use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
+use Keepsuit\LaravelOpenTelemetry\Facades\Meter;
 use Keepsuit\LaravelOpenTelemetry\Facades\OpenTelemetry;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\HttpServerInstrumentation;
+use OpenTelemetry\API\Common\Time\Clock;
+use OpenTelemetry\API\Common\Time\ClockInterface;
 use OpenTelemetry\API\Trace\SpanInterface;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
 use OpenTelemetry\SemConv\Attributes\ClientAttributes;
+use OpenTelemetry\SemConv\Attributes\ErrorAttributes;
 use OpenTelemetry\SemConv\Attributes\HttpAttributes;
 use OpenTelemetry\SemConv\Attributes\NetworkAttributes;
 use OpenTelemetry\SemConv\Attributes\ServerAttributes;
 use OpenTelemetry\SemConv\Attributes\UrlAttributes;
 use OpenTelemetry\SemConv\Attributes\UserAgentAttributes;
 use OpenTelemetry\SemConv\Incubating\Attributes\HttpIncubatingAttributes;
+use OpenTelemetry\SemConv\Metrics\HttpMetrics;
 use Symfony\Component\HttpFoundation\Response;
 
 class TraceRequestMiddleware
@@ -33,25 +38,26 @@ class TraceRequestMiddleware
             return $next($request);
         }
 
-        $bootedTimestamp = $this->bootedTimestamp($request);
+        $requestStartedAt = $this->requestStartTimestamp($request);
 
-        $span = $this->startTracing($request, $bootedTimestamp);
+        $span = $this->startTracing($request, $requestStartedAt);
         $scope = $span->activate();
 
         Tracer::updateLogContext();
 
-        if ($bootedTimestamp) {
-            Tracer::newSpan('app bootstrap')
-                ->setStartTimestamp($bootedTimestamp)
-                ->start()
-                ->end();
-        }
+        //        if ($bootedTimestamp) {
+        //            Tracer::newSpan('app bootstrap')
+        //                ->setStartTimestamp($bootedTimestamp)
+        //                ->start()
+        //                ->end();
+        //        }
 
         try {
             $response = $next($request);
 
             if ($response instanceof Response) {
                 $this->recordHttpResponseToSpan($span, $response);
+                $this->recordRequestDurationMetric($requestStartedAt, $request, $response);
             }
 
             return $response;
@@ -69,9 +75,7 @@ class TraceRequestMiddleware
     {
         $context = Tracer::extractContextFromPropagationHeaders($request->headers->all());
 
-        /** @var non-empty-string $route */
-        $route = rescue(fn () => Route::getRoutes()->match($request)->uri(), rescue: false);
-        $route = $route !== null ? '/'.ltrim($route, '/') : null;
+        $route = $this->resolveRouteName($request);
 
         $builder = Tracer::newSpan(trim(sprintf('%s %s', $request->method(), $route ?? '')))
             ->setSpanKind(SpanKind::KIND_SERVER)
@@ -136,6 +140,38 @@ class TraceRequestMiddleware
         }
     }
 
+    protected function recordRequestDurationMetric(int $requestStartedAt, Request $request, Response $response): void
+    {
+        $duration = Clock::getDefault()->now() - $requestStartedAt;
+
+        $protocolVersion = Str::of($request->getProtocolVersion() ?? '');
+        $attributes = [
+            HttpAttributes::HTTP_REQUEST_METHOD => $request->method(),
+            UrlAttributes::URL_SCHEME => $request->getScheme(),
+            HttpAttributes::HTTP_RESPONSE_STATUS_CODE => $response->getStatusCode(),
+            HttpAttributes::HTTP_ROUTE => $this->resolveRouteName($request),
+            ErrorAttributes::ERROR_TYPE => $response->isOk() ? null : $response->getStatusCode(),
+            NetworkAttributes::NETWORK_PROTOCOL_NAME => 'http',
+            NetworkAttributes::NETWORK_PROTOCOL_VERSION => match (true) {
+                $protocolVersion->isEmpty() => null,
+                $protocolVersion->contains('/') => $protocolVersion->after('/')->toString(),
+                default => $protocolVersion->toString(),
+            },
+            ServerAttributes::SERVER_ADDRESS => $request->getHttpHost(),
+            ServerAttributes::SERVER_PORT => $request->getPort(),
+        ];
+
+        // @see https://opentelemetry.io/docs/specs/semconv/http/http-metrics/#metric-httpserverrequestduration
+        Meter::histogram(
+            name: HttpMetrics::HTTP_SERVER_REQUEST_DURATION,
+            unit: 's',
+            description: 'Duration of HTTP server requests.',
+            advisory: [
+                'ExplicitBucketBoundaries' => [0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 7.5, 10.0],
+            ])
+            ->record($duration, $attributes);
+    }
+
     protected function recordHeaders(SpanInterface $span, Request|Response $http): void
     {
         $prefix = match (true) {
@@ -157,18 +193,26 @@ class TraceRequestMiddleware
     }
 
     /**
-     * @return int|null Timestamp in nanoseconds when the application booted
+     * @return int Timestamp in nanoseconds when the application booted
      */
-    protected function bootedTimestamp(Request $request): ?int
+    protected function requestStartTimestamp(Request $request): int
     {
         if ($request->server->has('REQUEST_TIME_FLOAT')) {
-            return (int) (floatval($request->server('REQUEST_TIME_FLOAT')) * 1_000_000_000); // Convert seconds to nanoseconds
+            return (int) (floatval($request->server('REQUEST_TIME_FLOAT')) * ClockInterface::NANOS_PER_SECOND); // Convert seconds to nanoseconds
         }
 
         if (defined('LARAVEL_START')) {
-            return (int) (LARAVEL_START * 1_000_000_000); // Convert seconds to nanoseconds
+            return (int) (LARAVEL_START * ClockInterface::NANOS_PER_SECOND); // Convert seconds to nanoseconds
         }
 
-        return null;
+        return Clock::getDefault()->now();
+    }
+
+    protected function resolveRouteName(Request $request): ?string
+    {
+        /** @var string|null $route */
+        $route = rescue(fn () => Route::getRoutes()->match($request)->uri(), rescue: false);
+
+        return $route !== null ? '/'.ltrim($route, '/') : null;
     }
 }

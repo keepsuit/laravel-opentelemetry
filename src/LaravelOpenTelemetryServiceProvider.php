@@ -11,7 +11,6 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Env;
 use Illuminate\Support\Str;
-use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Support\CarbonClock;
 use Keepsuit\LaravelOpenTelemetry\Support\OpenTelemetryMonologHandler;
 use Keepsuit\LaravelOpenTelemetry\Support\PropagatorBuilder;
@@ -80,15 +79,20 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 {
     public function packageRegistered(): void
     {
-        $this->app->singleton(OpenTelemetry::class);
+        $this->app->singleton(\Keepsuit\LaravelOpenTelemetry\OpenTelemetry::class);
+        $this->app->singleton(\Keepsuit\LaravelOpenTelemetry\Meter::class);
+        $this->app->singleton(\Keepsuit\LaravelOpenTelemetry\Tracer::class);
+        $this->app->singleton(\Keepsuit\LaravelOpenTelemetry\Logger::class);
         $this->app->singleton(UserContextResolver::class);
+
+        $this->configureEnvironmentVariables();
+        $this->injectConfig();
+        $this->initOtelSdk();
     }
 
     public function packageBooted(): void
     {
-        $this->configureEnvironmentVariables();
-        $this->injectConfig();
-        $this->initOtelSdk();
+        $this->bootSingletons();
         $this->initWorkerMode();
         $this->registerInstrumentation();
     }
@@ -129,14 +133,18 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
             schemaUrl: Version::VERSION_1_36_0->url(),
         );
 
-        $this->app->bind(TextMapPropagatorInterface::class, fn () => $propagator);
-        $this->app->bind(MeterInterface::class, fn () => $instrumentation->meter());
-        $this->app->bind(TracerInterface::class, fn () => $instrumentation->tracer());
-        $this->app->bind(LoggerInterface::class, fn () => $instrumentation->logger());
+        $this->app->singleton(TextMapPropagatorInterface::class, fn () => $propagator);
+        $this->app->singleton(MeterInterface::class, fn () => $instrumentation->meter());
+        $this->app->singleton(TracerInterface::class, fn () => $instrumentation->tracer());
+        $this->app->singleton(LoggerInterface::class, fn () => $instrumentation->logger());
     }
 
     protected function registerInstrumentation(): void
     {
+        if (Sdk::isDisabled()) {
+            return;
+        }
+
         $this->app->booted(function (Application $app) {
             $app->register(InstrumentationServiceProvider::class);
         });
@@ -148,7 +156,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
             }
 
             $handler->reportable(function (Throwable $e) {
-                Tracer::activeSpan()
+                \Keepsuit\LaravelOpenTelemetry\Facades\Tracer::activeSpan()
                     ->recordException($e)
                     ->setStatus(StatusCode::STATUS_ERROR);
             });
@@ -223,9 +231,9 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
             true => (new InMemoryExporterFactory)->create(),
             false => $this->buildMetricsExporter(),
         };
-        $this->app->bind(MetricExporterInterface::class, fn () => $metricsExporter);
+        $this->app->singleton(MetricExporterInterface::class, fn () => $metricsExporter);
         $metricsReader = new ExportingReader($metricsExporter);
-        $this->app->bind(MetricReaderInterface::class, fn () => $metricsReader);
+        $this->app->singleton(MetricReaderInterface::class, fn () => $metricsReader);
 
         if (Sdk::isDisabled()) {
             return new NoopMeterProvider;
@@ -488,6 +496,27 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
                 $detector->onIterationEnded(fn () => \Keepsuit\LaravelOpenTelemetry\Facades\OpenTelemetry::flush());
 
                 return;
+            }
+        }
+    }
+
+    /**
+     * This ensure that singletons are resolved before handling any request when running in worker mode.
+     * This prevents they are flushed between requests.
+     */
+    protected function bootSingletons(): void
+    {
+        $singletons = [
+            OpenTelemetry::class,
+            UserContextResolver::class,
+            Meter::class,
+            Tracer::class,
+            Logger::class,
+        ];
+
+        foreach ($singletons as $singleton) {
+            if ($this->app->bound($singleton)) {
+                $this->app->make($singleton);
             }
         }
     }

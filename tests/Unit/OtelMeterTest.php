@@ -72,7 +72,7 @@ test('batch observer', function () {
 });
 
 test('histogram', function () {
-    $histogram = Meter::createHistogram('test_histogram');
+    $histogram = Meter::histogram('test_histogram');
 
     expect($histogram)->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Histogram::class);
 

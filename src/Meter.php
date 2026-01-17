@@ -6,6 +6,7 @@ use OpenTelemetry\API\Metrics\AsynchronousInstrument;
 use OpenTelemetry\API\Metrics\CounterInterface;
 use OpenTelemetry\API\Metrics\GaugeInterface;
 use OpenTelemetry\API\Metrics\HistogramInterface;
+use OpenTelemetry\API\Metrics\Instrument;
 use OpenTelemetry\API\Metrics\MeterInterface;
 use OpenTelemetry\API\Metrics\ObservableCallbackInterface;
 use OpenTelemetry\API\Metrics\ObservableCounterInterface;
@@ -16,6 +17,11 @@ use OpenTelemetry\SDK\Metrics\MetricReaderInterface;
 
 class Meter
 {
+    /**
+     * @var array<string, Instrument>
+     */
+    protected array $instruments = [];
+
     public function __construct(
         protected MeterInterface $meter,
         protected MetricReaderInterface $reader
@@ -87,19 +93,27 @@ class Meter
     }
 
     /**
-     * Creates a `Histogram`.
+     * Get or create a `Histogram` instrument.
      *
      * @param  string  $name  name of the instrument
      * @param  string|null  $unit  unit of measure
      * @param  string|null  $description  description of the instrument
-     * @param  array  $advisory  an optional set of recommendations
+     * @param  array{ExplicitBucketBoundaries?: float[]}  $advisory  an optional set of recommendations
      * @return HistogramInterface created instrument
      *
      * @see https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/api.md#histogram-creation
      */
-    public function createHistogram(string $name, ?string $unit = null, ?string $description = null, array $advisory = []): HistogramInterface
+    public function histogram(string $name, ?string $unit = null, ?string $description = null, array $advisory = []): HistogramInterface
     {
-        return $this->meter->createHistogram($name, $unit, $description, $advisory);
+        if ($existing = $this->resolveExistingInstrument($name, HistogramInterface::class)) {
+            return $existing;
+        }
+
+        $histogram = $this->meter->createHistogram($name, $unit, $description, $advisory);
+
+        $this->instruments[$name] = $histogram;
+
+        return $histogram;
     }
 
     /**
@@ -173,5 +187,26 @@ class Meter
     public function collect(): bool
     {
         return $this->reader->collect();
+    }
+
+    /**
+     * @template T of Instrument
+     *
+     * @param  class-string<T>  $instrumentClass
+     * @return T|null
+     */
+    protected function resolveExistingInstrument(string $name, string $instrumentClass): ?Instrument
+    {
+        if (! isset($this->instruments[$name])) {
+            return null;
+        }
+
+        $existing = $this->instruments[$name];
+
+        if ($existing instanceof $instrumentClass) {
+            return $existing;
+        }
+
+        throw new \RuntimeException("Instrument with name '{$name}' already exists as a different type.");
     }
 }
