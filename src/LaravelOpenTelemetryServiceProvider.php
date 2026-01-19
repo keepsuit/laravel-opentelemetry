@@ -6,9 +6,11 @@ use Composer\InstalledVersions;
 use Http\Discovery\Psr17FactoryDiscovery;
 use Http\Discovery\Psr18ClientDiscovery;
 use Illuminate\Config\Repository;
+use Illuminate\Container\Container;
 use Illuminate\Contracts\Debug\ExceptionHandler as ExceptionHandlerContract;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Env;
 use Illuminate\Support\Str;
 use Keepsuit\LaravelOpenTelemetry\Support\CarbonClock;
@@ -20,6 +22,7 @@ use Keepsuit\LaravelOpenTelemetry\Support\UserContextResolver;
 use Keepsuit\LaravelOpenTelemetry\TailSampling\TailSamplingProcessor;
 use Keepsuit\LaravelOpenTelemetry\TailSampling\TailSamplingRuleInterface;
 use Keepsuit\LaravelOpenTelemetry\WorkerMode\WorkerModeDetectorInterface;
+use Keepsuit\LaravelOpenTelemetry\WorkerMode\WorkerModeManager;
 use OpenTelemetry\API\Common\Time\Clock;
 use OpenTelemetry\API\Instrumentation\CachedInstrumentation;
 use OpenTelemetry\API\Logs\LoggerInterface;
@@ -79,21 +82,21 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 {
     public function packageRegistered(): void
     {
-        $this->app->singleton(\Keepsuit\LaravelOpenTelemetry\OpenTelemetry::class);
         $this->app->singleton(\Keepsuit\LaravelOpenTelemetry\Meter::class);
         $this->app->singleton(\Keepsuit\LaravelOpenTelemetry\Tracer::class);
         $this->app->singleton(\Keepsuit\LaravelOpenTelemetry\Logger::class);
+        $this->app->singleton(\Keepsuit\LaravelOpenTelemetry\OpenTelemetry::class);
         $this->app->singleton(UserContextResolver::class);
 
         $this->configureEnvironmentVariables();
         $this->injectConfig();
-        $this->initOtelSdk();
+        $this->initWorkerModeManager();
     }
 
     public function packageBooted(): void
     {
+        $this->initOtelSdk();
         $this->bootSingletons();
-        $this->initWorkerMode();
         $this->registerInstrumentation();
     }
 
@@ -471,33 +474,32 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         );
     }
 
-    protected function initWorkerMode(): void
+    protected function initWorkerModeManager(): void
     {
-        $flushAfterEachIteration = config()->boolean('opentelemetry.worker_mode.flush_after_each_iteration', false);
+        $this->app->singleton(WorkerModeManager::class, function () {
+            $detectors = Collection::make(config()->array('opentelemetry.worker_mode.detectors', []))
+                ->map(function (string $detectorClass) {
+                    if (! class_exists($detectorClass)) {
+                        return null;
+                    }
 
-        if (! $flushAfterEachIteration) {
-            return;
-        }
+                    $detector = Container::getInstance()->make($detectorClass);
 
-        $detectorClasses = config()->array('opentelemetry.worker_mode.detectors', []);
+                    if (! $detector instanceof WorkerModeDetectorInterface) {
+                        return null;
+                    }
 
-        foreach ($detectorClasses as $detectorClass) {
-            if (! class_exists($detectorClass)) {
-                continue;
-            }
+                    return $detector;
+                })
+                ->filter()
+                ->all();
 
-            $detector = $this->app->make($detectorClass);
-
-            if (! $detector instanceof WorkerModeDetectorInterface) {
-                continue;
-            }
-
-            if ($detector->detect()) {
-                $detector->onIterationEnded(fn () => \Keepsuit\LaravelOpenTelemetry\Facades\OpenTelemetry::flush());
-
-                return;
-            }
-        }
+            return new WorkerModeManager(
+                flushAfterEachIteration: config()->boolean('opentelemetry.worker_mode.flush_after_each_iteration', false),
+                metricsExportInterval: config()->integer('opentelemetry.worker_mode.metrics_collect_interval', 60),
+                detectors: $detectors
+            );
+        });
     }
 
     /**
@@ -507,11 +509,12 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
     protected function bootSingletons(): void
     {
         $singletons = [
-            OpenTelemetry::class,
-            UserContextResolver::class,
             Meter::class,
             Tracer::class,
             Logger::class,
+            OpenTelemetry::class,
+            UserContextResolver::class,
+            WorkerModeManager::class,
         ];
 
         foreach ($singletons as $singleton) {

@@ -245,6 +245,14 @@ return [
         'flush_after_each_iteration' => env('OTEL_WORKER_MODE_FLUSH_AFTER_EACH_ITERATION', false),
 
         /**
+         * Metrics collection interval in seconds.
+         * When running in worker mode, metrics are collected and exported at this interval.
+         * Note: This setting is ignored if 'flush_after_each_iteration' is true.
+         * Note: The interval is checked after each iteration, so the actual interval may be longer
+         */
+        'metrics_collect_interval' => env('OTEL_WORKER_MODE_COLLECT_INTERVAL', 60),
+
+        /**
          * Detectors to use for worker mode detection
          *
          * Detectors are checked in order, the first one that returns true determines the mode.
