@@ -45,12 +45,12 @@ class TraceRequestMiddleware
 
         Tracer::updateLogContext();
 
-        //        if ($bootedTimestamp) {
-        //            Tracer::newSpan('app bootstrap')
-        //                ->setStartTimestamp($bootedTimestamp)
-        //                ->start()
-        //                ->end();
-        //        }
+        $bootedTimestamp = HttpServerInstrumentation::getBootedTimestamp() ?? Clock::getDefault()->now();
+        if ($bootedTimestamp > $requestStartedAt) {
+            Tracer::newSpan('app bootstrap')
+                ->setStartTimestamp($requestStartedAt)
+                ->start()->end($bootedTimestamp);
+        }
 
         try {
             $response = $next($request);

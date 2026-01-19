@@ -158,10 +158,9 @@ it('can record a route exception in a nested span', function () {
 
     $response->assertServerError();
 
-    expect(getRecordedSpans())->toHaveCount(3);
-
-    $nestedSpan = getRecordedSpans()[1];
-    $routeSpan = getRecordedSpans()[2];
+    $spans = getRecordedSpans()->reverse();
+    $nestedSpan = $spans->get(0);
+    $routeSpan = $spans->get(1);
 
     expect($nestedSpan)
         ->getName()->toBe('nested')

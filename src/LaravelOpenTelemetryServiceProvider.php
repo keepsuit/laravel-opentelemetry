@@ -8,7 +8,6 @@ use Http\Discovery\Psr18ClientDiscovery;
 use Illuminate\Config\Repository;
 use Illuminate\Container\Container;
 use Illuminate\Contracts\Debug\ExceptionHandler as ExceptionHandlerContract;
-use Illuminate\Foundation\Application;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Env;
@@ -148,9 +147,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
             return;
         }
 
-        $this->app->booted(function (Application $app) {
-            $app->register(InstrumentationServiceProvider::class);
-        });
+        $this->app->register(InstrumentationServiceProvider::class);
 
         $this->callAfterResolving(ExceptionHandlerContract::class, function (ExceptionHandlerContract $handler) {
             /** @phpstan-ignore-next-line */
