@@ -14,14 +14,14 @@ use OpenTelemetry\API\Metrics\ObservableUpDownCounterInterface;
 use OpenTelemetry\API\Metrics\UpDownCounterInterface;
 
 /**
- * @method static ObservableCallbackInterface batchObserve(callable $callback, AsynchronousInstrument ...$instruments)
- * @method static CounterInterface createCounter(string $name, ?string $unit = null, ?string $description = null, array $advisory = [])
- * @method static ObservableCounterInterface createObservableCounter(string $name, ?string $unit = null, ?string $description = null, array $advisory = [], callable ...$callbacks)
- * @method static HistogramInterface createHistogram(string $name, ?string $unit = null, ?string $description = null, array $advisory = [])
- * @method static GaugeInterface createGauge(string $name, ?string $unit = null, ?string $description = null, array $advisory = [])
- * @method static ObservableGaugeInterface createObservableGauge(string $name, ?string $unit = null, ?string $description = null, array $advisory = [], callable ...$callbacks)
- * @method static UpDownCounterInterface createUpDownCounter(string $name, ?string $unit = null, ?string $description = null, array $advisory = [])
- * @method static ObservableUpDownCounterInterface createObservableUpDownCounter(string $name, ?string $unit = null, ?string $description = null, array $advisory = [], callable ...$callbacks)
+ * @method static CounterInterface counter(string $name, ?string $unit = null, ?string $description = null, array $advisory = [])
+ * @method static HistogramInterface histogram(string $name, ?string $unit = null, ?string $description = null, array $advisory = [])
+ * @method static GaugeInterface gauge(string $name, ?string $unit = null, ?string $description = null, array $advisory = [])
+ * @method static UpDownCounterInterface upDownCounter(string $name, ?string $unit = null, ?string $description = null, array $advisory = [])
+ * @method static ObservableCounterInterface observableCounter(string $name, ?string $unit = null, ?string $description = null, array $advisory = [])
+ * @method static ObservableGaugeInterface observableGauge(string $name, ?string $unit = null, ?string $description = null, array $advisory = [])
+ * @method static ObservableUpDownCounterInterface observableUpDownCounter(string $name, ?string $unit = null, ?string $description = null, array $advisory = [])
+ * @method static ObservableCallbackInterface batchObserve(AsynchronousInstrument[] $instruments, callable $callback)
  * @method static bool collect()
  *
  * @see \Keepsuit\LaravelOpenTelemetry\Meter

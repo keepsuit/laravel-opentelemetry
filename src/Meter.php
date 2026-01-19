@@ -28,7 +28,7 @@ class Meter
     ) {}
 
     /**
-     * Creates a `Counter`.
+     * Get or create a `Counter` instrument.
      *
      * @param  string  $name  name of the instrument
      * @param  ?string  $unit  unit of measure
@@ -38,58 +38,43 @@ class Meter
      *
      * @see https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/api.md#counter-creation
      */
-    public function createCounter(string $name, ?string $unit = null, ?string $description = null, array $advisory = []): CounterInterface
+    public function counter(string $name, ?string $unit = null, ?string $description = null, array $advisory = []): CounterInterface
     {
-        return $this->meter->createCounter($name, $unit, $description, $advisory);
+        if ($existing = $this->resolveExistingInstrument($name, CounterInterface::class)) {
+            return $existing;
+        }
+
+        $counter = $this->meter->createCounter($name, $unit, $description, $advisory);
+
+        $this->instruments[$name] = $counter;
+
+        return $counter;
     }
 
     /**
-     * Creates an `ObservableCounter`.
+     * Get or create a `Gauge` instrument.
      *
      * @param  string  $name  name of the instrument
-     * @param  ?string  $unit  unit of measure
-     * @param  ?string  $description  description of the instrument
+     * @param  string|null  $unit  unit of measure
+     * @param  string|null  $description  description of the instrument
      * @param  array  $advisory  an optional set of recommendations
-     * @param  callable  ...$callbacks  responsible for reporting measurements
-     * @return ObservableCounterInterface created instrument
+     * @return GaugeInterface created instrument
      *
-     * @see https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/api.md#asynchronous-counter-creation
+     * @see https://opentelemetry.io/docs/specs/otel/metrics/api/#gauge-creation
+     *
+     * @experimental
      */
-    public function createObservableCounter(string $name, ?string $unit = null, ?string $description = null, array $advisory = [], callable ...$callbacks): ObservableCounterInterface
+    public function gauge(string $name, ?string $unit = null, ?string $description = null, array $advisory = []): GaugeInterface
     {
-        return $this->meter->createObservableCounter($name, $unit, $description, $advisory, ...$callbacks);
-    }
+        if ($existing = $this->resolveExistingInstrument($name, GaugeInterface::class)) {
+            return $existing;
+        }
 
-    /**
-     * Reports measurements for multiple asynchronous instrument from a single callback.
-     *
-     * The callback receives an {@link ObserverInterface} for each instrument. All provided
-     * instruments have to be created by this meter.
-     *
-     * ```php
-     * $callback = $meter->batchObserve(
-     *     function(
-     *         ObserverInterface $usageObserver,
-     *         ObserverInterface $pressureObserver,
-     *     ): void {
-     *         [$usage, $pressure] = expensive_system_call();
-     *         $usageObserver->observe($usage);
-     *         $pressureObserver->observe($pressure);
-     *     },
-     *     $meter->createObservableCounter('usage', description: 'count of items used'),
-     *     $meter->createObservableGauge('pressure', description: 'force per unit area'),
-     * );
-     * ```
-     *
-     * @param  callable  $callback  function responsible for reporting the measurements
-     * @param  AsynchronousInstrument  ...$instruments  instruments to report measurements for
-     * @return ObservableCallbackInterface token to detach callback
-     *
-     * @see https://opentelemetry.io/docs/specs/otel/metrics/api/#multiple-instrument-callbacks
-     */
-    public function batchObserve(callable $callback, AsynchronousInstrument ...$instruments): ObservableCallbackInterface
-    {
-        return $this->meter->batchObserve($callback, ...$instruments);
+        $gauge = $this->meter->createGauge($name, $unit, $description, $advisory);
+
+        $this->instruments[$name] = $gauge;
+
+        return $gauge;
     }
 
     /**
@@ -117,42 +102,7 @@ class Meter
     }
 
     /**
-     * Creates a `Gauge`.
-     *
-     * @param  string  $name  name of the instrument
-     * @param  string|null  $unit  unit of measure
-     * @param  string|null  $description  description of the instrument
-     * @param  array  $advisory  an optional set of recommendations
-     * @return GaugeInterface created instrument
-     *
-     * @see https://opentelemetry.io/docs/specs/otel/metrics/api/#gauge-creation
-     *
-     * @experimental
-     */
-    public function createGauge(string $name, ?string $unit = null, ?string $description = null, array $advisory = []): GaugeInterface
-    {
-        return $this->meter->createGauge($name, $unit, $description, $advisory);
-    }
-
-    /**
-     * Creates an `ObservableGauge`.
-     *
-     * @param  string  $name  name of the instrument
-     * @param  string|null  $unit  unit of measure
-     * @param  string|null  $description  description of the instrument
-     * @param  array  $advisory  an optional set of recommendations
-     * @param  callable  ...$callbacks  responsible for reporting measurements
-     * @return ObservableGaugeInterface created instrument
-     *
-     * @see https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/api.md#asynchronous-gauge-creation
-     */
-    public function createObservableGauge(string $name, ?string $unit = null, ?string $description = null, array $advisory = [], callable ...$callbacks): ObservableGaugeInterface
-    {
-        return $this->meter->createObservableGauge($name, $unit, $description, $advisory, ...$callbacks);
-    }
-
-    /**
-     * Creates an `UpDownCounter`.
+     * Get or create an `UpDownCounter` instrument.
      *
      * @param  string  $name  name of the instrument
      * @param  string|null  $unit  unit of measure
@@ -162,26 +112,121 @@ class Meter
      *
      * @see https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/api.md#updowncounter-creation
      */
-    public function createUpDownCounter(string $name, ?string $unit = null, ?string $description = null, array $advisory = []): UpDownCounterInterface
+    public function upDownCounter(string $name, ?string $unit = null, ?string $description = null, array $advisory = []): UpDownCounterInterface
     {
-        return $this->meter->createUpDownCounter($name, $unit, $description, $advisory);
+        if ($existing = $this->resolveExistingInstrument($name, UpDownCounterInterface::class)) {
+            return $existing;
+        }
+
+        $upDownCounter = $this->meter->createUpDownCounter($name, $unit, $description, $advisory);
+
+        $this->instruments[$name] = $upDownCounter;
+
+        return $upDownCounter;
     }
 
     /**
-     * Creates an `ObservableUpDownCounter`.
+     * Get or create an `ObservableCounter` instrument.
+     *
+     * @param  string  $name  name of the instrument
+     * @param  ?string  $unit  unit of measure
+     * @param  ?string  $description  description of the instrument
+     * @param  array  $advisory  an optional set of recommendations
+     * @return ObservableCounterInterface created instrument
+     *
+     * @see https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/api.md#asynchronous-counter-creation
+     */
+    public function observableCounter(string $name, ?string $unit = null, ?string $description = null, array $advisory = []): ObservableCounterInterface
+    {
+        if ($existing = $this->resolveExistingInstrument($name, ObservableCounterInterface::class)) {
+            return $existing;
+        }
+
+        $observableCounter = $this->meter->createObservableCounter($name, $unit, $description, $advisory);
+
+        $this->instruments[$name] = $observableCounter;
+
+        return $observableCounter;
+    }
+
+    /**
+     * Get or create an `ObservableGauge` instrument.
      *
      * @param  string  $name  name of the instrument
      * @param  string|null  $unit  unit of measure
      * @param  string|null  $description  description of the instrument
      * @param  array  $advisory  an optional set of recommendations
-     * @param  callable  ...$callbacks  responsible for reporting measurements
+     * @return ObservableGaugeInterface created instrument
+     *
+     * @see https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/api.md#asynchronous-gauge-creation
+     */
+    public function observableGauge(string $name, ?string $unit = null, ?string $description = null, array $advisory = []): ObservableGaugeInterface
+    {
+        if ($existing = $this->resolveExistingInstrument($name, ObservableGaugeInterface::class)) {
+            return $existing;
+        }
+
+        $observableGauge = $this->meter->createObservableGauge($name, $unit, $description, $advisory);
+
+        $this->instruments[$name] = $observableGauge;
+
+        return $observableGauge;
+    }
+
+    /**
+     * Get or create an `ObservableUpDownCounter`.
+     *
+     * @param  string  $name  name of the instrument
+     * @param  string|null  $unit  unit of measure
+     * @param  string|null  $description  description of the instrument
+     * @param  array  $advisory  an optional set of recommendations
      * @return ObservableUpDownCounterInterface created instrument
      *
      * @see https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/api.md#asynchronous-updowncounter-creation
      */
-    public function createObservableUpDownCounter(string $name, ?string $unit = null, ?string $description = null, array $advisory = [], callable ...$callbacks): ObservableUpDownCounterInterface
+    public function observableUpDownCounter(string $name, ?string $unit = null, ?string $description = null, array $advisory = []): ObservableUpDownCounterInterface
     {
-        return $this->meter->createObservableUpDownCounter($name, $unit, $description, $advisory, ...$callbacks);
+        if ($existing = $this->resolveExistingInstrument($name, ObservableUpDownCounterInterface::class)) {
+            return $existing;
+        }
+
+        $observableUpDownCounter = $this->meter->createObservableUpDownCounter($name, $unit, $description, $advisory);
+
+        $this->instruments[$name] = $observableUpDownCounter;
+
+        return $observableUpDownCounter;
+    }
+
+    /**
+     * Reports measurements for multiple asynchronous instrument from a single callback.
+     *
+     * The callback receives an {@link ObserverInterface} for each instrument. All provided
+     * instruments have to be created by this meter.
+     *
+     * ```php
+     * $callback = Meter::batchObserve([
+     *      Meter::observableCounter('usage', description: 'count of items used'),
+     *      Meter::observableGauge('pressure', description: 'force per unit area'),
+     *     ], function(
+     *         ObserverInterface $usageObserver,
+     *         ObserverInterface $pressureObserver,
+     *     ): void {
+     *         [$usage, $pressure] = expensive_system_call();
+     *         $usageObserver->observe($usage);
+     *         $pressureObserver->observe($pressure);
+     *     },
+     * );
+     * ```
+     *
+     * @param  AsynchronousInstrument[]  $instruments  instruments to report measurements for
+     * @param  callable  $callback  function responsible for reporting the measurements
+     * @return ObservableCallbackInterface token to detach callback
+     *
+     * @see https://opentelemetry.io/docs/specs/otel/metrics/api/#multiple-instrument-callbacks
+     */
+    public function batchObserve(array $instruments, callable $callback): ObservableCallbackInterface
+    {
+        return $this->meter->batchObserve($callback, ...$instruments);
     }
 
     public function collect(): bool
