@@ -11,13 +11,22 @@ This package allows you to integrate OpenTelemetry in a Laravel application.
 
 - [Installation](#installation)
 - [User Context](#user-context)
+- [Instrumentations](#instrumentations)
+    - [Http Server Requests](#http-server-requests)
+    - [Http Client](#http-client)
+    - [Database](#database)
+    - [Queue Jobs](#queue-jobs)
+    - [Redis](#redis)
+    - [Cache](#cache)
+    - [Events](#events)
+    - [View](#view)
+    - [Livewire](#livewire)
+    - [Console Commands](#console-commands)
 - [Traces](#traces)
-    - [Provided tracing integrations](#provided-tracing-integrations)
-    - [Logs context](#logs-context)
-    - [Manual traces](#manual-traces)
+    - [Manual Traces](#manual-traces)
     - [Trace Sampling](#trace-sampling)
+    - [Logs Context](#logs-context)
 - [Metrics](#metrics)
-    - [Default Metrics](#default-metrics)
     - [Meter API](#meter-api)
     - [Metrics Temporality](#metrics-temporality)
 - [Logs](#logs)
@@ -341,28 +350,14 @@ public function boot(): void
 }
 ```
 
-## Traces
+## Instrumentations
 
-This package provides a set of integrations to automatically trace common operations in a Laravel application.
-You can disable or customize each integration in the config file in the `instrumentations` section.
+This package provides a set of instrumentations to automatically trace common operations in a Laravel application.
+Each instrumentation is configurable in `config/opentelemetry.php` and, when applicable, records default metrics described below.
 
-### Provided tracing integrations
-
-- [Http server requests](#http-server-requests)
-- [Http client](#http-client)
-- [Database](#database)
-- [Redis](#redis)
-- [Queue jobs](#queue-jobs)
-- [Cache](#cache)
-- [Events](#events)
-- [View](#view)
-- [Livewire](#livewire)
-- [Console commands](#console-commands)
-
-#### Http server requests
+### Http Server Requests
 
 Http server requests are automatically traced by injecting `\Keepsuit\LaravelOpenTelemetry\Support\HttpServer\TraceRequestMiddleware::class` to the global middlewares.
-You can disable it by setting `OT_INSTRUMENTATION_HTTP_SERVER` to `false` or removing the `HttpServerInstrumentation::class` from the config file.
 
 Configuration options:
 
@@ -371,7 +366,13 @@ Configuration options:
 - `allowed_headers`: list of headers to include in the trace
 - `sensitive_headers`: list of headers with sensitive data to hide in the trace
 
-#### Http client
+Metrics:
+
+- `http.server.request.duration` (histogram, seconds) - Request processing time
+
+You can disable this instrumentation by setting `OT_INSTRUMENTATION_HTTP_SERVER` to `false` or removing `HttpServerInstrumentation::class` from the config.
+
+### Http Client
 
 Http client requests are automatically traced by default, but you can set it to manual mode by setting `manual` to `true` in the config file.
 
@@ -381,8 +382,7 @@ When using manual mode, you need to call the `withTrace` method on the request b
 Http::withTrace()->get('https://example.com');
 ```
 
-The low-cardinality url template cannot be automatically detected in http client requests like in server requests.
-By default, the span name will be only the HTTP method (e.g. `GET`) but you can set manually resolve the url template from the request.
+The low-cardinality url template cannot be automatically detected in http client requests like in server requests. By default, the span name will be only the HTTP method (e.g. `GET`) but you can manually resolve the url template from the request.
 
 In your service provider:
 
@@ -401,82 +401,69 @@ public function boot(): void
 }
 ```
 
-You can disable it by setting `OT_INSTRUMENTATION_HTTP_CLIENT` to `false` or removing the `HttpClientInstrumentation::class` from the config file.
+Metrics:
 
-Configuration options:
+- `http.client.request.duration` (histogram, seconds) - Outgoing HTTP request duration
 
-- `manual`: set to `true` to enable manual tracing
-- `allowed_headers`: list of headers to include in the trace
-- `sensitive_headers`: list of headers with sensitive data to hide in the trace
+You can disable this instrumentation by setting `OT_INSTRUMENTATION_HTTP_CLIENT` to `false` or removing `HttpClientInstrumentation::class` from the config.
 
-#### Database
+### Database
 
 Database queries are automatically traced. A span is created for each query executed.
 
-You can disable it by setting `OT_INSTRUMENTATION_QUERY` to `false` or removing the `QueryInstrumentation::class` from the config file.
+Metrics:
 
-#### Redis
+- `db.client.operation.duration` (histogram, seconds) - Duration of database client operations
+
+You can disable this instrumentation by setting `OT_INSTRUMENTATION_QUERY` to `false` or removing `QueryInstrumentation::class` from the config.
+
+### Queue Jobs
+
+Queue jobs are automatically traced. The instrumentation creates a parent span with kind `PRODUCER` when a job is dispatched and a child span with kind `CONSUMER` when the job is executed.
+
+You can disable this instrumentation by setting `OT_INSTRUMENTATION_QUEUE` to `false` or removing `QueueInstrumentation::class` from the config.
+
+### Redis
 
 Redis commands are automatically traced. A span is created for each command executed.
 
-You can disable it by setting `OT_INSTRUMENTATION_REDIS` to `false` or removing the `RedisInstrumentation::class` from the config file.
+You can disable this instrumentation by setting `OT_INSTRUMENTATION_REDIS` to `false` or removing `RedisInstrumentation::class` from the config.
 
-#### Queue jobs
-
-Queue jobs are automatically traced.
-It will automatically create a parent span with kind `PRODUCER` when a job is dispatched and a child span with kind `CONSUMER` when the job is executed.
-
-You can disable it by setting `OT_INSTRUMENTATION_QUEUE` to `false` or removing the `QueueInstrumentation::class` from the config file.
-
-#### Cache
+### Cache
 
 Cache operations are recorded as events in the current active span.
 
-You can disable it by setting `OT_INSTRUMENTATION_CACHE` to `false` or removing the `CacheInstrumentation::class` from the config file.
+You can disable this instrumentation by setting `OT_INSTRUMENTATION_CACHE` to `false` or removing `CacheInstrumentation::class` from the config.
 
-#### Events
+### Events
 
-Events are recorded as events in the current active span. Some internal laravel events are excluded by default.
-You can customize the excluded events in the config file.
+Events are recorded as events in the current active span. Some internal Laravel events are excluded by default and can be customized in the configuration.
 
-You can disable it by setting `OT_INSTRUMENTATION_EVENT` to `false` or removing the `EventInstrumentation::class` from the config file.
+You can disable this instrumentation by setting `OT_INSTRUMENTATION_EVENT` to `false` or removing `EventInstrumentation::class` from the config.
 
-#### View
+### View
 
 View rendering is automatically traced. A span is created for each rendered view.
 
-You can disable it by setting `OT_INSTRUMENTATION_VIEW` to `false` or removing the `ViewInstrumentation::class` from the config file.
+You can disable this instrumentation by setting `OT_INSTRUMENTATION_VIEW` to `false` or removing `ViewInstrumentation::class` from the config.
 
-#### Livewire
+### Livewire
 
 Livewire components rendering is automatically traced. A span is created for each rendered component.
 
-You can disable it by setting `OTEL_INSTRUMENTATION_LIVEWIRE` to `false` or removing the `LivewireInstrumentation::class` from the config file.
+You can disable this instrumentation by setting `OTEL_INSTRUMENTATION_LIVEWIRE` to `false` or removing `LivewireInstrumentation::class` from the config.
 
-#### Console commands
+### Console Commands
 
-Console commands are not traced by default.
-You can trace console commands by adding them to the `commands` option of `ConsoleInstrumentation`.
+Console commands are not traced by default. You can trace console commands by adding them to the `commands` option of `ConsoleInstrumentation`.
 
-You can disable it by setting `OTEL_INSTRUMENTATION_CONSOLE` to `false` or removing the `ConsoleInstrumentation::class` from the config file.
+You can disable this instrumentation by setting `OTEL_INSTRUMENTATION_CONSOLE` to `false` or removing `ConsoleInstrumentation::class` from the config.
 
-Configuration options:
+## Traces
 
-- `commands`: list of commands to trace
+This package provides tracing capabilities and utilities that integrate with the instrumentations described above.
 
-### Logs context
-
-When starting a trace with provided instrumentation, the trace id is automatically injected in the log context.
-This allows to correlate logs with traces.
-
-If you are starting the root trace manually,
-you should call `Tracer::updateLogContext()` to inject the trace id in the log context.
-
-> [!NOTE]
-> When using the OpenTelemetry logs driver (`otlp`),
-> the trace id is automatically injected in the log context without the need to call `Tracer::updateLogContext()`.
-
-### Manual traces
+### Manual Traces
 
 Spans can be manually created with the `newSpan` method on the `Tracer` facade.
 This method returns a `SpanBuilder` instance that can be used to customize and start the span.
@@ -553,29 +540,7 @@ Head sampling makes decisions at the beginning of a trace, based on the trace ID
 - Parent-based sampling (keep traces based on whether parent was sampled)
 - Rate limiting
 
-Head sampling is configured in the `traces.sampler` section of the config file:
-
-```php
-'sampler' => [
-    /**
-     * Wraps the sampler in a parent based sampler
-     */
-    'parent' => env('OTEL_TRACES_SAMPLER_PARENT', true),
-
-    /**
-     * Sampler type
-     * Supported values: "always_on", "always_off", "traceidratio"
-     */
-    'type' => env('OTEL_TRACES_SAMPLER_TYPE', 'always_on'),
-
-    'args' => [
-        /**
-         * Sampling ratio for traceidratio sampler
-         */
-        'ratio' => env('OTEL_TRACES_SAMPLER_TRACEIDRATIO_RATIO', 0.05),
-    ],
-],
-```
+Head sampling is configured in the `traces.sampler` section of the config file.
 
 #### Tail Sampling
 
@@ -635,7 +600,7 @@ class MyCustomRule implements TailSamplingRuleInterface
 }
 ```
 
-Register your custom rule in the configuration:
+Then register your custom rule in the configuration:
 
 ```php
 // config/opentelemetry.php
@@ -647,40 +612,21 @@ Register your custom rule in the configuration:
 ],
 ```
 
+### Logs Context
+
+When starting a trace with provided instrumentation, the trace id is automatically injected in the log context.
+This allows to correlate logs with traces.
+
+If you are starting the root trace manually,
+you should call `Tracer::updateLogContext()` to inject the trace id in the log context.
+
+> [!NOTE]
+> When using the OpenTelemetry logs driver (`otlp`),
+> the trace id is automatically injected in the log context without the need to call `Tracer::updateLogContext()`.
+
 ## Metrics
 
-This package includes optional automatic metrics instrumentation for common operations in a Laravel application. Metrics are collected by the OpenTelemetry Meter and exported according to your `metrics.exporter` configuration.
-
-### Default Metrics
-
-The package ships with default metrics collected from the built-in instrumentations. These metrics are enabled when the corresponding instrumentation is enabled in `config/opentelemetry.php`.
-
-- HTTP Server requests
-    - Metric: histogram measuring request duration (seconds)
-    - Typical name: `http.server.request.duration`
-    - Attributes: HTTP method, route/template (when available), status code, host, and configured headers
-
-- HTTP Client requests
-    - Metric: histogram measuring client request duration (seconds)
-    - Typical name: `http.client.request.duration`
-    - Attributes: HTTP method, url template (if resolved), status code, host
-
-- Database client operations
-    - Metric: histogram measuring database client operation duration (seconds)
-    - Typical name: `db.client.operation.duration`
-    - Attributes: `db.system`, `db.namespace`, `db.operation`, SQL text, and server address
-
-- Queue jobs
-    - Metric: histogram measuring job execution duration (seconds)
-    - Typical name: `queue.job.execution.duration`
-    - Attributes: job name, connection, queue, and success/failure
-
-Each instrumentation records metrics using the package `Meter` abstraction. You can customize or create your own meters using the `Meter` facade (see below).
-
-### Meter API
-
 The Meter facade provide methods to create metric instruments such as counters, gauges, and histograms.
-Created instruments are cached by name to prevent duplicate instrument creation.
 
 The supported instruments are:
 
@@ -694,6 +640,9 @@ The supported instruments are:
 
 There is also a `batchObserve` method to record multiple measurements at once.
 
+> [!NOTE]
+> Instruments are cached by name to prevent duplicate instrument creation in the same Meter instance.
+
 Example usage:
 
 ```php
@@ -706,6 +655,11 @@ $counter->add(1);
 // create or retrieve a histogram instrument
 $histogram = Meter::histogram('my-histogram', 'ms', 'my custom histogram');
 $histogram->record(100, ['name' => 'value', 'app' => 'my-app']);
+
+// create or retrieve a gauge instrument
+$gauge = Meter::gauge('my-gauge', null, 'my custom gauge');
+$gauge->record(100, ['name' => 'value', 'app' => 'my-app']);
+$gauge->record(1.2, ['name' => 'percentage', 'app' => 'my-app']);
 
 // Execute the callback with multiple observable instruments
 Meter::batchObserve([
