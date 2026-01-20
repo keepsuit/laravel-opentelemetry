@@ -38,6 +38,7 @@ class TraceRequestMiddleware
             return $next($request);
         }
 
+        $bootedTimestamp = HttpServerInstrumentation::getBootedTimestamp() ?? Clock::getDefault()->now();
         $requestStartedAt = $this->requestStartTimestamp($request);
 
         $span = $this->startTracing($request, $requestStartedAt);
@@ -45,25 +46,23 @@ class TraceRequestMiddleware
 
         Tracer::updateLogContext();
 
-        $bootedTimestamp = HttpServerInstrumentation::getBootedTimestamp() ?? Clock::getDefault()->now();
         if ($bootedTimestamp > $requestStartedAt) {
             Tracer::newSpan('app bootstrap')
                 ->setStartTimestamp($requestStartedAt)
-                ->start()->end($bootedTimestamp);
+                ->start()
+                ->end($bootedTimestamp);
         }
 
         try {
             $response = $next($request);
 
             if ($response instanceof Response) {
-                $this->recordHttpResponseToSpan($span, $response);
+                $this->recordTraceAttributes($span, $request, $response);
                 $this->recordRequestDurationMetric($requestStartedAt, $request, $response);
             }
 
             return $response;
         } finally {
-            $this->recordHttpRequestToSpan($span, $request);
-
             Tracer::terminateActiveSpansUpToRoot($span);
 
             $scope->detach();
@@ -79,8 +78,7 @@ class TraceRequestMiddleware
 
         $builder = Tracer::newSpan(trim(sprintf('%s %s', $request->method(), $route ?? '')))
             ->setSpanKind(SpanKind::KIND_SERVER)
-            ->setParent($context)
-            ->setAttribute(HttpAttributes::HTTP_ROUTE, $route);
+            ->setParent($context);
 
         if ($startTimestamp) {
             $builder->setStartTimestamp($startTimestamp);
@@ -93,8 +91,23 @@ class TraceRequestMiddleware
         return $span;
     }
 
-    protected function recordHttpResponseToSpan(SpanInterface $span, Response $response): void
+    protected function recordTraceAttributes(SpanInterface $span, Request $request, Response $response): void
     {
+        $span->setAttributes($this->sharedTraceMetricAttributes($request, $response));
+
+        $span
+            ->setAttribute(UrlAttributes::URL_FULL, $request->fullUrl())
+            ->setAttribute(UrlAttributes::URL_PATH, $request->path() === '/' ? $request->path() : '/'.$request->path())
+            ->setAttribute(UrlAttributes::URL_QUERY, $request->getQueryString())
+            ->setAttribute(UserAgentAttributes::USER_AGENT_ORIGINAL, $request->userAgent())
+            ->setAttribute(HttpIncubatingAttributes::HTTP_REQUEST_BODY_SIZE, $request->header('Content-Length'))
+            ->setAttribute(NetworkAttributes::NETWORK_PEER_ADDRESS, $request->server('REMOTE_ADDR'))
+            ->setAttribute(ClientAttributes::CLIENT_ADDRESS, $request->ip());
+
+        if (config('opentelemetry.user_context') === true && $request->user() !== null) {
+            $span->setAttributes(OpenTelemetry::collectUserContext($request->user()));
+        }
+
         $span->setAttribute(HttpAttributes::HTTP_RESPONSE_STATUS_CODE, $response->getStatusCode());
 
         if (($content = $response->getContent()) !== false) {
@@ -112,42 +125,32 @@ class TraceRequestMiddleware
         }
     }
 
-    protected function recordHttpRequestToSpan(SpanInterface $span, Request $request): void
-    {
-        $protocolVersion = Str::of($request->getProtocolVersion() ?? '');
-
-        $span
-            ->setAttribute(UrlAttributes::URL_FULL, $request->fullUrl())
-            ->setAttribute(UrlAttributes::URL_PATH, $request->path() === '/' ? $request->path() : '/'.$request->path())
-            ->setAttribute(UrlAttributes::URL_QUERY, $request->getQueryString())
-            ->setAttribute(UrlAttributes::URL_SCHEME, $request->getScheme())
-            ->setAttribute(UserAgentAttributes::USER_AGENT_ORIGINAL, $request->userAgent())
-            ->setAttribute(HttpAttributes::HTTP_REQUEST_METHOD, $request->method())
-            ->setAttribute(HttpIncubatingAttributes::HTTP_REQUEST_BODY_SIZE, $request->header('Content-Length'))
-            ->setAttribute(ServerAttributes::SERVER_ADDRESS, $request->getHttpHost())
-            ->setAttribute(ServerAttributes::SERVER_PORT, $request->getPort())
-            ->setAttribute(NetworkAttributes::NETWORK_PROTOCOL_NAME, 'http')
-            ->setAttribute(NetworkAttributes::NETWORK_PROTOCOL_VERSION, match (true) {
-                $protocolVersion->isEmpty() => null,
-                $protocolVersion->contains('/') => $protocolVersion->after('/')->toString(),
-                default => $protocolVersion->toString(),
-            })
-            ->setAttribute(NetworkAttributes::NETWORK_PEER_ADDRESS, $request->server('REMOTE_ADDR'))
-            ->setAttribute(ClientAttributes::CLIENT_ADDRESS, $request->ip());
-
-        if (config('opentelemetry.user_context') === true && $request->user() !== null) {
-            $span->setAttributes(OpenTelemetry::collectUserContext($request->user()));
-        }
-    }
-
     protected function recordRequestDurationMetric(int $requestStartedAt, Request $request, Response $response): void
     {
         $duration = Clock::getDefault()->now() - $requestStartedAt;
+        $attributes = $this->sharedTraceMetricAttributes($request, $response);
 
+        // @see https://opentelemetry.io/docs/specs/semconv/http/http-metrics/#metric-httpserverrequestduration
+        Meter::histogram(
+            name: HttpMetrics::HTTP_SERVER_REQUEST_DURATION,
+            unit: 's',
+            description: 'Duration of HTTP server requests.',
+            advisory: [
+                'ExplicitBucketBoundaries' => [0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 7.5, 10.0],
+            ])
+            ->record($duration, $attributes);
+    }
+
+    /**
+     * @return array<non-empty-string, bool|int|float|string|array|null>
+     */
+    protected function sharedTraceMetricAttributes(Request $request, Response $response): array
+    {
         $protocolVersion = Str::of($request->getProtocolVersion() ?? '');
-        $attributes = [
-            HttpAttributes::HTTP_REQUEST_METHOD => $request->method(),
+
+        return [
             UrlAttributes::URL_SCHEME => $request->getScheme(),
+            HttpAttributes::HTTP_REQUEST_METHOD => $request->method(),
             HttpAttributes::HTTP_RESPONSE_STATUS_CODE => $response->getStatusCode(),
             HttpAttributes::HTTP_ROUTE => $this->resolveRouteName($request),
             ErrorAttributes::ERROR_TYPE => $response->isOk() ? null : $response->getStatusCode(),
@@ -160,16 +163,6 @@ class TraceRequestMiddleware
             ServerAttributes::SERVER_ADDRESS => $request->getHttpHost(),
             ServerAttributes::SERVER_PORT => $request->getPort(),
         ];
-
-        // @see https://opentelemetry.io/docs/specs/semconv/http/http-metrics/#metric-httpserverrequestduration
-        Meter::histogram(
-            name: HttpMetrics::HTTP_SERVER_REQUEST_DURATION,
-            unit: 's',
-            description: 'Duration of HTTP server requests.',
-            advisory: [
-                'ExplicitBucketBoundaries' => [0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 7.5, 10.0],
-            ])
-            ->record($duration, $attributes);
     }
 
     protected function recordHeaders(SpanInterface $span, Request|Response $http): void
