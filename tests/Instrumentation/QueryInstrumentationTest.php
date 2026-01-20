@@ -8,6 +8,8 @@ use Keepsuit\LaravelOpenTelemetry\Instrumentation\QueryInstrumentation;
 use OpenTelemetry\API\Common\Time\Clock;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\SDK\Trace\ImmutableSpan;
+use OpenTelemetry\SemConv\Attributes\DbAttributes;
+use OpenTelemetry\SemConv\Metrics\DbMetrics;
 
 beforeEach(function () {
     registerInstrumentation(QueryInstrumentation::class);
@@ -32,7 +34,7 @@ test('query span is not created when trace is not started', function () {
     expect($span)->toBeNull();
 });
 
-it('can watch a query', function () {
+it('can record query span', function () {
     withRootSpan(function () {
         DB::table('users')->get();
     });
@@ -56,7 +58,7 @@ it('can watch a query', function () {
         ->toBeGreaterThan(0);
 });
 
-it('can watch a query with bindings', function () {
+it('can record a query with bindings', function () {
     withRootSpan(function () {
         DB::table('users')
             ->where('id', 1)
@@ -78,7 +80,7 @@ it('can watch a query with bindings', function () {
         ]);
 });
 
-it('can watch a query with named bindings', function () {
+it('can record a query with named bindings', function () {
     DB::table('users')->insert([
         'name' => 'John Doe',
         'admin' => true,
@@ -103,5 +105,29 @@ it('can watch a query with named bindings', function () {
             'db.namespace' => ':memory:',
             'db.operation.name' => 'UPDATE',
             'db.query.text' => 'update "users" set "name" = :name where admin = true',
+        ]);
+});
+
+it('can record query duration metric', function () {
+    withRootSpan(function () {
+        DB::table('users')->get();
+    });
+
+    $metric = getRecordedMetrics()->firstWhere('name', DbMetrics::DB_CLIENT_OPERATION_DURATION);
+
+    expect($metric)
+        ->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Data\Metric::class)
+        ->unit->toBe('s')
+        ->data->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Data\Histogram::class);
+
+    /** @var \OpenTelemetry\SDK\Metrics\Data\HistogramDataPoint $dataPoint */
+    $dataPoint = $metric->data->dataPoints[0];
+
+    expect($dataPoint->attributes)
+        ->toMatchArray([
+            DbAttributes::DB_SYSTEM_NAME => 'sqlite',
+            DbAttributes::DB_NAMESPACE => ':memory:',
+            DbAttributes::DB_OPERATION_NAME => 'SELECT',
+            DbAttributes::DB_QUERY_TEXT => 'select * from "users"',
         ]);
 });
