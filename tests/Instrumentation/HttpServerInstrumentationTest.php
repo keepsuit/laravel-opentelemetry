@@ -9,6 +9,7 @@ use Keepsuit\LaravelOpenTelemetry\Tests\Support\Product;
 use Keepsuit\LaravelOpenTelemetry\Tests\Support\TestException;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
+use OpenTelemetry\SemConv\Metrics\HttpMetrics;
 
 use function Pest\Laravel\withoutExceptionHandling;
 
@@ -555,4 +556,52 @@ it('adds user context to logs when authenticated', function () {
     expect($log->getAttributes())->toMatchArray([
         'user.id' => 123,
     ]);
+});
+
+it('can record http server request duration metric', function () {
+    registerInstrumentation(HttpServerInstrumentation::class);
+
+    $this->get('test-ok')->assertOk();
+
+    $metric = getRecordedMetrics()->firstWhere('name', HttpMetrics::HTTP_SERVER_REQUEST_DURATION);
+
+    expect($metric)->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Data\Metric::class)
+        ->name->toBe(HttpMetrics::HTTP_SERVER_REQUEST_DURATION)
+        ->unit->toBe('s')
+        ->data->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Data\Histogram::class);
+
+    /** @var \OpenTelemetry\SDK\Metrics\Data\HistogramDataPoint $dataPoint */
+    $dataPoint = $metric->data->dataPoints[0];
+
+    expect($dataPoint->attributes)
+        ->toMatchArray([
+            \OpenTelemetry\SemConv\Attributes\UrlAttributes::URL_SCHEME => 'http',
+            \OpenTelemetry\SemConv\Attributes\HttpAttributes::HTTP_REQUEST_METHOD => 'GET',
+            \OpenTelemetry\SemConv\Attributes\HttpAttributes::HTTP_RESPONSE_STATUS_CODE => 200,
+            \OpenTelemetry\SemConv\Attributes\HttpAttributes::HTTP_ROUTE => '/test-ok',
+            \OpenTelemetry\SemConv\Attributes\NetworkAttributes::NETWORK_PROTOCOL_NAME => 'http',
+            \OpenTelemetry\SemConv\Attributes\NetworkAttributes::NETWORK_PROTOCOL_VERSION => '1.1',
+            \OpenTelemetry\SemConv\Attributes\ServerAttributes::SERVER_ADDRESS => 'localhost',
+            \OpenTelemetry\SemConv\Attributes\ServerAttributes::SERVER_PORT => '80',
+        ]);
+});
+
+it('records metric even when exception occurs', function () {
+    registerInstrumentation(HttpServerInstrumentation::class);
+
+    $this->get('test-exception');
+
+    $metric = getRecordedMetrics()->firstWhere('name', HttpMetrics::HTTP_SERVER_REQUEST_DURATION);
+
+    expect($metric)->not->toBeNull();
+
+    /** @var \OpenTelemetry\SDK\Metrics\Data\HistogramDataPoint $dataPoint */
+    $dataPoint = $metric->data->dataPoints[0];
+
+    expect($dataPoint)
+        ->not->toBeNull()
+        ->attributes->toMatchArray([
+            \OpenTelemetry\SemConv\Attributes\ErrorAttributes::ERROR_TYPE => 500,
+            \OpenTelemetry\SemConv\Attributes\HttpAttributes::HTTP_RESPONSE_STATUS_CODE => 500,
+        ]);
 });
