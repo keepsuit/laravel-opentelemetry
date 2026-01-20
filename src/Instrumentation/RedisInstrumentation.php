@@ -4,6 +4,7 @@ namespace Keepsuit\LaravelOpenTelemetry\Instrumentation;
 
 use Illuminate\Redis\Events\CommandExecuted;
 use Illuminate\Redis\RedisManager;
+use Illuminate\Support\Str;
 use Keepsuit\LaravelOpenTelemetry\Facades\Meter;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\InstrumentationUtilities;
@@ -33,27 +34,32 @@ class RedisInstrumentation implements Instrumentation
 
         $operationName = strtoupper($event->command);
 
-        $this->recordOperationDurationMetric($event, $operationName);
-        $this->recordTraceSpan($event, $operationName);
+        $sharedAttributes = $this->sharedTraceMetricAttributes($event, $operationName);
+        $this->recordOperationDurationMetric($event, $sharedAttributes);
+        $this->recordTraceSpan($event, $operationName, $sharedAttributes);
     }
 
-    protected function recordTraceSpan(CommandExecuted $event, string $operationName): void
+    /**
+     * @param  array<non-empty-string, bool|int|float|string|array|null>  $attributes
+     */
+    protected function recordTraceSpan(CommandExecuted $event, string $operationName, array $attributes): void
     {
         $span = Tracer::newSpan($operationName)
             ->setSpanKind(SpanKind::KIND_CLIENT)
             ->setStartTimestamp($this->getEventStartTimestampNs($event->time))
             ->start();
 
-        $span->setAttributes($this->sharedTraceMetricAttributes($event, $operationName));
+        $span->setAttributes($attributes);
 
         $span->end();
     }
 
-    protected function recordOperationDurationMetric(CommandExecuted $event, string $operationName): void
+    /**
+     * @param  array<non-empty-string, bool|int|float|string|array|null>  $attributes
+     */
+    protected function recordOperationDurationMetric(CommandExecuted $event, array $attributes): void
     {
         $duration = Clock::getDefault()->now() - $this->getEventStartTimestampNs($event->time);
-
-        $attributes = $this->sharedTraceMetricAttributes($event, $operationName);
 
         Meter::histogram(
             name: DbMetrics::DB_CLIENT_OPERATION_DURATION,
@@ -74,7 +80,7 @@ class RedisInstrumentation implements Instrumentation
             DbAttributes::DB_SYSTEM_NAME => 'redis',
             DbAttributes::DB_OPERATION_NAME => $operationName,
             DbAttributes::DB_NAMESPACE => $this->resolveDbIndex($event->connectionName),
-            DbAttributes::DB_QUERY_TEXT => $this->formatCommand($event->command, $event->parameters),
+            DbAttributes::DB_QUERY_TEXT => Str::limit($this->formatCommand($event->command, $event->parameters), 500),
             ServerAttributes::SERVER_ADDRESS => $this->resolveRedisAddress($event->connection->client()),
         ];
     }

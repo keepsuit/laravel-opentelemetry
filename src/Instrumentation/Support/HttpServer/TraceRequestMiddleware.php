@@ -57,8 +57,10 @@ class TraceRequestMiddleware
             $response = $next($request);
 
             if ($response instanceof Response) {
-                $this->recordTraceAttributes($span, $request, $response);
-                $this->recordRequestDurationMetric($requestStartedAt, $request, $response);
+                $sharedAttributes = $this->sharedTraceMetricAttributes($request, $response);
+
+                $this->recordTraceAttributes($span, $request, $response, $sharedAttributes);
+                $this->recordRequestDurationMetric($requestStartedAt, $sharedAttributes);
             }
 
             return $response;
@@ -91,9 +93,12 @@ class TraceRequestMiddleware
         return $span;
     }
 
-    protected function recordTraceAttributes(SpanInterface $span, Request $request, Response $response): void
+    /**
+     * @param  array<non-empty-string, bool|int|float|string|array|null>  $attributes
+     */
+    protected function recordTraceAttributes(SpanInterface $span, Request $request, Response $response, array $attributes): void
     {
-        $span->setAttributes($this->sharedTraceMetricAttributes($request, $response));
+        $span->setAttributes($attributes);
 
         $span
             ->setAttribute(UrlAttributes::URL_FULL, $request->fullUrl())
@@ -125,10 +130,12 @@ class TraceRequestMiddleware
         }
     }
 
-    protected function recordRequestDurationMetric(int $requestStartedAt, Request $request, Response $response): void
+    /**
+     * @param  array<non-empty-string, bool|int|float|string|array|null>  $attributes
+     */
+    protected function recordRequestDurationMetric(int $requestStartedAt, array $attributes): void
     {
         $duration = Clock::getDefault()->now() - $requestStartedAt;
-        $attributes = $this->sharedTraceMetricAttributes($request, $response);
 
         // @see https://opentelemetry.io/docs/specs/semconv/http/http-metrics/#metric-httpserverrequestduration
         Meter::histogram(

@@ -52,9 +52,11 @@ class GuzzleTraceMiddleware
                 assert($promise instanceof PromiseInterface);
 
                 return $promise->then(function (ResponseInterface $response) use ($request, $requestStartedAt, $span) {
-                    static::recordRequestDurationMetric($requestStartedAt, $request, $response);
+                    $sharedAttributes = static::sharedTraceMetricAttributes($request, $response);
 
-                    $span->setAttributes(static::sharedTraceMetricAttributes($request, $response));
+                    static::recordRequestDurationMetric($requestStartedAt, $sharedAttributes);
+
+                    $span->setAttributes($sharedAttributes);
 
                     $span->setAttribute(UrlAttributes::URL_FULL, sprintf('%s://%s%s', $request->getUri()->getScheme(), $request->getUri()->getHost(), $request->getUri()->getPath()))
                         ->setAttribute(UrlAttributes::URL_PATH, $request->getUri()->getPath())
@@ -102,10 +104,12 @@ class GuzzleTraceMiddleware
         return $span;
     }
 
-    protected static function recordRequestDurationMetric(int $requestStartedAt, RequestInterface $request, ResponseInterface $response): void
+    /**
+     * @param  array<non-empty-string, bool|int|float|string|array|null>  $attributes
+     */
+    protected static function recordRequestDurationMetric(int $requestStartedAt, array $attributes): void
     {
         $duration = Clock::getDefault()->now() - $requestStartedAt;
-        $attributes = static::sharedTraceMetricAttributes($request, $response);
 
         // @see https://opentelemetry.io/docs/specs/semconv/http/http-metrics/#metric-httpclientrequestduration
         Meter::histogram(

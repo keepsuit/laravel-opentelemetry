@@ -41,14 +41,17 @@ class QueryInstrumentation implements Instrumentation
             return;
         }
 
-        $this->recordOperationDurationMetric($event, $operationName);
-        $this->recordTraceSpan($event, $operationName);
+        $sharedAttributes = $this->sharedTraceMetricAttributes($event, $operationName);
+
+        $this->recordOperationDurationMetric($event, $sharedAttributes);
+        $this->recordTraceSpan($event, $operationName, $sharedAttributes);
     }
 
-    protected function recordTraceSpan(QueryExecuted $event, string $operationName): void
+    /**
+     * @param  array<non-empty-string, bool|int|float|string|array|null>  $attributes
+     */
+    protected function recordTraceSpan(QueryExecuted $event, string $operationName, array $attributes): void
     {
-        $attributes = $this->sharedTraceMetricAttributes($event, $operationName);
-
         $span = Tracer::newSpan($operationName)
             ->setSpanKind(SpanKind::KIND_CLIENT)
             ->setStartTimestamp($this->getEventStartTimestampNs($event->time))
@@ -58,11 +61,12 @@ class QueryInstrumentation implements Instrumentation
         $span->end();
     }
 
-    protected function recordOperationDurationMetric(QueryExecuted $event, string $operationName): void
+    /**
+     * @param  array<non-empty-string, bool|int|float|string|array|null>  $attributes
+     */
+    protected function recordOperationDurationMetric(QueryExecuted $event, array $attributes): void
     {
         $duration = Clock::getDefault()->now() - $this->getEventStartTimestampNs($event->time);
-
-        $attributes = $this->sharedTraceMetricAttributes($event, $operationName);
 
         // @see https://opentelemetry.io/docs/specs/semconv/db/database-metrics/#metric-dbclientoperationduration
         Meter::histogram(
@@ -84,7 +88,7 @@ class QueryInstrumentation implements Instrumentation
             DbAttributes::DB_SYSTEM_NAME => $event->connection->getDriverName(),
             DbAttributes::DB_NAMESPACE => $event->connection->getDatabaseName(),
             DbAttributes::DB_OPERATION_NAME => $operationName,
-            DbAttributes::DB_QUERY_TEXT => $event->sql,
+            DbAttributes::DB_QUERY_TEXT => Str::limit($event->sql, 500),
             ServerAttributes::SERVER_ADDRESS => $event->connection->getConfig('host'),
             ServerAttributes::SERVER_PORT => $event->connection->getConfig('port'),
         ];
