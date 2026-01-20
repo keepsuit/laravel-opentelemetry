@@ -370,7 +370,7 @@ Metrics:
 
 - `http.server.request.duration` (histogram, seconds) - Request processing time
 
-You can disable this instrumentation by setting `OT_INSTRUMENTATION_HTTP_SERVER` to `false` or removing `HttpServerInstrumentation::class` from the config.
+You can disable this instrumentation by setting `OTEL_INSTRUMENTATION_HTTP_SERVER` to `false` or removing `HttpServerInstrumentation::class` from the config.
 
 ### Http Client
 
@@ -405,7 +405,7 @@ Metrics:
 
 - `http.client.request.duration` (histogram, seconds) - Outgoing HTTP request duration
 
-You can disable this instrumentation by setting `OT_INSTRUMENTATION_HTTP_CLIENT` to `false` or removing `HttpClientInstrumentation::class` from the config.
+You can disable this instrumentation by setting `OTEL_INSTRUMENTATION_HTTP_CLIENT` to `false` or removing `HttpClientInstrumentation::class` from the config.
 
 ### Database
 
@@ -415,37 +415,37 @@ Metrics:
 
 - `db.client.operation.duration` (histogram, seconds) - Duration of database client operations
 
-You can disable this instrumentation by setting `OT_INSTRUMENTATION_QUERY` to `false` or removing `QueryInstrumentation::class` from the config.
+You can disable this instrumentation by setting `OTEL_INSTRUMENTATION_QUERY` to `false` or removing `QueryInstrumentation::class` from the config.
 
 ### Queue Jobs
 
 Queue jobs are automatically traced. The instrumentation creates a parent span with kind `PRODUCER` when a job is dispatched and a child span with kind `CONSUMER` when the job is executed.
 
-You can disable this instrumentation by setting `OT_INSTRUMENTATION_QUEUE` to `false` or removing `QueueInstrumentation::class` from the config.
+You can disable this instrumentation by setting `OTEL_INSTRUMENTATION_QUEUE` to `false` or removing `QueueInstrumentation::class` from the config.
 
 ### Redis
 
 Redis commands are automatically traced. A span is created for each command executed.
 
-You can disable this instrumentation by setting `OT_INSTRUMENTATION_REDIS` to `false` or removing `RedisInstrumentation::class` from the config.
+You can disable this instrumentation by setting `OTEL_INSTRUMENTATION_REDIS` to `false` or removing `RedisInstrumentation::class` from the config.
 
 ### Cache
 
 Cache operations are recorded as events in the current active span.
 
-You can disable this instrumentation by setting `OT_INSTRUMENTATION_CACHE` to `false` or removing `CacheInstrumentation::class` from the config.
+You can disable this instrumentation by setting `OTEL_INSTRUMENTATION_CACHE` to `false` or removing `CacheInstrumentation::class` from the config.
 
 ### Events
 
 Events are recorded as events in the current active span. Some internal Laravel events are excluded by default and can be customized in the configuration.
 
-You can disable this instrumentation by setting `OT_INSTRUMENTATION_EVENT` to `false` or removing `EventInstrumentation::class` from the config.
+You can disable this instrumentation by setting `OTEL_INSTRUMENTATION_EVENT` to `false` or removing `EventInstrumentation::class` from the config.
 
 ### View
 
 View rendering is automatically traced. A span is created for each rendered view.
 
-You can disable this instrumentation by setting `OT_INSTRUMENTATION_VIEW` to `false` or removing `ViewInstrumentation::class` from the config.
+You can disable this instrumentation by setting `OTEL_INSTRUMENTATION_VIEW` to `false` or removing `ViewInstrumentation::class` from the config.
 
 ### Livewire
 
