@@ -4,16 +4,21 @@ namespace Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\HttpClient;
 
 use Closure;
 use GuzzleHttp\Promise\PromiseInterface;
+use Keepsuit\LaravelOpenTelemetry\Facades\Meter;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\HttpClientInstrumentation;
+use OpenTelemetry\API\Common\Time\Clock;
 use OpenTelemetry\API\Trace\SpanInterface;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
+use OpenTelemetry\SemConv\Attributes\ErrorAttributes;
 use OpenTelemetry\SemConv\Attributes\HttpAttributes;
+use OpenTelemetry\SemConv\Attributes\NetworkAttributes;
 use OpenTelemetry\SemConv\Attributes\ServerAttributes;
 use OpenTelemetry\SemConv\Attributes\UrlAttributes;
 use OpenTelemetry\SemConv\Incubating\Attributes\HttpIncubatingAttributes;
 use OpenTelemetry\SemConv\Incubating\Attributes\UrlIncubatingAttributes;
+use OpenTelemetry\SemConv\Metrics\HttpMetrics;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 
@@ -27,19 +32,12 @@ class GuzzleTraceMiddleware
                     return $handler($request, $options);
                 }
 
+                $requestStartedAt = Clock::getDefault()->now();
+
                 $route = HttpClientInstrumentation::routeName($request);
 
                 $span = Tracer::newSpan(trim(sprintf('%s %s', $request->getMethod(), $route ?? '')))
                     ->setSpanKind(SpanKind::KIND_CLIENT)
-                    ->setAttribute(UrlIncubatingAttributes::URL_TEMPLATE, $route)
-                    ->setAttribute(UrlAttributes::URL_FULL, sprintf('%s://%s%s', $request->getUri()->getScheme(), $request->getUri()->getHost(), $request->getUri()->getPath()))
-                    ->setAttribute(UrlAttributes::URL_PATH, $request->getUri()->getPath())
-                    ->setAttribute(UrlAttributes::URL_QUERY, $request->getUri()->getQuery())
-                    ->setAttribute(UrlAttributes::URL_SCHEME, $request->getUri()->getScheme())
-                    ->setAttribute(HttpAttributes::HTTP_REQUEST_METHOD, $request->getMethod())
-                    ->setAttribute(HttpIncubatingAttributes::HTTP_REQUEST_BODY_SIZE, $request->getBody()->getSize())
-                    ->setAttribute(ServerAttributes::SERVER_ADDRESS, $request->getUri()->getHost())
-                    ->setAttribute(ServerAttributes::SERVER_PORT, $request->getUri()->getPort())
                     ->start();
 
                 static::recordHeaders($span, $request);
@@ -53,8 +51,16 @@ class GuzzleTraceMiddleware
                 $promise = $handler($request, $options);
                 assert($promise instanceof PromiseInterface);
 
-                return $promise->then(function (ResponseInterface $response) use ($span) {
-                    $span->setAttribute(HttpAttributes::HTTP_RESPONSE_STATUS_CODE, $response->getStatusCode());
+                return $promise->then(function (ResponseInterface $response) use ($request, $requestStartedAt, $span) {
+                    static::recordRequestDurationMetric($requestStartedAt, $request, $response);
+
+                    $span->setAttributes(static::sharedTraceMetricAttributes($request, $response));
+
+                    $span->setAttribute(UrlAttributes::URL_FULL, sprintf('%s://%s%s', $request->getUri()->getScheme(), $request->getUri()->getHost(), $request->getUri()->getPath()))
+                        ->setAttribute(UrlAttributes::URL_PATH, $request->getUri()->getPath())
+                        ->setAttribute(UrlAttributes::URL_QUERY, $request->getUri()->getQuery())
+                        ->setAttribute(UrlAttributes::URL_SCHEME, $request->getUri()->getScheme())
+                        ->setAttribute(HttpIncubatingAttributes::HTTP_REQUEST_BODY_SIZE, $request->getBody()->getSize());
 
                     if (($contentLength = $response->getHeader('Content-Length')[0] ?? null) !== null) {
                         $span->setAttribute(HttpIncubatingAttributes::HTTP_RESPONSE_BODY_SIZE, $contentLength);
@@ -62,7 +68,7 @@ class GuzzleTraceMiddleware
 
                     static::recordHeaders($span, $response);
 
-                    if ($response->getStatusCode() >= 400) {
+                    if ($response->getStatusCode() >= 400 && $response->getStatusCode() <= 599) {
                         $span->setStatus(StatusCode::STATUS_ERROR);
                     }
 
@@ -94,5 +100,41 @@ class GuzzleTraceMiddleware
         }
 
         return $span;
+    }
+
+    protected static function recordRequestDurationMetric(int $requestStartedAt, RequestInterface $request, ResponseInterface $response): void
+    {
+        $duration = Clock::getDefault()->now() - $requestStartedAt;
+        $attributes = static::sharedTraceMetricAttributes($request, $response);
+
+        // @see https://opentelemetry.io/docs/specs/semconv/http/http-metrics/#metric-httpclientrequestduration
+        Meter::histogram(
+            name: HttpMetrics::HTTP_CLIENT_REQUEST_DURATION,
+            unit: 's',
+            description: 'Duration of HTTP client requests.',
+            advisory: [
+                'ExplicitBucketBoundaries' => [0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 7.5, 10.0],
+            ])
+            ->record($duration, $attributes);
+    }
+
+    /**
+     * @return array<non-empty-string, bool|int|float|string|array|null>
+     */
+    protected static function sharedTraceMetricAttributes(RequestInterface $request, ResponseInterface $response): array
+    {
+        $route = HttpClientInstrumentation::routeName($request);
+
+        return [
+            UrlAttributes::URL_SCHEME => $request->getUri()->getScheme(),
+            HttpAttributes::HTTP_REQUEST_METHOD => $request->getMethod(),
+            HttpAttributes::HTTP_RESPONSE_STATUS_CODE => $response->getStatusCode(),
+            UrlIncubatingAttributes::URL_TEMPLATE => $route,
+            ErrorAttributes::ERROR_TYPE => $response->getStatusCode() >= 400 && $response->getStatusCode() <= 599 ? $response->getStatusCode() : null,
+            NetworkAttributes::NETWORK_PROTOCOL_NAME => 'http',
+            NetworkAttributes::NETWORK_PROTOCOL_VERSION => $response->getProtocolVersion(),
+            ServerAttributes::SERVER_ADDRESS => $request->getUri()->getHost(),
+            ServerAttributes::SERVER_PORT => $request->getUri()->getPort(),
+        ];
     }
 }
