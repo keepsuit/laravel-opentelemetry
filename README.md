@@ -7,7 +7,7 @@
 
 _OpenTelemetry is a collection of tools, APIs, and SDKs. Use it to instrument, generate, collect, and export telemetry data (metrics, logs, and traces) to help you analyze your software’s performance and behavior._
 
-This package allow to integrate OpenTelemetry in a Laravel application.
+This package allows you to integrate OpenTelemetry in a Laravel application.
 
 - [Installation](#installation)
 - [User Context](#user-context)
@@ -17,6 +17,8 @@ This package allow to integrate OpenTelemetry in a Laravel application.
     - [Manual traces](#manual-traces)
     - [Trace Sampling](#trace-sampling)
 - [Metrics](#metrics)
+    - [Default Metrics](#default-metrics)
+    - [Meter API](#meter-api)
     - [Metrics Temporality](#metrics-temporality)
 - [Logs](#logs)
 - [Worker Mode](#worker-mode)
@@ -288,6 +290,14 @@ return [
         'flush_after_each_iteration' => env('OTEL_WORKER_MODE_FLUSH_AFTER_EACH_ITERATION', false),
 
         /**
+         * Metrics collection interval in seconds.
+         * When running in worker mode, metrics are collected and exported at this interval.
+         * Note: This setting is ignored if 'flush_after_each_iteration' is true.
+         * Note: The interval is checked after each iteration, so the actual interval may be longer
+         */
+        'metrics_collect_interval' => env('OTEL_WORKER_MODE_COLLECT_INTERVAL', 60),
+
+        /**
          * Detectors to use for worker mode detection
          *
          * Detectors are checked in order, the first one that returns true determines the mode.
@@ -441,14 +451,14 @@ You can disable it by setting `OT_INSTRUMENTATION_VIEW` to `false` or removing t
 
 Livewire components rendering is automatically traced. A span is created for each rendered component.
 
-You can disable it by setting `OT_INSTRUMENTATION_LIVEWIRE` to `false` or removing the `LivewireInstrumentation::class` from the config file.
+You can disable it by setting `OTEL_INSTRUMENTATION_LIVEWIRE` to `false` or removing the `LivewireInstrumentation::class` from the config file.
 
 #### Console commands
 
 Console commands are not traced by default.
 You can trace console commands by adding them to the `commands` option of `ConsoleInstrumentation`.
 
-You can disable it by setting `OT_INSTRUMENTATION_CONSOLE` to `false` or removing the `ConsoleInstrumentation::class` from the config file.
+You can disable it by setting `OTEL_INSTRUMENTATION_CONSOLE` to `false` or removing the `ConsoleInstrumentation::class` from the config file.
 
 Configuration options:
 
@@ -639,35 +649,85 @@ Register your custom rule in the configuration:
 
 ## Metrics
 
-You can create custom meters using the `Meter` facade:
+This package includes optional automatic metrics instrumentation for common operations in a Laravel application. Metrics are collected by the OpenTelemetry Meter and exported according to your `metrics.exporter` configuration.
+
+### Default Metrics
+
+The package ships with default metrics collected from the built-in instrumentations. These metrics are enabled when the corresponding instrumentation is enabled in `config/opentelemetry.php`.
+
+- HTTP Server requests
+    - Metric: histogram measuring request duration (seconds)
+    - Typical name: `http.server.request.duration`
+    - Attributes: HTTP method, route/template (when available), status code, host, and configured headers
+
+- HTTP Client requests
+    - Metric: histogram measuring client request duration (seconds)
+    - Typical name: `http.client.request.duration`
+    - Attributes: HTTP method, url template (if resolved), status code, host
+
+- Database client operations
+    - Metric: histogram measuring database client operation duration (seconds)
+    - Typical name: `db.client.operation.duration`
+    - Attributes: `db.system`, `db.namespace`, `db.operation`, SQL text, and server address
+
+- Queue jobs
+    - Metric: histogram measuring job execution duration (seconds)
+    - Typical name: `queue.job.execution.duration`
+    - Attributes: job name, connection, queue, and success/failure
+
+Each instrumentation records metrics using the package `Meter` abstraction. You can customize or create your own meters using the `Meter` facade (see below).
+
+### Meter API
+
+The Meter facade provide methods to create metric instruments such as counters, gauges, and histograms.
+Created instruments are cached by name to prevent duplicate instrument creation.
+
+The supported instruments are:
+
+- Counter
+- ObservableCounter
+- UpDownCounter
+- ObservableUpDownCounter
+- Gauge
+- ObservableGauge
+- Histogram
+
+There is also a `batchObserve` method to record multiple measurements at once.
+
+Example usage:
 
 ```php
 use Keepsuit\LaravelOpenTelemetry\Facades\Meter;
 
-// create a counter meter
-$meter = Meter::createCounter('my-meter', 'times', 'my custom meter');
-$meter->add(1);
+// create or retrieve a counter instrument
+$counter = Meter::counter('my-meter', 'times', 'my custom meter');
+$counter->add(1);
 
-// create a histogram meter
-$meter = Meter::histogram('my-histogram', 'ms', 'my custom histogram');
-$meter->record(100, ['name' => 'value', 'app' => 'my-app']);
+// create or retrieve a histogram instrument
+$histogram = Meter::histogram('my-histogram', 'ms', 'my custom histogram');
+$histogram->record(100, ['name' => 'value', 'app' => 'my-app']);
 
-// create a gauge meter
-$meter = Meter::createGauge('my-gauge', null, 'my custom gauge');
-$meter->record(100, ['name' => 'value', 'app' => 'my-app']);
-$meter->record(1.2, ['name' => 'percentage', 'app' => 'my-app']);
+// Execute the callback with multiple observable instruments
+Meter::batchObserve([
+    Meter::observableCounter('usage', description: 'count of items used'),
+    Meter::observableGauge('pressure', description: 'force per unit area'),
+], function(ObserverInterface $usageObserver, ObserverInterface $pressureObserver): void {
+    [$usage, $pressure] = expensive_system_call();
+    $usageObserver->observe($usage);
+    $pressureObserver->observe($pressure);
+});
 ```
 
 ### Metrics Temporality
 
-The OTLP exporter supports setting a preferred temporality for exported metrics with `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE` env variable.
+The OTLP exporter supports setting a preferred temporality for exported metrics with the `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE` env variable.
 The supported values are `Delta` and `Cumulative`.
-If not set, the default temporality for each metric type will be used.
+If not set, the exporter and SDK defaults apply.
 
 ## Logs
 
 This package provides a custom log channel that allows to process logs with OpenTelemetry instrumentation.
-This packages injects a log channel named `otlp` that can be used to send logs to OpenTelemetry using laravel default log system.
+This package injects a log channel named `otlp` that can be used to send logs to OpenTelemetry using laravel default log system.
 
 ```php
 // config/logging.php
@@ -706,9 +766,12 @@ Worker mode is automatically detected using built-in detectors (for Laravel octa
 
 Worker mode can be configured with these environment variables (or editing the config file directly):
 
-| Variable                                      | Description                   | Default |
-|-----------------------------------------------|-------------------------------|---------|
-| `OTEL_WORKER_MODE_FLUSH_AFTER_EACH_ITERATION` | Enable per-iteration flushing | `false` |
+| Variable                                      | Description                                            | Default |
+|-----------------------------------------------|--------------------------------------------------------|---------|
+| `OTEL_WORKER_MODE_FLUSH_AFTER_EACH_ITERATION` | Enable per-iteration flushing                          | `false` |
+| `OTEL_WORKER_MODE_COLLECT_INTERVAL`           | Metrics collection interval in seconds for worker mode | `60`    |
+
+If `OTEL_WORKER_MODE_FLUSH_AFTER_EACH_ITERATION` is `true`, the per-iteration flush behavior is used and the periodic collection interval is ignored.
 
 ## Development Setup
 
