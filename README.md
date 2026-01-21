@@ -427,6 +427,10 @@ You can disable this instrumentation by setting `OTEL_INSTRUMENTATION_QUEUE` to 
 
 Redis commands are automatically traced. A span is created for each command executed.
 
+Metrics:
+
+- `db.client.operation.duration` (histogram, seconds) - Duration of Redis client operations
+
 You can disable this instrumentation by setting `OTEL_INSTRUMENTATION_REDIS` to `false` or removing `RedisInstrumentation::class` from the config.
 
 ### Cache
