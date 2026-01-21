@@ -500,8 +500,8 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
     }
 
     /**
-     * This ensure that singletons are resolved before handling any request when running in worker mode.
-     * This prevents they are flushed between requests.
+     * This ensures that singletons are resolved before handling any request when running in worker mode.
+     * This prevents them from being flushed between requests.
      */
     protected function bootSingletons(): void
     {
