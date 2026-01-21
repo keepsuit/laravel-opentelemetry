@@ -8,6 +8,7 @@ use Keepsuit\LaravelOpenTelemetry\Facades\Meter;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\HttpClientInstrumentation;
 use OpenTelemetry\API\Common\Time\Clock;
+use OpenTelemetry\API\Common\Time\ClockInterface;
 use OpenTelemetry\API\Trace\SpanInterface;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
@@ -54,8 +55,6 @@ class GuzzleTraceMiddleware
                 return $promise->then(function (ResponseInterface $response) use ($request, $requestStartedAt, $span) {
                     $sharedAttributes = static::sharedTraceMetricAttributes($request, $response);
 
-                    static::recordRequestDurationMetric($requestStartedAt, $sharedAttributes);
-
                     $span->setAttributes($sharedAttributes);
 
                     $span->setAttribute(UrlAttributes::URL_FULL, sprintf('%s://%s%s', $request->getUri()->getScheme(), $request->getUri()->getHost(), $request->getUri()->getPath()))
@@ -75,6 +74,8 @@ class GuzzleTraceMiddleware
                     }
 
                     $span->end();
+
+                    static::recordRequestDurationMetric($requestStartedAt, $sharedAttributes);
 
                     return $response;
                 });
@@ -109,7 +110,7 @@ class GuzzleTraceMiddleware
      */
     protected static function recordRequestDurationMetric(int $requestStartedAt, array $attributes): void
     {
-        $duration = Clock::getDefault()->now() - $requestStartedAt;
+        $duration = (Clock::getDefault()->now() - $requestStartedAt) / ClockInterface::NANOS_PER_SECOND;
 
         // @see https://opentelemetry.io/docs/specs/semconv/http/http-metrics/#metric-httpclientrequestduration
         Meter::histogram(
@@ -134,7 +135,7 @@ class GuzzleTraceMiddleware
             HttpAttributes::HTTP_REQUEST_METHOD => $request->getMethod(),
             HttpAttributes::HTTP_RESPONSE_STATUS_CODE => $response->getStatusCode(),
             UrlIncubatingAttributes::URL_TEMPLATE => $route,
-            ErrorAttributes::ERROR_TYPE => $response->getStatusCode() >= 400 && $response->getStatusCode() <= 599 ? $response->getStatusCode() : null,
+            ErrorAttributes::ERROR_TYPE => $response->getStatusCode() >= 400 && $response->getStatusCode() <= 599 ? (string) $response->getStatusCode() : null,
             NetworkAttributes::NETWORK_PROTOCOL_NAME => 'http',
             NetworkAttributes::NETWORK_PROTOCOL_VERSION => $response->getProtocolVersion(),
             ServerAttributes::SERVER_ADDRESS => $request->getUri()->getHost(),

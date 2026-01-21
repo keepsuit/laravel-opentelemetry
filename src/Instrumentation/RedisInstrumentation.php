@@ -9,6 +9,7 @@ use Keepsuit\LaravelOpenTelemetry\Facades\Meter;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\InstrumentationUtilities;
 use OpenTelemetry\API\Common\Time\Clock;
+use OpenTelemetry\API\Common\Time\ClockInterface;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\SemConv\Attributes\DbAttributes;
 use OpenTelemetry\SemConv\Attributes\ServerAttributes;
@@ -35,8 +36,8 @@ class RedisInstrumentation implements Instrumentation
         $operationName = strtoupper($event->command);
 
         $sharedAttributes = $this->sharedTraceMetricAttributes($event, $operationName);
-        $this->recordOperationDurationMetric($event, $sharedAttributes);
         $this->recordTraceSpan($event, $operationName, $sharedAttributes);
+        $this->recordOperationDurationMetric($event, $sharedAttributes);
     }
 
     /**
@@ -59,7 +60,7 @@ class RedisInstrumentation implements Instrumentation
      */
     protected function recordOperationDurationMetric(CommandExecuted $event, array $attributes): void
     {
-        $duration = Clock::getDefault()->now() - $this->getEventStartTimestampNs($event->time);
+        $duration = (Clock::getDefault()->now() - $this->getEventStartTimestampNs($event->time)) / ClockInterface::NANOS_PER_SECOND;
 
         Meter::histogram(
             name: DbMetrics::DB_CLIENT_OPERATION_DURATION,
