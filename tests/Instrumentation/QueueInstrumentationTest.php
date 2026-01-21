@@ -67,8 +67,6 @@ it('can trace queue jobs', function () {
     $enqueueSpan = getRecordedSpans()->first(fn (ImmutableSpan $span) => $span->getName() === 'send default');
     $processSpan = getRecordedSpans()->first(fn (ImmutableSpan $span) => $span->getName() === 'process default');
 
-    ray($enqueueSpan, $processSpan);
-
     $traceId = $enqueueSpan->getTraceId();
     $spanId = $enqueueSpan->getSpanId();
 

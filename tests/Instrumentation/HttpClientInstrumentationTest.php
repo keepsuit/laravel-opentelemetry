@@ -6,6 +6,7 @@ use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\HttpClientInstrumentation;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
+use OpenTelemetry\SemConv\Metrics\HttpMetrics;
 
 test('http client span is not created when trace is not started', function () {
     registerInstrumentation(HttpClientInstrumentation::class);
@@ -292,4 +293,56 @@ it('can resolve route name', function () {
         ->getAttributes()->toMatchArray([
             'url.template' => '/products/{id}',
         ]);
+});
+
+it('can record http client request duration metric', function () {
+    registerInstrumentation(HttpClientInstrumentation::class);
+
+    Http::fake([
+        '*' => Http::response('', 200, ['Content-Length' => 0]),
+    ]);
+
+    withRootSpan(function () {
+        Http::get(Server::$url);
+    });
+
+    $metric = getRecordedMetrics()->firstWhere('name', HttpMetrics::HTTP_CLIENT_REQUEST_DURATION);
+
+    expect($metric)->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Data\Metric::class)
+        ->name->toBe(HttpMetrics::HTTP_CLIENT_REQUEST_DURATION)
+        ->unit->toBe('s')
+        ->data->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Data\Histogram::class);
+
+    /** @var \OpenTelemetry\SDK\Metrics\Data\HistogramDataPoint $dataPoint */
+    $dataPoint = $metric->data->dataPoints[0];
+
+    expect($dataPoint)
+        ->count->toBeGreaterThanOrEqual(1)
+        ->sum->toBeGreaterThan(0);
+
+    expect($dataPoint->attributes)
+        ->toMatchArray([
+            \OpenTelemetry\SemConv\Attributes\UrlAttributes::URL_SCHEME => 'http',
+            \OpenTelemetry\SemConv\Attributes\HttpAttributes::HTTP_REQUEST_METHOD => 'GET',
+            \OpenTelemetry\SemConv\Attributes\HttpAttributes::HTTP_RESPONSE_STATUS_CODE => 200,
+            \OpenTelemetry\SemConv\Attributes\NetworkAttributes::NETWORK_PROTOCOL_NAME => 'http',
+            \OpenTelemetry\SemConv\Attributes\NetworkAttributes::NETWORK_PROTOCOL_VERSION => '1.1',
+            \OpenTelemetry\SemConv\Attributes\ServerAttributes::SERVER_ADDRESS => '127.0.0.1',
+        ])
+        ->toHaveKey(\OpenTelemetry\SemConv\Attributes\ServerAttributes::SERVER_PORT);
+});
+
+it('no metric recorded when trace not started for client', function () {
+    registerInstrumentation(HttpClientInstrumentation::class);
+
+    Http::fake([
+        '*' => Http::response('', 200, ['Content-Length' => 0]),
+    ]);
+
+    // Make request without trace
+    Http::get(Server::$url);
+
+    $metric = getRecordedMetrics()->firstWhere('name', HttpMetrics::HTTP_CLIENT_REQUEST_DURATION);
+
+    expect($metric)->toBeNull();
 });

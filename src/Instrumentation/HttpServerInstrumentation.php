@@ -6,6 +6,7 @@ use Illuminate\Contracts\Http\Kernel as HttpKernelContract;
 use Illuminate\Foundation\Http\Kernel as FoundationHttpKernel;
 use Illuminate\Support\Arr;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\HttpServer\TraceRequestMiddleware;
+use OpenTelemetry\API\Common\Time\Clock;
 
 class HttpServerInstrumentation implements Instrumentation
 {
@@ -14,6 +15,8 @@ class HttpServerInstrumentation implements Instrumentation
     protected static array $excludedPaths = [];
 
     protected static array $excludedMethods = [];
+
+    protected static ?int $bootedTimestamp = null;
 
     /**
      * @return array<string>
@@ -29,6 +32,11 @@ class HttpServerInstrumentation implements Instrumentation
     public static function getExcludedMethods(): array
     {
         return static::$excludedMethods;
+    }
+
+    public static function getBootedTimestamp(): ?int
+    {
+        return static::$bootedTimestamp;
     }
 
     public function register(array $options): void
@@ -49,6 +57,11 @@ class HttpServerInstrumentation implements Instrumentation
             $this->normalizeHeaders(Arr::get($options, 'sensitive_headers', [])),
             $this->defaultSensitiveHeaders,
         );
+
+        static::$bootedTimestamp = null;
+        app()->booted(function () {
+            static::$bootedTimestamp = Clock::getDefault()->now();
+        });
 
         $this->injectMiddleware(app(HttpKernelContract::class));
     }

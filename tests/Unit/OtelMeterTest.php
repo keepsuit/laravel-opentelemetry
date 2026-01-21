@@ -12,7 +12,7 @@ it('can build open telemetry meter', function () {
 });
 
 test('counter', function () {
-    $counter = Meter::createCounter('test_counter');
+    $counter = Meter::counter('test_counter');
 
     expect($counter)->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Counter::class);
 
@@ -29,7 +29,7 @@ test('counter', function () {
 });
 
 test('observable counter', function () {
-    $counter = Meter::createObservableCounter('test_observable_counter');
+    $counter = Meter::observableCounter('test_observable_counter');
 
     expect($counter)->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\ObservableCounter::class);
 
@@ -47,13 +47,13 @@ test('observable counter', function () {
 });
 
 test('batch observer', function () {
-    $counter1 = Meter::createObservableCounter('test_observable_1');
-    $counter2 = Meter::createObservableCounter('test_observable_2');
+    $counter1 = Meter::observableCounter('test_observable_1');
+    $counter2 = Meter::observableCounter('test_observable_2');
 
-    Meter::batchObserve(function (ObserverInterface $observer1, ObserverInterface $observer2) {
+    Meter::batchObserve([$counter1, $counter2], function (ObserverInterface $observer1, ObserverInterface $observer2) {
         $observer1->observe(10);
         $observer2->observe(30);
-    }, $counter1, $counter2);
+    });
 
     $data1 = getRecordedMetrics()->firstWhere('name', 'test_observable_1');
     $data2 = getRecordedMetrics()->firstWhere('name', 'test_observable_2');
@@ -72,7 +72,7 @@ test('batch observer', function () {
 });
 
 test('histogram', function () {
-    $histogram = Meter::createHistogram('test_histogram');
+    $histogram = Meter::histogram('test_histogram');
 
     expect($histogram)->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Histogram::class);
 
@@ -94,7 +94,7 @@ test('histogram', function () {
 });
 
 test('gauge', function () {
-    $gauge = Meter::createGauge('test_gauge');
+    $gauge = Meter::gauge('test_gauge');
 
     expect($gauge)->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Gauge::class);
 
@@ -110,7 +110,7 @@ test('gauge', function () {
 });
 
 test('observable gauge', function () {
-    $gauge = Meter::createObservableGauge('test_observable_gauge');
+    $gauge = Meter::observableGauge('test_observable_gauge');
 
     expect($gauge)->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\ObservableGauge::class);
 
@@ -128,7 +128,7 @@ test('observable gauge', function () {
 });
 
 test('up/down counter', function () {
-    $counter = Meter::createUpDownCounter('test_updown_counter');
+    $counter = Meter::upDownCounter('test_updown_counter');
 
     expect($counter)->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\UpDownCounter::class);
 
@@ -145,7 +145,7 @@ test('up/down counter', function () {
 });
 
 test('observable up/down counter', function () {
-    $counter = Meter::createObservableUpDownCounter('test_observable_updown_counter');
+    $counter = Meter::observableUpDownCounter('test_observable_updown_counter');
 
     expect($counter)->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\ObservableUpDownCounter::class);
 
