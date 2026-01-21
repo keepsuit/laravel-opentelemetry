@@ -132,7 +132,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         $instrumentation = new CachedInstrumentation(
             name: 'laravel-opentelemetry',
             version: class_exists(InstalledVersions::class) ? InstalledVersions::getPrettyVersion('keepsuit/laravel-opentelemetry') : null,
-            schemaUrl: Version::VERSION_1_36_0->url(),
+            schemaUrl: Version::VERSION_1_38_0->url(),
         );
 
         $this->app->singleton(TextMapPropagatorInterface::class, fn () => $propagator);
