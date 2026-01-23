@@ -10,7 +10,7 @@ use Illuminate\Queue\QueueManager;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
-use Keepsuit\LaravelOpenTelemetry\Support\InstrumentationUtilities;
+use Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\InstrumentationUtilities;
 use OpenTelemetry\API\Trace\SpanInterface;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
@@ -68,14 +68,22 @@ class QueueInstrumentation implements Instrumentation
 
                 $jobName = Arr::get($payload, 'displayName', 'unknown');
                 $queueName = Str::after($queue ?? 'default', 'queues:');
+                /** @var int|null $payloadSize */
+                $payloadSize = rescue(fn () => strlen(\Safe\json_encode($payload)), report: false);
 
-                $span = Tracer::newSpan(sprintf('%s enqueue', $jobName))
+                $span = Tracer::newSpan(sprintf('send %s', $queueName))
                     ->setSpanKind(SpanKind::KIND_PRODUCER)
                     ->setAttribute(MessagingIncubatingAttributes::MESSAGING_SYSTEM, $this->connectionDriver($connection))
-                    ->setAttribute(MessagingIncubatingAttributes::MESSAGING_OPERATION_TYPE, 'enqueue')
+                    ->setAttribute(MessagingIncubatingAttributes::MESSAGING_OPERATION_TYPE, 'send')
                     ->setAttribute(MessagingIncubatingAttributes::MESSAGING_MESSAGE_ID, $uuid)
                     ->setAttribute(MessagingIncubatingAttributes::MESSAGING_DESTINATION_NAME, $queueName)
-                    ->setAttribute(MessagingIncubatingAttributes::MESSAGING_DESTINATION_TEMPLATE, $jobName)
+                    ->setAttribute(MessagingIncubatingAttributes::MESSAGING_MESSAGE_ENVELOPE_SIZE, $payloadSize)
+                    ->setAttribute('messaging.message.job_name', $jobName)
+                    ->setAttribute('messaging.message.attempts', $payload['attempts'] ?? 0)
+                    ->setAttribute('messaging.message.max_exceptions', $payload['maxExceptions'] ?? null)
+                    ->setAttribute('messaging.message.max_tries', $payload['maxTries'] ?? null)
+                    ->setAttribute('messaging.message.retry_until', $payload['retryUntil'] ?? null)
+                    ->setAttribute('messaging.message.timeout', $payload['timeout'] ?? null)
                     ->start();
 
                 $context = $span->storeInContext(Tracer::currentContext());
@@ -94,14 +102,20 @@ class QueueInstrumentation implements Instrumentation
         app('events')->listen(JobProcessing::class, function (JobProcessing $event) {
             $context = Tracer::extractContextFromPropagationHeaders($event->job->payload());
 
-            $span = Tracer::newSpan(sprintf('%s process', $event->job->resolveName()))
+            $span = Tracer::newSpan(sprintf('process %s', $event->job->getQueue()))
                 ->setSpanKind(SpanKind::KIND_CONSUMER)
                 ->setParent($context)
                 ->setAttribute(MessagingIncubatingAttributes::MESSAGING_SYSTEM, $this->connectionDriver($event->connectionName))
                 ->setAttribute(MessagingIncubatingAttributes::MESSAGING_OPERATION_TYPE, 'process')
                 ->setAttribute(MessagingIncubatingAttributes::MESSAGING_MESSAGE_ID, $event->job->uuid())
                 ->setAttribute(MessagingIncubatingAttributes::MESSAGING_DESTINATION_NAME, $event->job->getQueue())
-                ->setAttribute(MessagingIncubatingAttributes::MESSAGING_DESTINATION_TEMPLATE, $event->job->resolveName())
+                ->setAttribute(MessagingIncubatingAttributes::MESSAGING_MESSAGE_ENVELOPE_SIZE, strlen($event->job->getRawBody()))
+                ->setAttribute('messaging.message.job_name', $event->job->resolveName())
+                ->setAttribute('messaging.message.attempts', $event->job->attempts())
+                ->setAttribute('messaging.message.max_exceptions', $event->job->maxExceptions())
+                ->setAttribute('messaging.message.max_tries', $event->job->maxTries())
+                ->setAttribute('messaging.message.retry_until', $event->job->retryUntil())
+                ->setAttribute('messaging.message.timeout', $event->job->timeout())
                 ->start();
 
             $span->activate();

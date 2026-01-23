@@ -12,7 +12,6 @@ parameters:
     treatPhpDocTypesAsCertain: false
 
     ignoreErrors:
-        - identifier: missingType.generics
         - identifier: missingType.iterableValue
         - identifier: larastan.noEnvCallsOutsideOfConfig
           path: config/*

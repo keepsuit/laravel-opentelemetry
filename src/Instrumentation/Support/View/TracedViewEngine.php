@@ -1,6 +1,6 @@
 <?php
 
-namespace Keepsuit\LaravelOpenTelemetry\Support\View;
+namespace Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\View;
 
 use Illuminate\Contracts\View\Engine;
 use Illuminate\Contracts\View\Factory;

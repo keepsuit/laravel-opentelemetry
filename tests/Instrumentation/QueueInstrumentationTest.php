@@ -51,7 +51,7 @@ test('job process span is created without parent', function () {
 
     expect($root)
         ->toBeInstanceOf(ImmutableSpan::class)
-        ->getName()->toBe(TestJob::class.' process');
+        ->getName()->toBe('process default');
 });
 
 it('can trace queue jobs', function () {
@@ -64,8 +64,8 @@ it('can trace queue jobs', function () {
     ]);
 
     $root = getRecordedSpans()->first(fn (ImmutableSpan $span) => $span->getName() === 'root');
-    $enqueueSpan = getRecordedSpans()->first(fn (ImmutableSpan $span) => $span->getName() === TestJob::class.' enqueue');
-    $processSpan = getRecordedSpans()->first(fn (ImmutableSpan $span) => $span->getName() === TestJob::class.' process');
+    $enqueueSpan = getRecordedSpans()->first(fn (ImmutableSpan $span) => $span->getName() === 'send default');
+    $processSpan = getRecordedSpans()->first(fn (ImmutableSpan $span) => $span->getName() === 'process default');
 
     $traceId = $enqueueSpan->getTraceId();
     $spanId = $enqueueSpan->getSpanId();
@@ -82,16 +82,16 @@ it('can trace queue jobs', function () {
         ->get('uuid')->not->toBeNull()
         ->get('traceparentInJob')->toBe(sprintf('00-%s-%s-01', $traceId, $spanId))
         ->get('traceIdInJob')->toBe($traceId)
-        ->get('logContextInJob')->toMatchArray(['traceid' => $traceId]);
+        ->get('logContextInJob')->toMatchArray(['trace_id' => $traceId]);
 
     expect($enqueueSpan)
         ->toBeInstanceOf(ImmutableSpan::class)
         ->getAttributes()->toMatchArray([
             MessagingIncubatingAttributes::MESSAGING_SYSTEM => 'redis',
-            MessagingIncubatingAttributes::MESSAGING_OPERATION_TYPE => 'enqueue',
+            MessagingIncubatingAttributes::MESSAGING_OPERATION_TYPE => 'send',
             MessagingIncubatingAttributes::MESSAGING_MESSAGE_ID => $this->valuestore->get('uuid'),
             MessagingIncubatingAttributes::MESSAGING_DESTINATION_NAME => 'default',
-            MessagingIncubatingAttributes::MESSAGING_DESTINATION_TEMPLATE => TestJob::class,
+            'messaging.message.job_name' => TestJob::class,
         ]);
 
     expect($processSpan)
@@ -102,7 +102,7 @@ it('can trace queue jobs', function () {
             MessagingIncubatingAttributes::MESSAGING_OPERATION_TYPE => 'process',
             MessagingIncubatingAttributes::MESSAGING_MESSAGE_ID => $this->valuestore->get('uuid'),
             MessagingIncubatingAttributes::MESSAGING_DESTINATION_NAME => 'default',
-            MessagingIncubatingAttributes::MESSAGING_DESTINATION_TEMPLATE => TestJob::class,
+            'messaging.message.job_name' => TestJob::class,
         ]);
 });
 
@@ -120,9 +120,9 @@ it('can trace queue jobs dispatched after commit', function () {
     ]);
 
     $root = getRecordedSpans()->first(fn (ImmutableSpan $span) => $span->getName() === 'root');
-    $sqlSpan = getRecordedSpans()->first(fn (ImmutableSpan $span) => $span->getName() === 'sql SELECT');
-    $enqueueSpan = getRecordedSpans()->first(fn (ImmutableSpan $span) => $span->getName() === TestJob::class.' enqueue');
-    $processSpan = getRecordedSpans()->first(fn (ImmutableSpan $span) => $span->getName() === TestJob::class.' process');
+    $sqlSpan = getRecordedSpans()->first(fn (ImmutableSpan $span) => $span->getName() === 'SELECT');
+    $enqueueSpan = getRecordedSpans()->first(fn (ImmutableSpan $span) => $span->getName() === 'send default');
+    $processSpan = getRecordedSpans()->first(fn (ImmutableSpan $span) => $span->getName() === 'process default');
 
     assert($root instanceof ImmutableSpan);
     assert($sqlSpan instanceof ImmutableSpan);
@@ -142,7 +142,7 @@ it('can trace queue jobs dispatched after commit', function () {
         ->get('uuid')->not->toBeNull()
         ->get('traceparentInJob')->toBe(sprintf('00-%s-%s-01', $root->getTraceId(), $enqueueSpan->getSpanId()))
         ->get('traceIdInJob')->toBe($root->getTraceId())
-        ->get('logContextInJob')->toMatchArray(['traceid' => $root->getTraceId()]);
+        ->get('logContextInJob')->toMatchArray(['trace_id' => $root->getTraceId()]);
 });
 
 it('can trace queue failing jobs', function () {
@@ -155,8 +155,8 @@ it('can trace queue failing jobs', function () {
     ]);
 
     $root = getRecordedSpans()->first(fn (ImmutableSpan $span) => $span->getName() === 'root');
-    $enqueueSpan = getRecordedSpans()->first(fn (ImmutableSpan $span) => $span->getName() === TestJob::class.' enqueue');
-    $processSpan = getRecordedSpans()->first(fn (ImmutableSpan $span) => $span->getName() === TestJob::class.' process');
+    $enqueueSpan = getRecordedSpans()->first(fn (ImmutableSpan $span) => $span->getName() === 'send default');
+    $processSpan = getRecordedSpans()->first(fn (ImmutableSpan $span) => $span->getName() === 'process default');
 
     assert($root instanceof ImmutableSpan);
     assert($enqueueSpan instanceof ImmutableSpan);
@@ -169,16 +169,16 @@ it('can trace queue failing jobs', function () {
         ->get('uuid')->not->toBeNull()
         ->get('traceparentInJob')->toBe(sprintf('00-%s-%s-01', $traceId, $spanId))
         ->get('traceIdInJob')->toBe($traceId)
-        ->get('logContextInJob')->toMatchArray(['traceid' => $traceId]);
+        ->get('logContextInJob')->toMatchArray(['trace_id' => $traceId]);
 
     expect($enqueueSpan)
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_UNSET)
         ->getAttributes()->toMatchArray([
             MessagingIncubatingAttributes::MESSAGING_SYSTEM => 'redis',
-            MessagingIncubatingAttributes::MESSAGING_OPERATION_TYPE => 'enqueue',
+            MessagingIncubatingAttributes::MESSAGING_OPERATION_TYPE => 'send',
             MessagingIncubatingAttributes::MESSAGING_MESSAGE_ID => $this->valuestore->get('uuid'),
             MessagingIncubatingAttributes::MESSAGING_DESTINATION_NAME => 'default',
-            MessagingIncubatingAttributes::MESSAGING_DESTINATION_TEMPLATE => TestJob::class,
+            'messaging.message.job_name' => TestJob::class,
         ]);
 
     expect($processSpan)
@@ -191,6 +191,6 @@ it('can trace queue failing jobs', function () {
             MessagingIncubatingAttributes::MESSAGING_OPERATION_TYPE => 'process',
             MessagingIncubatingAttributes::MESSAGING_MESSAGE_ID => $this->valuestore->get('uuid'),
             MessagingIncubatingAttributes::MESSAGING_DESTINATION_NAME => 'default',
-            MessagingIncubatingAttributes::MESSAGING_DESTINATION_TEMPLATE => TestJob::class,
+            'messaging.message.job_name' => TestJob::class,
         ]);
 });

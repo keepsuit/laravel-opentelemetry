@@ -12,17 +12,16 @@ it('can build open telemetry meter', function () {
 });
 
 test('counter', function () {
-    $counter = Meter::createCounter('test_counter');
+    $counter = Meter::counter('test_counter');
 
     expect($counter)->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Counter::class);
 
     $counter->add(1);
     $counter->add(2);
 
-    $metrics = getRecordedMetrics();
-    expect($metrics)->count()->toBe(1);
+    $data = getRecordedMetrics()->firstWhere('name', 'test_counter');
 
-    expect($metrics->first())
+    expect($data)
         ->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Data\Metric::class)
         ->name->toBe('test_counter')
         ->data->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Data\Sum::class)
@@ -30,7 +29,7 @@ test('counter', function () {
 });
 
 test('observable counter', function () {
-    $counter = Meter::createObservableCounter('test_observable_counter');
+    $counter = Meter::observableCounter('test_observable_counter');
 
     expect($counter)->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\ObservableCounter::class);
 
@@ -38,10 +37,9 @@ test('observable counter', function () {
         $observer->observe(5);
     });
 
-    $metrics = getRecordedMetrics();
-    expect($metrics)->count()->toBe(1);
+    $data = getRecordedMetrics()->firstWhere('name', 'test_observable_counter');
 
-    expect($metrics->first())
+    expect($data)
         ->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Data\Metric::class)
         ->name->toBe('test_observable_counter')
         ->data->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Data\Sum::class)
@@ -49,24 +47,24 @@ test('observable counter', function () {
 });
 
 test('batch observer', function () {
-    $counter1 = Meter::createObservableCounter('test_observable_1');
-    $counter2 = Meter::createObservableCounter('test_observable_2');
+    $counter1 = Meter::observableCounter('test_observable_1');
+    $counter2 = Meter::observableCounter('test_observable_2');
 
-    Meter::batchObserve(function (ObserverInterface $observer1, ObserverInterface $observer2) {
+    Meter::batchObserve([$counter1, $counter2], function (ObserverInterface $observer1, ObserverInterface $observer2) {
         $observer1->observe(10);
         $observer2->observe(30);
-    }, $counter1, $counter2);
+    });
 
-    $metrics = getRecordedMetrics();
-    expect($metrics)->count()->toBe(2);
+    $data1 = getRecordedMetrics()->firstWhere('name', 'test_observable_1');
+    $data2 = getRecordedMetrics()->firstWhere('name', 'test_observable_2');
 
-    expect($metrics->first())
+    expect($data1)
         ->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Data\Metric::class)
         ->name->toBe('test_observable_1')
         ->data->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Data\Sum::class)
         ->data->dataPoints->{0}->value->toBe(10);
 
-    expect($metrics->last())
+    expect($data2)
         ->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Data\Metric::class)
         ->name->toBe('test_observable_2')
         ->data->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Data\Sum::class)
@@ -74,22 +72,21 @@ test('batch observer', function () {
 });
 
 test('histogram', function () {
-    $histogram = Meter::createHistogram('test_histogram');
+    $histogram = Meter::histogram('test_histogram');
 
     expect($histogram)->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Histogram::class);
 
     $histogram->record(10);
     $histogram->record(30);
 
-    $metrics = getRecordedMetrics();
-    expect($metrics)->count()->toBe(1);
+    $data = getRecordedMetrics()->firstWhere('name', 'test_histogram');
 
-    expect($metrics->first())
+    expect($data)
         ->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Data\Metric::class)
         ->name->toBe('test_histogram')
         ->data->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Data\Histogram::class);
 
-    expect($metrics->first()->data->dataPoints[0])
+    expect($data->data->dataPoints[0])
         ->count->toBe(2)
         ->min->toBe(10)
         ->max->toBe(30)
@@ -97,16 +94,15 @@ test('histogram', function () {
 });
 
 test('gauge', function () {
-    $gauge = Meter::createGauge('test_gauge');
+    $gauge = Meter::gauge('test_gauge');
 
     expect($gauge)->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Gauge::class);
 
     $gauge->record(10);
 
-    $metrics = getRecordedMetrics();
-    expect($metrics)->count()->toBe(1);
+    $data = getRecordedMetrics()->firstWhere('name', 'test_gauge');
 
-    expect($metrics->first())
+    expect($data)
         ->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Data\Metric::class)
         ->name->toBe('test_gauge')
         ->data->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Data\Gauge::class)
@@ -114,7 +110,7 @@ test('gauge', function () {
 });
 
 test('observable gauge', function () {
-    $gauge = Meter::createObservableGauge('test_observable_gauge');
+    $gauge = Meter::observableGauge('test_observable_gauge');
 
     expect($gauge)->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\ObservableGauge::class);
 
@@ -122,10 +118,9 @@ test('observable gauge', function () {
         $observer->observe(20);
     });
 
-    $metrics = getRecordedMetrics();
-    expect($metrics)->count()->toBe(1);
+    $data = getRecordedMetrics()->firstWhere('name', 'test_observable_gauge');
 
-    expect($metrics->first())
+    expect($data)
         ->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Data\Metric::class)
         ->name->toBe('test_observable_gauge')
         ->data->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Data\Gauge::class)
@@ -133,17 +128,16 @@ test('observable gauge', function () {
 });
 
 test('up/down counter', function () {
-    $counter = Meter::createUpDownCounter('test_updown_counter');
+    $counter = Meter::upDownCounter('test_updown_counter');
 
     expect($counter)->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\UpDownCounter::class);
 
     $counter->add(5);
     $counter->add(-2);
 
-    $metrics = getRecordedMetrics();
-    expect($metrics)->count()->toBe(1);
+    $data = getRecordedMetrics()->firstWhere('name', 'test_updown_counter');
 
-    expect($metrics->first())
+    expect($data)
         ->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Data\Metric::class)
         ->name->toBe('test_updown_counter')
         ->data->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Data\Sum::class)
@@ -151,7 +145,7 @@ test('up/down counter', function () {
 });
 
 test('observable up/down counter', function () {
-    $counter = Meter::createObservableUpDownCounter('test_observable_updown_counter');
+    $counter = Meter::observableUpDownCounter('test_observable_updown_counter');
 
     expect($counter)->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\ObservableUpDownCounter::class);
 
@@ -161,10 +155,9 @@ test('observable up/down counter', function () {
         $observer->observe(2);
     });
 
-    $metrics = getRecordedMetrics();
-    expect($metrics)->count()->toBe(1);
+    $data = getRecordedMetrics()->firstWhere('name', 'test_observable_updown_counter');
 
-    expect($metrics->first())
+    expect($data)
         ->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Data\Metric::class)
         ->name->toBe('test_observable_updown_counter')
         ->data->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Data\Sum::class)
