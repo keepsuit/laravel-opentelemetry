@@ -13,6 +13,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Env;
 use Illuminate\Support\Str;
 use Keepsuit\LaravelOpenTelemetry\Support\CarbonClock;
+use Keepsuit\LaravelOpenTelemetry\Support\NoopSpanExporter;
 use Keepsuit\LaravelOpenTelemetry\Support\OpenTelemetryMonologHandler;
 use Keepsuit\LaravelOpenTelemetry\Support\PropagatorBuilder;
 use Keepsuit\LaravelOpenTelemetry\Support\ResourceBuilder;
@@ -46,6 +47,7 @@ use OpenTelemetry\SDK\Common\Export\Http\PsrTransportFactory;
 use OpenTelemetry\SDK\Common\Export\TransportInterface;
 use OpenTelemetry\SDK\Logs\Exporter\ConsoleExporterFactory as LogsConsoleExporterFactory;
 use OpenTelemetry\SDK\Logs\Exporter\InMemoryExporterFactory as LogsInMemoryExporterFactory;
+use OpenTelemetry\SDK\Logs\Exporter\NoopExporter as LogsNoopExporter;
 use OpenTelemetry\SDK\Logs\LoggerProvider;
 use OpenTelemetry\SDK\Logs\LoggerProviderInterface;
 use OpenTelemetry\SDK\Logs\LogRecordExporterInterface;
@@ -56,6 +58,7 @@ use OpenTelemetry\SDK\Metrics\MeterProvider;
 use OpenTelemetry\SDK\Metrics\MeterProviderInterface;
 use OpenTelemetry\SDK\Metrics\MetricExporter\ConsoleMetricExporterFactory;
 use OpenTelemetry\SDK\Metrics\MetricExporter\InMemoryExporterFactory;
+use OpenTelemetry\SDK\Metrics\MetricExporter\NoopMetricExporter;
 use OpenTelemetry\SDK\Metrics\MetricExporterInterface;
 use OpenTelemetry\SDK\Metrics\MetricReader\ExportingReader;
 use OpenTelemetry\SDK\Metrics\MetricReaderInterface;
@@ -176,7 +179,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
     protected function buildTracerProvider(ResourceInfo $resource, MeterProviderInterface $meterProvider): TracerProviderInterface
     {
         $spanExporter = match (Sdk::isDisabled()) {
-            true => (new InMemorySpanExporterFactory)->create(),
+            true => new NoopSpanExporter,
             false => $this->buildSpanExporter(),
         };
         $this->app->bind(SpanExporterInterface::class, fn () => $spanExporter);
@@ -228,7 +231,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
     protected function buildMeterProvider(ResourceInfo $resource): MeterProviderInterface
     {
         $metricsExporter = match (Sdk::isDisabled()) {
-            true => (new InMemoryExporterFactory)->create(),
+            true => new NoopMetricExporter,
             false => $this->buildMetricsExporter(),
         };
         $this->app->singleton(MetricExporterInterface::class, fn () => $metricsExporter);
@@ -248,7 +251,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
     protected function buildLoggerProvider(ResourceInfo $resource, MeterProviderInterface $meterProvider): LoggerProviderInterface
     {
         $logExporter = match (Sdk::isDisabled()) {
-            true => (new LogsInMemoryExporterFactory)->create(),
+            true => new LogsNoopExporter,
             false => $this->buildLogsExporter(),
         };
         $this->app->bind(LogRecordExporterInterface::class, fn () => $logExporter);
@@ -292,7 +295,8 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
                 Arr::get($metricsExporterConfig, 'metrics_temporality')
             ),
             'console' => (new ConsoleMetricExporterFactory)->create(),
-            default => (new InMemoryExporterFactory)->create(),
+            'memory' => (new InMemoryExporterFactory)->create(),
+            default => new NoopMetricExporter,
         };
     }
 
@@ -306,7 +310,8 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
             'zipkin' => $this->buildZipkinExporter($tracesExporterConfig ?? []),
             'otlp' => new OtlpSpanExporter($this->buildOtlpTransport($tracesExporterConfig ?? [], Signals::TRACE)),
             'console' => (new ConsoleSpanExporterFactory)->create(),
-            default => (new InMemorySpanExporterFactory)->create(),
+            'memory' => (new InMemorySpanExporterFactory)->create(),
+            default => new NoopSpanExporter,
         };
     }
 
@@ -319,7 +324,8 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         return match ($logsExporterDriver) {
             'otlp' => new LogsExporter($this->buildOtlpTransport($logsExporterConfig ?? [], Signals::LOGS)),
             'console' => (new LogsConsoleExporterFactory)->create(),
-            default => (new LogsInMemoryExporterFactory)->create()
+            'memory' => (new LogsInMemoryExporterFactory)->create(),
+            default => new LogsNoopExporter,
         };
     }
 

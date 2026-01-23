@@ -44,7 +44,7 @@ return [
         /**
          * Metrics exporter
          * This should be the key of one of the exporters defined in the exporters section
-         * Supported drivers: "otlp", "console", "null"
+         * Supported drivers: "otlp", "console", "memory", "null"
          */
         'exporter' => env(Variables::OTEL_METRICS_EXPORTER, 'otlp'),
     ],
@@ -56,6 +56,7 @@ return [
         /**
          * Traces exporter
          * This should be the key of one of the exporters defined in the exporters section
+         * Supported drivers: "otlp", "zipkin", "console", "memory", "null"
          */
         'exporter' => env(Variables::OTEL_TRACES_EXPORTER, 'otlp'),
 
@@ -112,7 +113,7 @@ return [
         /**
          * Logs exporter
          * This should be the key of one of the exporters defined in the exporters section
-         * Supported drivers: "otlp", "console", "null"
+         * SSupported drivers: "otlp", "console", "memory", "null"
          */
         'exporter' => env(Variables::OTEL_LOGS_EXPORTER, 'otlp'),
 
@@ -145,7 +146,7 @@ return [
      * If you want to use the same protocol with different endpoints,
      * you can copy the exporter with a different and change the endpoint
      *
-     * Supported drivers: "otlp", "zipkin", "console", "null"
+     * Supported drivers: "otlp", "zipkin" (only traces), "console", "memory", "null"
      */
     'exporters' => [
         'otlp' => [
