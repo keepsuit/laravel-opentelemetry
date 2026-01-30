@@ -6,6 +6,8 @@ use Closure;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Arr;
+use Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\Http\HandlesHttpHeaders;
+use Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\Http\HandlesHttpQueryString;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\HttpClient\GuzzleTraceMiddleware;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\InstrumentationUtilities;
 use Psr\Http\Message\RequestInterface;
@@ -13,6 +15,7 @@ use Psr\Http\Message\RequestInterface;
 class HttpClientInstrumentation implements Instrumentation
 {
     use HandlesHttpHeaders;
+    use HandlesHttpQueryString;
     use InstrumentationUtilities;
 
     protected static ?Closure $routeNameResolver = null;
@@ -24,6 +27,11 @@ class HttpClientInstrumentation implements Instrumentation
         static::$sensitiveHeaders = array_merge(
             $this->normalizeHeaders(Arr::get($options, 'sensitive_headers', [])),
             $this->defaultSensitiveHeaders
+        );
+
+        static::$sensitiveQueryParameters = array_merge(
+            $this->normalizeQueryParameters(Arr::get($options, 'sensitive_query_parameters', [])),
+            $this->defaultSensitiveQueryParams
         );
 
         $this->registerWithTraceMacro();

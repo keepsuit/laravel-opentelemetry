@@ -100,10 +100,14 @@ class TraceRequestMiddleware
     {
         $span->setAttributes($attributes);
 
+        $redactedQueryString = HttpServerInstrumentation::redactQueryString($request->getQueryString() ?? '');
+
+        $fullUrl = $redactedQueryString === '' ? $request->url() : sprintf('%s?%s', $request->url(), $redactedQueryString);
+
         $span
-            ->setAttribute(UrlAttributes::URL_FULL, $request->fullUrl())
+            ->setAttribute(UrlAttributes::URL_FULL, $fullUrl)
             ->setAttribute(UrlAttributes::URL_PATH, $request->path() === '/' ? $request->path() : '/'.$request->path())
-            ->setAttribute(UrlAttributes::URL_QUERY, $request->getQueryString())
+            ->setAttribute(UrlAttributes::URL_QUERY, $redactedQueryString)
             ->setAttribute(UserAgentAttributes::USER_AGENT_ORIGINAL, $request->userAgent())
             ->setAttribute(HttpIncubatingAttributes::HTTP_REQUEST_BODY_SIZE, $request->header('Content-Length'))
             ->setAttribute(NetworkAttributes::NETWORK_PEER_ADDRESS, $request->server('REMOTE_ADDR'))

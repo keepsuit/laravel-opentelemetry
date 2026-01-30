@@ -268,6 +268,29 @@ it('mark some headers as sensitive by default', function () {
         ]);
 });
 
+it('redact sensitive query string parameters', function () {
+    registerInstrumentation(HttpClientInstrumentation::class, [
+        'sensitive_query_parameters' => [
+            'token',
+        ],
+    ]);
+
+    Http::fake([
+        '*' => Http::response('', 200, ['Content-Length' => 0]),
+    ]);
+
+    withRootSpan(function () {
+        Http::get(Server::$url.'?param=value&token=secret');
+    });
+
+    $span = getRecordedSpans()->first();
+
+    expect($span->getAttributes())->toMatchArray([
+        'url.full' => 'http://127.0.0.1/?param=value&token=REDACTED',
+        'url.query' => 'param=value&token=REDACTED',
+    ]);
+});
+
 it('can resolve route name', function () {
     registerInstrumentation(HttpClientInstrumentation::class);
 

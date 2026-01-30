@@ -57,9 +57,14 @@ class GuzzleTraceMiddleware
 
                     $span->setAttributes($sharedAttributes);
 
-                    $span->setAttribute(UrlAttributes::URL_FULL, sprintf('%s://%s%s', $request->getUri()->getScheme(), $request->getUri()->getHost(), $request->getUri()->getPath()))
+                    $redactedQueryString = HttpClientInstrumentation::redactQueryString($request->getUri()->getQuery());
+
+                    $fullUrl = sprintf('%s://%s%s', $request->getUri()->getScheme(), $request->getUri()->getHost(), $request->getUri()->getPath());
+                    $fullUrl = $redactedQueryString === '' ? $fullUrl : sprintf('%s?%s', $fullUrl, $redactedQueryString);
+
+                    $span->setAttribute(UrlAttributes::URL_FULL, $fullUrl)
                         ->setAttribute(UrlAttributes::URL_PATH, $request->getUri()->getPath())
-                        ->setAttribute(UrlAttributes::URL_QUERY, $request->getUri()->getQuery())
+                        ->setAttribute(UrlAttributes::URL_QUERY, $redactedQueryString)
                         ->setAttribute(UrlAttributes::URL_SCHEME, $request->getUri()->getScheme())
                         ->setAttribute(HttpIncubatingAttributes::HTTP_REQUEST_BODY_SIZE, $request->getBody()->getSize());
 

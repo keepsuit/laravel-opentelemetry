@@ -454,6 +454,25 @@ it('handle excluded methods case-insensitively', function () {
     expect($serverSpan)->toBeNull();
 });
 
+it('redact sensitive query string parameters', function () {
+    registerInstrumentation(HttpServerInstrumentation::class, [
+        'sensitive_query_parameters' => [
+            'token',
+        ],
+    ]);
+
+    $response = $this->get('test-ok?token=secret&param=value');
+
+    $response->assertOk();
+
+    $span = getRecordedSpans()->first();
+
+    expect($span->getAttributes())->toMatchArray([
+        'url.full' => 'http://localhost/test-ok?param=value&token=REDACTED',
+        'url.query' => 'param=value&token=REDACTED',
+    ]);
+});
+
 it('record forwarded ip from trusted proxies', function () {
     registerInstrumentation(HttpServerInstrumentation::class);
 
