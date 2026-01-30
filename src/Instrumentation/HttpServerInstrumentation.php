@@ -7,7 +7,7 @@ use Illuminate\Foundation\Http\Kernel as FoundationHttpKernel;
 use Illuminate\Support\Arr;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\Http\HandlesHttpHeaders;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\Http\HandlesHttpQueryString;
-use Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\HttpServer\TraceRequestMiddleware;
+use Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\Http\Server\TraceRequestMiddleware;
 use OpenTelemetry\API\Common\Time\Clock;
 
 class HttpServerInstrumentation implements Instrumentation

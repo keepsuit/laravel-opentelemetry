@@ -6,9 +6,9 @@ use Closure;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Arr;
+use Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\Http\Client\GuzzleTraceMiddleware;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\Http\HandlesHttpHeaders;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\Http\HandlesHttpQueryString;
-use Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\HttpClient\GuzzleTraceMiddleware;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\InstrumentationUtilities;
 use Psr\Http\Message\RequestInterface;
 

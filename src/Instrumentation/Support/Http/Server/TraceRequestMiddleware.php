@@ -1,6 +1,6 @@
 <?php
 
-namespace Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\HttpServer;
+namespace Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\Http\Server;
 
 use Closure;
 use Illuminate\Http\Request;

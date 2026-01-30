@@ -1,6 +1,6 @@
 <?php
 
-namespace Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\HttpClient;
+namespace Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\Http\Client;
 
 use Closure;
 use GuzzleHttp\Promise\PromiseInterface;
