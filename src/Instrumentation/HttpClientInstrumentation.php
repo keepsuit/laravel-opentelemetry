@@ -2,16 +2,23 @@
 
 namespace Keepsuit\LaravelOpenTelemetry\Instrumentation;
 
+use Closure;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Arr;
-use Keepsuit\LaravelOpenTelemetry\Support\HttpClient\GuzzleTraceMiddleware;
-use Keepsuit\LaravelOpenTelemetry\Support\InstrumentationUtilities;
+use Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\Http\Client\GuzzleTraceMiddleware;
+use Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\Http\HandlesHttpHeaders;
+use Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\Http\HandlesHttpQueryString;
+use Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\InstrumentationUtilities;
+use Psr\Http\Message\RequestInterface;
 
 class HttpClientInstrumentation implements Instrumentation
 {
     use HandlesHttpHeaders;
+    use HandlesHttpQueryString;
     use InstrumentationUtilities;
+
+    protected static ?Closure $routeNameResolver = null;
 
     public function register(array $options): void
     {
@@ -20,6 +27,11 @@ class HttpClientInstrumentation implements Instrumentation
         static::$sensitiveHeaders = array_merge(
             $this->normalizeHeaders(Arr::get($options, 'sensitive_headers', [])),
             $this->defaultSensitiveHeaders
+        );
+
+        static::$sensitiveQueryParameters = array_merge(
+            $this->normalizeQueryParameters(Arr::get($options, 'sensitive_query_parameters', [])),
+            $this->defaultSensitiveQueryParams
         );
 
         $this->registerWithTraceMacro();
@@ -41,5 +53,23 @@ class HttpClientInstrumentation implements Instrumentation
     protected function registerGlobalMiddleware(Factory $factory): void
     {
         $factory->globalMiddleware(GuzzleTraceMiddleware::make());
+
+        PendingRequest::macro('withTrace', function () {
+            return $this;
+        });
+    }
+
+    public static function setRouteNameResolver(Closure $resolver): void
+    {
+        static::$routeNameResolver = $resolver;
+    }
+
+    public static function routeName(RequestInterface $request): ?string
+    {
+        if (static::$routeNameResolver === null) {
+            return null;
+        }
+
+        return (static::$routeNameResolver)($request);
     }
 }

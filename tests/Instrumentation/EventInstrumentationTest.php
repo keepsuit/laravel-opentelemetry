@@ -18,9 +18,9 @@ it('records string event', function () {
 
     expect($event)
         ->not->toBeNull()
-        ->getName()->toBe('Event test-event fired')
+        ->getName()->toBe('event fired')
         ->getAttributes()->toArray()->toBe([
-            'event.name' => 'test-event',
+            'event' => 'test-event',
         ]);
 });
 
@@ -38,15 +38,15 @@ it('records class event', function () {
 
     expect($event)
         ->not->toBeNull()
-        ->getName()->toBe(sprintf('Event %s fired', TestEvent::class))
+        ->getName()->toBe(sprintf('event fired', TestEvent::class))
         ->getAttributes()->toArray()->toBe([
-            'event.name' => TestEvent::class,
+            'event' => TestEvent::class,
         ]);
 });
 
 it('can ignore events', function () {
     registerInstrumentation(EventInstrumentation::class, [
-        'ignored' => ['test-event'],
+        'excluded' => ['test-event'],
     ]);
 
     withRootSpan(function () {

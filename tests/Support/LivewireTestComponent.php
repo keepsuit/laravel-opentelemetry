@@ -6,7 +6,7 @@ use Livewire\Component;
 
 class LivewireTestComponent extends Component
 {
-    public function render()
+    public function render(): string
     {
         return <<<'HTML'
             <div>

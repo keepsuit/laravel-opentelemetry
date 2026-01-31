@@ -1,6 +1,6 @@
 <?php
 
-namespace Keepsuit\LaravelOpenTelemetry\Instrumentation;
+namespace Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\Http;
 
 use Illuminate\Support\Arr;
 

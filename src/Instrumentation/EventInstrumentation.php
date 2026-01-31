@@ -11,23 +11,23 @@ class EventInstrumentation implements Instrumentation
     /**
      * @var string[]
      */
-    protected static array $ignoredEvents = [];
+    protected static array $excludedEvents = [];
 
     public function register(array $options): void
     {
-        static::$ignoredEvents = Arr::get($options, 'ignored', []);
+        static::$excludedEvents = Arr::get($options, 'excluded', []);
 
         app('events')->listen('*', [$this, 'recordEvent']);
     }
 
     public function recordEvent(string $event, array $payload): void
     {
-        if ($this->isInternalLaravelEvent($event) || $this->isIgnoredEvent($event)) {
+        if ($this->isInternalLaravelEvent($event) || $this->isExcludedEvent($event)) {
             return;
         }
 
-        Tracer::activeSpan()->addEvent(sprintf('Event %s fired', $event), [
-            'event.name' => $event,
+        Tracer::activeSpan()->addEvent('event fired', [
+            'event' => $event,
         ]);
     }
 
@@ -37,6 +37,7 @@ class EventInstrumentation implements Instrumentation
             'Illuminate\*',
             'Laravel\Octane\*',
             'Laravel\Scout\*',
+            'Laravel\Horizon\*',
             'eloquent*',
             'bootstrapped*',
             'bootstrapping*',
@@ -45,8 +46,8 @@ class EventInstrumentation implements Instrumentation
         ], $event);
     }
 
-    protected function isIgnoredEvent(string $event): bool
+    protected function isExcludedEvent(string $event): bool
     {
-        return in_array($event, static::$ignoredEvents);
+        return in_array($event, static::$excludedEvents);
     }
 }
