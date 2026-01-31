@@ -178,7 +178,6 @@ it('can trace queue failing jobs', function () {
         ]);
 
     expect($processSpan)
-        ->not->toBeNull()
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_ERROR)
         ->getEvents()->toHaveCount(1)
         ->getEvents()->{0}->getName()->toBe('exception')

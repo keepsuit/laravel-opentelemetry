@@ -10,6 +10,9 @@ uses(TestCase::class, \Illuminate\Foundation\Testing\RefreshDatabase::class)
     ->beforeEach(function () {
         resetStorage();
     })
+    ->afterAll(function () {
+        resetStorage();
+    })
     ->in(__DIR__);
 
 function resetStorage(): void

@@ -420,7 +420,6 @@ it('trace requests with non-excluded HTTP methods', function (string $method) {
     $serverSpan = $spans->firstWhere(fn (ImmutableSpan $span) => $span->getKind() === SpanKind::KIND_SERVER);
 
     expect($serverSpan)
-        ->not->toBeNull()
         ->getName()->toBe(sprintf('%s /test-ok', $method));
 })->with(['GET', 'POST']);
 
