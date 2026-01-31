@@ -2,10 +2,11 @@
 
 use Illuminate\Support\Collection;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
+use Keepsuit\LaravelOpenTelemetry\Tests\TestCase;
 use OpenTelemetry\API\Globals;
 use OpenTelemetry\SDK\Trace\TracerProviderInterface;
 
-uses(\Keepsuit\LaravelOpenTelemetry\Tests\TestCase::class)
+uses(TestCase::class, \Illuminate\Foundation\Testing\RefreshDatabase::class)
     ->beforeEach(function () {
         resetStorage();
     })
@@ -85,7 +86,7 @@ function getRecordedLogs(): Collection
     return collect($exporter->getStorage()->getArrayCopy());
 }
 
-function registerInstrumentation(string $instrumentation, array $options = [])
+function registerInstrumentation(string $instrumentation, array $options = []): void
 {
     if (! isset($options['enabled'])) {
         $options['enabled'] = true;

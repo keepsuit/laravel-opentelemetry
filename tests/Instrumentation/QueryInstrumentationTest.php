@@ -1,8 +1,6 @@
 <?php
 
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\QueryInstrumentation;
 use OpenTelemetry\API\Common\Time\Clock;
@@ -13,12 +11,6 @@ use OpenTelemetry\SemConv\Metrics\DbMetrics;
 
 beforeEach(function () {
     registerInstrumentation(QueryInstrumentation::class);
-
-    Schema::create('users', function (Blueprint $table) {
-        $table->id();
-        $table->string('name');
-        $table->boolean('admin')->default(false);
-    });
 });
 
 test('query span is not created when trace is not started', function () {

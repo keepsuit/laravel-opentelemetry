@@ -1,19 +1,18 @@
 <?php
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\HttpServerInstrumentation;
 use Keepsuit\LaravelOpenTelemetry\Tests\Support\Product;
 use Keepsuit\LaravelOpenTelemetry\Tests\Support\TestException;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
+use OpenTelemetry\SDK\Trace\ImmutableSpan;
 use OpenTelemetry\SemConv\Metrics\HttpMetrics;
 
 use function Pest\Laravel\withoutExceptionHandling;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function () {
     Route::middleware('web')->group(function () {
@@ -159,9 +158,9 @@ it('can record a route exception in a nested span', function () {
 
     $response->assertServerError();
 
-    $spans = getRecordedSpans()->reverse();
-    $nestedSpan = $spans->get(0);
-    $routeSpan = $spans->get(1);
+    $spans = getRecordedSpans();
+    $routeSpan = $spans->first(fn (ImmutableSpan $span) => Str::startsWith($span->getName(), 'GET'));
+    $nestedSpan = $spans->first(fn (ImmutableSpan $span) => $span->getName() === 'nested');
 
     expect($nestedSpan)
         ->getName()->toBe('nested')
@@ -251,7 +250,7 @@ it('skip tracing for excluded paths', function () {
 
     $spans = getRecordedSpans();
 
-    $serverSpan = $spans->firstWhere(fn (\OpenTelemetry\SDK\Trace\ImmutableSpan $span) => $span->getKind() === SpanKind::KIND_SERVER);
+    $serverSpan = $spans->firstWhere(fn (ImmutableSpan $span) => $span->getKind() === SpanKind::KIND_SERVER);
 
     expect($serverSpan)
         ->toBeNull();
@@ -363,7 +362,7 @@ it('mark some headers as sensitive by default', function () {
         ]);
 });
 
-it('skip tracing for excluded HTTP methods', function () {
+it('skip tracing for excluded HTTP methods', function (string $method) {
     registerInstrumentation(HttpServerInstrumentation::class, [
         'excluded_methods' => [
             'HEAD',
@@ -371,61 +370,19 @@ it('skip tracing for excluded HTTP methods', function () {
         ],
     ]);
 
-    // Test HEAD request
-    $response = $this->head('test-ok');
+    $response = match ($method) {
+        'HEAD' => $this->head('test-ok'),
+        'OPTIONS' => $this->options('test-ok'),
+    };
     $response->assertOk();
 
     $spans = getRecordedSpans();
-    $serverSpan = $spans->firstWhere(fn (\OpenTelemetry\SDK\Trace\ImmutableSpan $span) => $span->getKind() === SpanKind::KIND_SERVER);
+    $serverSpan = $spans->firstWhere(fn (ImmutableSpan $span) => $span->getKind() === SpanKind::KIND_SERVER);
 
     expect($serverSpan)->toBeNull();
+})->with(['HEAD', 'OPTIONS']);
 
-    resetStorage();
-
-    // Test OPTIONS request
-    $response = $this->options('test-ok');
-    $response->assertOk();
-
-    $spans = getRecordedSpans();
-    $serverSpan = $spans->firstWhere(fn (\OpenTelemetry\SDK\Trace\ImmutableSpan $span) => $span->getKind() === SpanKind::KIND_SERVER);
-
-    expect($serverSpan)->toBeNull();
-});
-
-it('trace requests with non-excluded HTTP methods', function () {
-    registerInstrumentation(HttpServerInstrumentation::class, [
-        'excluded_methods' => [
-            'HEAD',
-            'OPTIONS',
-        ],
-    ]);
-
-    // Test GET request (should be traced)
-    $response = $this->get('test-ok');
-    $response->assertOk();
-
-    $spans = getRecordedSpans();
-    $serverSpan = $spans->firstWhere(fn (\OpenTelemetry\SDK\Trace\ImmutableSpan $span) => $span->getKind() === SpanKind::KIND_SERVER);
-
-    expect($serverSpan)
-        ->not->toBeNull()
-        ->getName()->toBe('GET /test-ok');
-
-    resetStorage();
-
-    // Test POST request (should be traced)
-    $response = $this->post('test-ok');
-    $response->assertOk();
-
-    $spans = getRecordedSpans();
-    $serverSpan = $spans->firstWhere(fn (\OpenTelemetry\SDK\Trace\ImmutableSpan $span) => $span->getKind() === SpanKind::KIND_SERVER);
-
-    expect($serverSpan)
-        ->not->toBeNull()
-        ->getName()->toBe('POST /test-ok');
-});
-
-it('handle excluded methods case-insensitively', function () {
+it('handle excluded methods case-insensitively', function (string $method) {
     registerInstrumentation(HttpServerInstrumentation::class, [
         'excluded_methods' => [
             'head',  // lowercase
@@ -433,26 +390,39 @@ it('handle excluded methods case-insensitively', function () {
         ],
     ]);
 
-    // Test HEAD request
-    $response = $this->head('test-ok');
+    $response = match ($method) {
+        'HEAD' => $this->head('test-ok'),
+        'OPTIONS' => $this->options('test-ok'),
+    };
     $response->assertOk();
 
     $spans = getRecordedSpans();
-    $serverSpan = $spans->firstWhere(fn (\OpenTelemetry\SDK\Trace\ImmutableSpan $span) => $span->getKind() === SpanKind::KIND_SERVER);
+    $serverSpan = $spans->firstWhere(fn (ImmutableSpan $span) => $span->getKind() === SpanKind::KIND_SERVER);
 
     expect($serverSpan)->toBeNull();
+})->with(['HEAD', 'OPTIONS']);
 
-    resetStorage();
+it('trace requests with non-excluded HTTP methods', function (string $method) {
+    registerInstrumentation(HttpServerInstrumentation::class, [
+        'excluded_methods' => [
+            'HEAD',
+            'OPTIONS',
+        ],
+    ]);
 
-    // Test OPTIONS request
-    $response = $this->options('test-ok');
+    $response = match ($method) {
+        'GET' => $this->get('test-ok'),
+        'POST' => $this->post('test-ok'),
+    };
     $response->assertOk();
 
     $spans = getRecordedSpans();
-    $serverSpan = $spans->firstWhere(fn (\OpenTelemetry\SDK\Trace\ImmutableSpan $span) => $span->getKind() === SpanKind::KIND_SERVER);
+    $serverSpan = $spans->firstWhere(fn (ImmutableSpan $span) => $span->getKind() === SpanKind::KIND_SERVER);
 
-    expect($serverSpan)->toBeNull();
-});
+    expect($serverSpan)
+        ->not->toBeNull()
+        ->getName()->toBe(sprintf('%s /test-ok', $method));
+})->with(['GET', 'POST']);
 
 it('redact sensitive query string parameters', function () {
     registerInstrumentation(HttpServerInstrumentation::class, [

@@ -1,9 +1,7 @@
 <?php
 
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\QueryInstrumentation;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\QueueInstrumentation;
@@ -18,10 +16,6 @@ beforeEach(function () {
     registerInstrumentation(QueryInstrumentation::class);
 
     $this->valuestore = Valuestore::make(__DIR__.'/testJob.json')->flush();
-
-    Schema::create('users', function (Blueprint $table) {
-        $table->id();
-    });
 });
 
 afterEach(function () {
@@ -152,6 +146,8 @@ it('can trace queue failing jobs', function () {
 
     Artisan::call('queue:work', [
         '--once' => true,
+        '--tries' => 1,
+        '--timeout' => 3,
     ]);
 
     $root = getRecordedSpans()->first(fn (ImmutableSpan $span) => $span->getName() === 'root');
