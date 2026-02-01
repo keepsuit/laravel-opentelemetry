@@ -34,6 +34,7 @@
         "larastan/larastan": "^3.0",
         "laravel/octane": "^2.13",
         "laravel/pint": "^1.18",
+        "laravel/scout": "^10.23",
         "livewire/livewire": "^3.0 || ^4.0",
         "nesbot/carbon": "^2.69 || ^3.0",
         "nunomaduro/collision": "^8.0",
@@ -54,6 +55,7 @@
         "thecodingmachine/phpstan-safe-rule": "^1.2"
     },
     "suggest": {
+        "ext-opentelemetry": "Required for some instrumentation (scout)",
         "open-telemetry/extension-propagator-b3": "Required to use B3 propagator",
         "open-telemetry/exporter-zipkin": "Required to Zipkin exporter",
         "open-telemetry/transport-grpc": "Required to use OTLP gRPC exporter"

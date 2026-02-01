@@ -232,6 +232,8 @@ return [
             'enabled' => env('OTEL_INSTRUMENTATION_CONSOLE', true),
             'commands' => [],
         ],
+
+        Instrumentation\ScoutInstrumentation::class => env('OTEL_INSTRUMENTATION_SCOUT', true),
     ],
 
     /**

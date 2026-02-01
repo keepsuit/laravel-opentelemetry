@@ -39,6 +39,8 @@ class TestCase extends Orchestra
         $app['config']->set('cache.default', 'array');
 
         $app['config']->set('view.paths', [__DIR__.'/views']);
+
+        $app['config']->set('scout.driver', 'collection');
     }
 
     protected function defineDatabaseMigrations(): void
