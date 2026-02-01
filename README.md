@@ -21,6 +21,7 @@ This package allows you to integrate OpenTelemetry in a Laravel application.
     - [Events](#events)
     - [View](#view)
     - [Livewire](#livewire)
+    - [Scout](#scout)
     - [Console Commands](#console-commands)
 - [Traces](#traces)
     - [Manual Traces](#manual-traces)
@@ -286,6 +287,8 @@ return [
             'enabled' => env('OTEL_INSTRUMENTATION_CONSOLE', true),
             'commands' => [],
         ],
+        
+        Instrumentation\ScoutInstrumentation::class => env('OTEL_INSTRUMENTATION_SCOUT', true),
     ],
 
     /**
@@ -465,6 +468,14 @@ You can disable this instrumentation by setting `OTEL_INSTRUMENTATION_LIVEWIRE` 
 Console commands are not traced by default. You can trace console commands by adding them to the `commands` option of `ConsoleInstrumentation`.
 
 You can disable this instrumentation by setting `OTEL_INSTRUMENTATION_CONSOLE` to `false` or removing `ConsoleInstrumentation::class` from the config.
+
+### Scout
+
+Tracing of laravel scout operations requires the `opentelemetry` php extension to be installed and enabled.
+
+The instrumentation trace operations performed by laravel scout in a generic way without tracking engine-specific attributes.
+
+You can disable this instrumentation by setting `OTEL_INSTRUMENTATION_SCOUT` to `false` or removing `ScoutInstrumentation::class` from the config.
 
 ## Traces
 
