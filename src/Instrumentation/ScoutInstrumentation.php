@@ -6,14 +6,18 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use Illuminate\Support\Stringable;
+use Keepsuit\LaravelOpenTelemetry\Facades\Meter;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Laravel\Scout\Builder;
 use Laravel\Scout\EngineManager;
 use Laravel\Scout\Engines\Engine;
+use OpenTelemetry\API\Common\Time\ClockInterface;
 use OpenTelemetry\API\Trace\SpanInterface;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
+use OpenTelemetry\SDK\Trace\Span;
 use OpenTelemetry\SemConv\Attributes\DbAttributes;
+use OpenTelemetry\SemConv\Metrics\DbMetrics;
 
 use function OpenTelemetry\Instrumentation\hook;
 
@@ -86,7 +90,28 @@ class ScoutInstrumentation implements Instrumentation
             if ($this->activeSpan === null) {
                 return;
             }
+
             $this->endSpan($this->activeSpan, $exception);
+
+            if ($this->activeSpan instanceof Span) {
+                $duration = $this->activeSpan->getDuration() / ClockInterface::NANOS_PER_SECOND;
+
+                $attributes = [
+                    DbAttributes::DB_SYSTEM_NAME => $this->activeSpan->getAttribute(DbAttributes::DB_SYSTEM_NAME),
+                    DbAttributes::DB_NAMESPACE => $this->activeSpan->getAttribute(DbAttributes::DB_NAMESPACE),
+                    DbAttributes::DB_OPERATION_NAME => $this->activeSpan->getAttribute(DbAttributes::DB_OPERATION_NAME),
+                ];
+
+                Meter::histogram(
+                    name: DbMetrics::DB_CLIENT_OPERATION_DURATION,
+                    unit: 's',
+                    description: 'Duration of database client operations.',
+                    advisory: [
+                        'ExplicitBucketBoundaries' => [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0],
+                    ])
+                    ->record($duration, $attributes);
+            }
+
             $this->activeSpan = null;
         };
 

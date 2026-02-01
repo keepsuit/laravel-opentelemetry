@@ -4,6 +4,8 @@ use Keepsuit\LaravelOpenTelemetry\Instrumentation\ScoutInstrumentation;
 use Keepsuit\LaravelOpenTelemetry\Tests\Support\SearchableProduct;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\SDK\Trace\SpanDataInterface;
+use OpenTelemetry\SemConv\Attributes\DbAttributes;
+use OpenTelemetry\SemConv\Metrics\DbMetrics;
 
 test('trace scout search operation', function () {
     registerInstrumentation(ScoutInstrumentation::class);
@@ -113,4 +115,31 @@ test('scout instrumentation skips spans when trace not started', function () {
     SearchableProduct::search('lorem')->first();
 
     expect(getRecordedSpans())->toBeEmpty();
+});
+
+test('records scout operation duration metric', function () {
+    registerInstrumentation(ScoutInstrumentation::class);
+
+    SearchableProduct::query()->create(['name' => 'Lorem ipsum']);
+
+    withRootSpan(function () {
+        return SearchableProduct::search('lorem')->get();
+    });
+
+    $metric = getRecordedMetrics()->where('name', DbMetrics::DB_CLIENT_OPERATION_DURATION)->sole();
+
+    expect($metric)
+        ->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Data\Metric::class)
+        ->unit->toBe('s')
+        ->data->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Data\Histogram::class);
+
+    /** @var \OpenTelemetry\SDK\Metrics\Data\HistogramDataPoint $dataPoint */
+    $dataPoint = $metric->data->dataPoints[0];
+
+    expect($dataPoint->attributes)
+        ->toMatchArray([
+            DbAttributes::DB_SYSTEM_NAME => 'scout_collection',
+            DbAttributes::DB_NAMESPACE => 'products',
+            DbAttributes::DB_OPERATION_NAME => 'search',
+        ]);
 });
