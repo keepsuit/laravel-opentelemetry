@@ -50,13 +50,19 @@ class ScoutInstrumentation implements Instrumentation
                 default => sprintf('search_%s', $methodName),
             };
 
+            $operationTarget = match (true) {
+                $params[0] instanceof Builder => $this->resolveOperationNamespace($params[0]->model),
+                $params[0] instanceof Collection => $this->resolveOperationNamespace($params[0]->first()),
+                default => null,
+            };
+
             $attributes = [
                 DbAttributes::DB_SYSTEM_NAME => $this->resolveEngineName($engine),
                 DbAttributes::DB_OPERATION_NAME => $operationName,
+                DbAttributes::DB_NAMESPACE => $operationTarget,
             ];
 
             if ($params[0] instanceof Builder) {
-                $attributes[DbAttributes::DB_NAMESPACE] = $this->resolveOperationNamespace($params[0]->model);
                 $attributes[DbAttributes::DB_QUERY_TEXT] = Str::of($params[0]->query)
                     ->limit(500)
                     ->when($methodName === 'paginate', fn (Stringable $str) => $str->append(sprintf(' (page: %d, per_page: %d)', $params[2] ?? '-', $params[1] ?? '-')))
@@ -64,11 +70,11 @@ class ScoutInstrumentation implements Instrumentation
             }
 
             if ($params[0] instanceof Collection) {
-                $attributes[DbAttributes::DB_NAMESPACE] = $this->resolveOperationNamespace($params[0]->first());
                 $attributes[DbAttributes::DB_OPERATION_BATCH_SIZE] = $params[0]->count();
+                $attributes['db.operation.batch.ids'] = $params[0]->map(fn (Model $model) => $model->getKey())->values()->join(', ');
             }
 
-            $span = Tracer::newSpan($operationName)
+            $span = Tracer::newSpan(sprintf('%s %s', $operationName, $operationTarget))
                 ->setSpanKind(SpanKind::KIND_CLIENT)
                 ->setAttributes($attributes)
                 ->start();

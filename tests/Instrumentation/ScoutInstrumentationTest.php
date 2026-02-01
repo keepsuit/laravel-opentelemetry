@@ -16,10 +16,10 @@ test('trace scout search operation', function () {
 
     $spans = getRecordedSpans();
 
-    $searchSpan = $spans->first(fn (SpanDataInterface $span) => $span->getName() === 'search');
+    $searchSpan = $spans->first(fn (SpanDataInterface $span) => $span->getName() === 'search products');
 
     expect($searchSpan)
-        ->getName()->toBe('search')
+        ->getName()->toBe('search products')
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
         ->getAttributes()
         ->toMatchArray([
@@ -41,10 +41,10 @@ test('trace scout paginate operation', function () {
 
     $spans = getRecordedSpans();
 
-    $searchSpan = $spans->first(fn (SpanDataInterface $span) => $span->getName() === 'search');
+    $searchSpan = $spans->first(fn (SpanDataInterface $span) => $span->getName() === 'search products');
 
     expect($searchSpan)
-        ->getName()->toBe('search')
+        ->getName()->toBe('search products')
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
         ->getAttributes()
         ->toMatchArray([
@@ -66,10 +66,10 @@ test('trace scout update operation', function () {
 
     $spans = getRecordedSpans();
 
-    $searchSpan = $spans->first(fn (SpanDataInterface $span) => $span->getName() === 'search_update');
+    $searchSpan = $spans->first(fn (SpanDataInterface $span) => $span->getName() === 'search_update products');
 
     expect($searchSpan)
-        ->getName()->toBe('search_update')
+        ->getName()->toBe('search_update products')
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
         ->getAttributes()
         ->toMatchArray([
@@ -77,6 +77,7 @@ test('trace scout update operation', function () {
             'db.namespace' => 'products',
             'db.operation.name' => 'search_update',
             'db.operation.batch.size' => 1,
+            'db.operation.batch.ids' => '1',
         ]);
 });
 
@@ -91,10 +92,10 @@ test('trace scout delete operation', function () {
 
     $spans = getRecordedSpans();
 
-    $searchSpan = $spans->first(fn (SpanDataInterface $span) => $span->getName() === 'search_delete');
+    $searchSpan = $spans->first(fn (SpanDataInterface $span) => $span->getName() === 'search_delete products');
 
     expect($searchSpan)
-        ->getName()->toBe('search_delete')
+        ->getName()->toBe('search_delete products')
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
         ->getAttributes()
         ->toMatchArray([
@@ -102,6 +103,7 @@ test('trace scout delete operation', function () {
             'db.namespace' => 'products',
             'db.operation.name' => 'search_delete',
             'db.operation.batch.size' => 1,
+            'db.operation.batch.ids' => '1',
         ]);
 });
 
