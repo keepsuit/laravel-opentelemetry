@@ -200,6 +200,7 @@ return [
             'excluded_methods' => [],
             'allowed_headers' => [],
             'sensitive_headers' => [],
+            'sensitive_query_parameters' => [],
         ],
 
         Instrumentation\HttpClientInstrumentation::class => [
@@ -207,6 +208,7 @@ return [
             'manual' => false, // When set to true, you need to call `withTrace()` on the request to enable tracing
             'allowed_headers' => [],
             'sensitive_headers' => [],
+            'sensitive_query_parameters' => [],
         ],
 
         Instrumentation\QueryInstrumentation::class => env('OTEL_INSTRUMENTATION_QUERY', true),
