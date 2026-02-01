@@ -7,7 +7,7 @@ test('service resource attributes', function () {
     $resource = ResourceBuilder::build();
 
     expect($resource->getAttributes())
-        ->get('service.name')->toBe('laravel-app')
+        ->get('service.name')->toBe('laravel-test-app')
         ->get('service.instance.id')->toBeNull();
 });
 

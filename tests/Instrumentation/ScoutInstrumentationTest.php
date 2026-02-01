@@ -1,17 +1,17 @@
 <?php
 
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\ScoutInstrumentation;
-use Keepsuit\LaravelOpenTelemetry\Tests\Support\Product;
+use Keepsuit\LaravelOpenTelemetry\Tests\Support\SearchableProduct;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\SDK\Trace\SpanDataInterface;
 
 test('trace scout search operation', function () {
     registerInstrumentation(ScoutInstrumentation::class);
 
-    Product::query()->create(['name' => 'Lorem ipsum']);
+    SearchableProduct::query()->create(['name' => 'Lorem ipsum']);
 
     withRootSpan(function () {
-        return Product::search('lorem')->get();
+        return SearchableProduct::search('lorem')->get();
     });
 
     $spans = getRecordedSpans();
@@ -33,10 +33,10 @@ test('trace scout search operation', function () {
 test('trace scout paginate operation', function () {
     registerInstrumentation(ScoutInstrumentation::class);
 
-    Product::query()->create(['name' => 'Lorem ipsum']);
+    SearchableProduct::query()->create(['name' => 'Lorem ipsum']);
 
     withRootSpan(function () {
-        return Product::search('lorem')->paginate();
+        return SearchableProduct::search('lorem')->paginate();
     });
 
     $spans = getRecordedSpans();
@@ -58,8 +58,10 @@ test('trace scout paginate operation', function () {
 test('trace scout update operation', function () {
     registerInstrumentation(ScoutInstrumentation::class);
 
-    withRootSpan(function () {
-        Product::query()->create(['name' => 'Lorem ipsum']);
+    $product = SearchableProduct::query()->create(['name' => 'Lorem ipsum']);
+
+    withRootSpan(function () use ($product) {
+        $product->searchableSync();
     });
 
     $spans = getRecordedSpans();
@@ -81,7 +83,7 @@ test('trace scout update operation', function () {
 test('trace scout delete operation', function () {
     registerInstrumentation(ScoutInstrumentation::class);
 
-    $product = Product::query()->create(['name' => 'Lorem ipsum']);
+    $product = SearchableProduct::query()->create(['name' => 'Lorem ipsum']);
 
     withRootSpan(function () use ($product) {
         $product->delete();
@@ -106,7 +108,7 @@ test('trace scout delete operation', function () {
 test('scout instrumentation skips spans when trace not started', function () {
     registerInstrumentation(ScoutInstrumentation::class);
 
-    Product::search('lorem')->first();
+    SearchableProduct::search('lorem')->first();
 
     expect(getRecordedSpans())->toBeEmpty();
 });

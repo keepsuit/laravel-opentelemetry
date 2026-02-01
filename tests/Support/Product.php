@@ -3,7 +3,6 @@
 namespace Keepsuit\LaravelOpenTelemetry\Tests\Support;
 
 use Illuminate\Database\Eloquent\Model;
-use Laravel\Scout\Searchable;
 
 /**
  * @property int $id
@@ -11,7 +10,7 @@ use Laravel\Scout\Searchable;
  */
 class Product extends Model
 {
-    use Searchable;
+    protected $table = 'products';
 
     protected $guarded = [];
 }
