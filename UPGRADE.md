@@ -50,6 +50,107 @@ Several classes have been reorganized for better code structure. If you're impor
 | `Keepsuit\LaravelOpenTelemetry\Support\HttpClient\GuzzleTraceMiddleware`  | `Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\Http\Client\GuzzleTraceMiddleware`  |
 | `Keepsuit\LaravelOpenTelemetry\Support\HttpServer\TraceRequestMiddleware` | `Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\Http\Server\TraceRequestMiddleware` |
 
+#### Meter API Changes
+
+All `Meter` class methods have been renamed and refactored for a cleaner API and better instrument management.
+
+**Method Renames:**
+
+All `create*` method prefixes have been removed for brevity:
+
+| v1.x Method                       | v2.0 Method                 |
+|-----------------------------------|-----------------------------|
+| `createCounter()`                 | `counter()`                 |
+| `createGauge()`                   | `gauge()`                   |
+| `createHistogram()`               | `histogram()`               |
+| `createUpDownCounter()`           | `upDownCounter()`           |
+| `createObservableCounter()`       | `observableCounter()`       |
+| `createObservableGauge()`         | `observableGauge()`         |
+| `createObservableUpDownCounter()` | `observableUpDownCounter()` |
+
+**Observable Instrument Changes:**
+
+Observable instrument methods (`observableCounter()`, `observableGauge()`, `observableUpDownCounter()`) no longer accept `callable ...$callbacks` parameters.
+You must now register observation callbacks using the `observe()` method on the returned instrument.
+
+**Before (v1.x):**
+
+```php
+Meter::createObservableCounter('cache.hits', 'Cache hits', function(ObserverInterface $observer): void {
+    $observer->observe(123);
+});
+```
+
+**After (v2.0):**
+
+```php
+Meter::observableCounter('cache.hits', 'Cache hits')
+    ->observe(function (ObserverInterface $observer) {
+        $observer->observe(123);
+    });
+```
+
+**`batchObserve()` Method Changes:**
+
+The method signature has changed: instruments array is now the first parameter, callback is the second parameter.
+
+**Before (v1.x):**
+
+```php
+Meter::batchObserve(
+    function(
+        ObserverInterface $usageObserver,
+        ObserverInterface $pressureObserver,
+    ): void {
+        [$usage, $pressure] = expensive_system_call();
+        $usageObserver->observe($usage);
+        $pressureObserver->observe($pressure);
+    },
+    Meter::createObservableCounter('usage', description: 'count of items used'),
+    Meter::createObservableGauge('pressure', description: 'force per unit area'),
+);
+```
+
+**After (v2.0):**
+
+```php
+Meter::batchObserve(
+    [
+        Meter::observableCounter('usage', description: 'count of items used'),
+        Meter::observableGauge('pressure', description: 'force per unit area'),
+    ],
+    function(
+        ObserverInterface $usageObserver,
+        ObserverInterface $pressureObserver,
+    ): void {
+        [$usage, $pressure] = expensive_system_call();
+        $usageObserver->observe($usage);
+        $pressureObserver->observe($pressure);
+    }
+);
+```
+
+**Instrument Caching:**
+
+In v2.0, instruments are now cached by name.
+Calling a meter method multiple times with the same name returns the cached instrument instead of creating duplicates.
+This prevents accidental duplicate instruments and allows to access the same instrument from multiple places.
+
+```php
+// Both calls return the same instrument instance
+$counter1 = Meter::counter('requests.total');
+$counter2 = Meter::counter('requests.total');
+
+assert($counter1 === $counter2); // true
+```
+
+If you attempt to create an instrument with the same name but different type, an exception will be thrown:
+
+```php
+$counter = Meter::counter('requests.total');
+$gauge = Meter::gauge('requests.total'); // Throws RuntimeException
+```
+
 #### Null Exporter Behavior
 
 In v1.0 when exporter was set to `null`, the 'in-memory' OTLP exporter was used.
