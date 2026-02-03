@@ -129,7 +129,7 @@ class TraceRequestMiddleware
             $span->setStatus(StatusCode::STATUS_OK);
         }
 
-        if ($response->isServerError() || $response->isClientError()) {
+        if ($response->isServerError()) {
             $span->setStatus(StatusCode::STATUS_ERROR);
         }
     }

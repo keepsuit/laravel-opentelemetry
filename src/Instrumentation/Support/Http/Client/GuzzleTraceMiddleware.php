@@ -74,7 +74,7 @@ class GuzzleTraceMiddleware
 
                     static::recordHeaders($span, $response);
 
-                    if ($response->getStatusCode() >= 400 && $response->getStatusCode() <= 599) {
+                    if ($response->getStatusCode() >= 500 && $response->getStatusCode() <= 599) {
                         $span->setStatus(StatusCode::STATUS_ERROR);
                     }
 
