@@ -157,6 +157,13 @@ In v1.0 when exporter was set to `null`, the 'in-memory' OTLP exporter was used.
 In v2.0, setting exporter to `null` uses a no-op exporter that discards all data. To use the in-memory exporter, set exporter to `memory`.
 When a signal (trace, metric, log) is disabled, the no-op exporter is used regardless of the configured exporter.
 
+### Span names and attributes changes
+
+Some span names and attributes have been renamed or changed to better align with OpenTelemetry conventions:
+- Http spans (both client and server) now uses `{method} {route}` name convention
+- Database spans (sql and redis) now uses `{operation name}` name convention
+- Queue spans now uses `{operation} {queue name}` name convention
+
 ---
 
 ### New Features
