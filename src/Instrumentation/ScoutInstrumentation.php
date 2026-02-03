@@ -18,12 +18,16 @@ use OpenTelemetry\API\Trace\StatusCode;
 use OpenTelemetry\SDK\Trace\Span;
 use OpenTelemetry\SemConv\Attributes\DbAttributes;
 use OpenTelemetry\SemConv\Metrics\DbMetrics;
+use WeakMap;
 
 use function OpenTelemetry\Instrumentation\hook;
 
 class ScoutInstrumentation implements Instrumentation
 {
-    protected ?SpanInterface $activeSpan = null;
+    /**
+     * @var WeakMap<Engine, SpanInterface>
+     */
+    protected WeakMap $activeSpans;
 
     public function register(array $options): void
     {
@@ -35,14 +39,14 @@ class ScoutInstrumentation implements Instrumentation
             return;
         }
 
+        $this->activeSpans = new WeakMap;
+
         $this->traceSearchOperations();
     }
 
     protected function traceSearchOperations(): void
     {
         $searchPre = function (Engine $engine, array $params, string $className, string $methodName) {
-            $this->activeSpan = null;
-
             if (! Tracer::traceStarted()) {
                 return;
             }
@@ -75,7 +79,7 @@ class ScoutInstrumentation implements Instrumentation
 
             if ($params[0] instanceof Collection) {
                 $attributes[DbAttributes::DB_OPERATION_BATCH_SIZE] = $params[0]->count();
-                $attributes['db.operation.batch.ids'] = $params[0]->map(fn (Model $model) => $model->getKey())->values()->join(', ');
+                $attributes['db.operation.batch.ids'] = $this->formatBatchIds($params[0]);
             }
 
             $span = Tracer::newSpan(sprintf('%s %s', $operationName, $operationTarget))
@@ -83,23 +87,26 @@ class ScoutInstrumentation implements Instrumentation
                 ->setAttributes($attributes)
                 ->start();
 
-            $this->activeSpan = $span;
+            $this->activeSpans[$engine] = $span;
         };
 
         $searchPost = function (Engine $engine, array $params, mixed $returnValue, ?\Throwable $exception = null) {
-            if ($this->activeSpan === null) {
+            if (! isset($this->activeSpans[$engine])) {
                 return;
             }
 
-            $this->endSpan($this->activeSpan, $exception);
+            $span = $this->activeSpans[$engine];
+            unset($this->activeSpans[$engine]);
 
-            if ($this->activeSpan instanceof Span) {
-                $duration = $this->activeSpan->getDuration() / ClockInterface::NANOS_PER_SECOND;
+            $this->endSpan($span, $exception);
+
+            if ($span instanceof Span) {
+                $duration = $span->getDuration() / ClockInterface::NANOS_PER_SECOND;
 
                 $attributes = [
-                    DbAttributes::DB_SYSTEM_NAME => $this->activeSpan->getAttribute(DbAttributes::DB_SYSTEM_NAME),
-                    DbAttributes::DB_NAMESPACE => $this->activeSpan->getAttribute(DbAttributes::DB_NAMESPACE),
-                    DbAttributes::DB_OPERATION_NAME => $this->activeSpan->getAttribute(DbAttributes::DB_OPERATION_NAME),
+                    DbAttributes::DB_SYSTEM_NAME => $span->getAttribute(DbAttributes::DB_SYSTEM_NAME),
+                    DbAttributes::DB_NAMESPACE => $span->getAttribute(DbAttributes::DB_NAMESPACE),
+                    DbAttributes::DB_OPERATION_NAME => $span->getAttribute(DbAttributes::DB_OPERATION_NAME),
                 ];
 
                 Meter::histogram(
@@ -111,8 +118,6 @@ class ScoutInstrumentation implements Instrumentation
                     ])
                     ->record($duration, $attributes);
             }
-
-            $this->activeSpan = null;
         };
 
         hook(Engine::class, 'search', pre: $searchPre, post: $searchPost);
@@ -138,6 +143,26 @@ class ScoutInstrumentation implements Instrumentation
 
         // @phpstan-ignore-next-line
         return rescue(fn () => $model->searchableAs());
+    }
+
+    /**
+     * Format batch IDs with size limit to prevent unbounded attribute values
+     *
+     * @param  Collection<int, Model>  $collection
+     */
+    protected function formatBatchIds(Collection $collection): string
+    {
+        $ids = $collection->map(fn (Model $model) => $model->getKey())->values();
+
+        // Limit to first 100 IDs to prevent excessively large attributes
+        if ($ids->count() > 100) {
+            $formatted = $ids->take(100)->join(', ');
+            $remaining = $ids->count() - 100;
+
+            return sprintf('%s ... (%d more)', $formatted, $remaining);
+        }
+
+        return $ids->join(', ');
     }
 
     protected function endSpan(SpanInterface $span, ?\Throwable $exception = null): void

@@ -117,6 +117,26 @@ test('scout instrumentation skips spans when trace not started', function () {
     expect(getRecordedSpans())->toBeEmpty();
 });
 
+test('truncates batch ids when exceeding limit', function () {
+    registerInstrumentation(ScoutInstrumentation::class);
+
+    // Create 150 products to exceed the 100 ID limit
+    $products = collect(range(1, 150))->map(function ($i) {
+        return SearchableProduct::query()->create(['name' => "Product {$i}"]);
+    });
+
+    withRootSpan(function () use ($products) {
+        $products->each(fn ($product) => $product->searchableSync());
+    });
+
+    $spans = getRecordedSpans();
+    $searchSpan = $spans->first(fn (SpanDataInterface $span) => $span->getName() === 'search_update products');
+
+    expect($searchSpan)
+        ->getAttributes()->toHaveKey('db.operation.batch.ids')
+        ->getAttributes()['db.operation.batch.ids']->toContain('... (50 more)');
+});
+
 test('records scout operation duration metric', function () {
     registerInstrumentation(ScoutInstrumentation::class);
 
