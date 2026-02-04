@@ -2,6 +2,25 @@
 
 All notable changes to `laravel-opentelemetry` will be documented in this file.
 
+## v2.0.0 - 2026-02-04
+
+### What's Changed
+
+This is a major release that introduces significant architectural improvements and new features to the Laravel OpenTelemetry package. This release implements worker mode detection, tail sampling, Scout instrumentation, unified OpenTelemetry facade, and user context tracking, along with some breaking API changes.
+
+**Changes:**
+
+- Introduces worker mode detection and optimization for long-running processes (Octane, Horizon, Queue workers)
+- Adds tail sampling with configurable rules for intelligent trace filtering
+- Implements Laravel Scout instrumentation for search operations
+- Refactors Meter API (renamed methods, instrument caching, observable instrument changes)
+- Updates span naming conventions to follow OpenTelemetry specifications
+- Adds user context tracking for traces and logs
+
+See [UPGRADE.md](UPGRADE.md) for breaking changes and upgrade guide
+
+**Full Changelog**: https://github.com/keepsuit/laravel-opentelemetry/compare/1.15.0...2.0.0
+
 ## v 1.15.0 - 2025-12-24
 
 ### What's Changed
@@ -130,6 +149,7 @@ Instrumentation\ConsoleInstrumentation::class => [
 
 
 
+
 ```
 **Full Changelog**: https://github.com/keepsuit/laravel-opentelemetry/compare/1.7.0...1.8.0
 
@@ -243,6 +263,7 @@ Tracer::newSpan('name')->setSpanKind(SpanKind::KIND_PRODUCER)->measure(callback)
 
 
 
+
 ```
 `Tracer::recordExceptionToSpan` has been removed and exception should be recorded directly to span: `$span->recordException($exception)`
 
@@ -263,6 +284,7 @@ This is the injected `otlp` channel:
         'level' => 'debug',
     ]
 ]
+
 
 
 
