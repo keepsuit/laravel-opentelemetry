@@ -13,10 +13,10 @@ trait HandlesHttpQueryString
      * @var array<string>
      */
     protected array $defaultSensitiveQueryParams = [
-        'AWSAccessKeyId',
-        'Signature',
+        'awsaccesskeyid',
+        'signature',
         'sig',
-        'X-Goog-Signature',
+        'x-goog-signature',
     ];
 
     /**
