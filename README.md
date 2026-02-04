@@ -168,7 +168,7 @@ return [
         /**
          * Logs exporter
          * This should be the key of one of the exporters defined in the exporters section
-         * SSupported drivers: "otlp", "console", "memory", "null"
+         * Supported drivers: "otlp", "console", "memory", "null"
          */
         'exporter' => env(Variables::OTEL_LOGS_EXPORTER, 'otlp'),
 
