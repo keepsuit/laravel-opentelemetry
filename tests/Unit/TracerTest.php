@@ -2,10 +2,10 @@
 
 use Illuminate\Support\Facades\Log;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
+use OpenTelemetry\API\Common\Time\Clock;
 use OpenTelemetry\API\Trace\SpanInterface;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
-use OpenTelemetry\SDK\Common\Time\ClockFactory;
 use OpenTelemetry\SDK\Trace\Span;
 use Spatie\TestTime\TestTime;
 
@@ -46,7 +46,7 @@ it('can measure a span', function () {
 });
 
 it('can measure sequential spans', function () {
-    $startTimestamp = ClockFactory::getDefault()->now();
+    $startTimestamp = Clock::getDefault()->now();
 
     $span1 = Tracer::newSpan('test span 1')->start();
     assert($span1 instanceof Span);
@@ -80,7 +80,7 @@ it('can measure sequential spans', function () {
 });
 
 it('can measure parallel spans', function () {
-    $startTimestamp = ClockFactory::getDefault()->now();
+    $startTimestamp = Clock::getDefault()->now();
 
     $span1 = Tracer::newSpan('test span 1')->start();
     assert($span1 instanceof Span);
@@ -114,7 +114,7 @@ it('can measure parallel spans', function () {
 });
 
 it('can measure nested spans', function () {
-    $startTimestamp = ClockFactory::getDefault()->now();
+    $startTimestamp = Clock::getDefault()->now();
 
     $span1 = Tracer::newSpan('test span 1')->start();
     assert($span1 instanceof Span);
@@ -239,7 +239,7 @@ it('set traceId to log context', function () {
 
     expect(Log::sharedContext())
         ->toMatchArray([
-            'traceid' => $span->getContext()->getTraceId(),
+            'trace_id' => $span->getContext()->getTraceId(),
         ]);
 
     $scope->detach();

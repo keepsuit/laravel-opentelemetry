@@ -2,6 +2,9 @@
 
 namespace Keepsuit\LaravelOpenTelemetry;
 
+use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Support\Facades\Auth;
+use Keepsuit\LaravelOpenTelemetry\Facades\OpenTelemetry;
 use OpenTelemetry\API\Common\Time\Clock;
 use OpenTelemetry\API\Logs\LoggerInterface;
 use OpenTelemetry\API\Logs\LogRecord;
@@ -59,6 +62,10 @@ class Logger
      */
     public function log(string $level, string $message, array $context = []): void
     {
+        if (config('opentelemetry.logs.inject_trace_id')) {
+            unset($context[config('opentelemetry.logs.trace_id_field')]);
+        }
+
         $logRecord = (new LogRecord($message))
             ->setTimestamp(Clock::getDefault()->now())
             ->setSeverityNumber(Severity::fromPsr3($level))
@@ -66,6 +73,10 @@ class Logger
 
         foreach ($context as $key => $value) {
             $logRecord->setAttribute($key, $value);
+        }
+
+        if (config('opentelemetry.user_context') === true && Auth::user() instanceof Authenticatable) {
+            $logRecord->setAttributes(OpenTelemetry::collectUserContext(Auth::user()));
         }
 
         $this->logger->emit($logRecord);

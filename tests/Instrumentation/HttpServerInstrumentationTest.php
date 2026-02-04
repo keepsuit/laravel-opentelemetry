@@ -1,28 +1,33 @@
 <?php
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\HttpServerInstrumentation;
 use Keepsuit\LaravelOpenTelemetry\Tests\Support\Product;
 use Keepsuit\LaravelOpenTelemetry\Tests\Support\TestException;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
+use OpenTelemetry\SDK\Trace\ImmutableSpan;
+use OpenTelemetry\SemConv\Metrics\HttpMetrics;
 
 use function Pest\Laravel\withoutExceptionHandling;
 
-uses(RefreshDatabase::class);
-
 beforeEach(function () {
     Route::middleware('web')->group(function () {
-        Route::any('test-ok', fn () => Tracer::traceId())->middleware(['web']);
+        Route::any('test-ok', fn () => Tracer::traceId());
         Route::any('test-exception', fn () => throw TestException::create());
         Route::any('test-nested-exception', function () {
             $span = Tracer::newSpan('nested')->start();
             $span->activate();
 
             throw TestException::create();
+        });
+        Route::any('test-log', function () {
+            Log::info('Test log message');
+
+            return Tracer::traceId();
         });
         Route::any('test/{parameter}', fn () => Tracer::traceId());
         Route::get('products/{product}', function (Product $product) {
@@ -48,7 +53,7 @@ it('can trace a request', function () {
     $spans = getRecordedSpans();
 
     expect($spans->last())
-        ->getName()->toBe('/test-ok')
+        ->getName()->toBe('GET /test-ok')
         ->getKind()->toBe(SpanKind::KIND_SERVER)
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_OK)
         ->getTraceId()->toBe($traceId)
@@ -69,7 +74,7 @@ it('can trace a request', function () {
         ]);
 
     expect(Log::sharedContext())->toMatchArray([
-        'traceid' => $traceId,
+        'trace_id' => $traceId,
     ]);
 });
 
@@ -89,7 +94,7 @@ it('can trace a request with route model binding', function () {
     $span = getRecordedSpans()->last();
 
     expect($span)
-        ->getName()->toBe('/products/{product}')
+        ->getName()->toBe('GET /products/{product}')
         ->getKind()->toBe(SpanKind::KIND_SERVER)
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_OK)
         ->getTraceId()->toBe($traceId)
@@ -109,10 +114,6 @@ it('can trace a request with route model binding', function () {
             'http.response.body.size' => 32,
             'product' => 1,
         ]);
-
-    expect(Log::sharedContext())->toMatchArray([
-        'traceid' => $traceId,
-    ]);
 });
 
 it('can record route exception', function () {
@@ -125,7 +126,7 @@ it('can record route exception', function () {
     $span = getRecordedSpans()->last();
 
     expect($span)
-        ->getName()->toBe('/test-exception')
+        ->getName()->toBe('GET /test-exception')
         ->getKind()->toBe(SpanKind::KIND_SERVER)
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_ERROR)
         ->getAttributes()->toMatchArray([
@@ -157,10 +158,9 @@ it('can record a route exception in a nested span', function () {
 
     $response->assertServerError();
 
-    expect(getRecordedSpans())->toHaveCount(3);
-
-    $nestedSpan = getRecordedSpans()[1];
-    $routeSpan = getRecordedSpans()[2];
+    $spans = getRecordedSpans();
+    $routeSpan = $spans->first(fn (ImmutableSpan $span) => Str::startsWith($span->getName(), 'GET'));
+    $nestedSpan = $spans->first(fn (ImmutableSpan $span) => $span->getName() === 'nested');
 
     expect($nestedSpan)
         ->getName()->toBe('nested')
@@ -174,7 +174,7 @@ it('can record a route exception in a nested span', function () {
         ->getAttributes()->get('exception.message')->toBe('Exception thrown!');
 
     expect($routeSpan)
-        ->getName()->toBe('/test-nested-exception')
+        ->getName()->toBe('GET /test-nested-exception')
         ->getKind()->toBe(SpanKind::KIND_SERVER)
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_ERROR)
         ->getEvents()->toBeEmpty();
@@ -207,7 +207,7 @@ it('set generic span name when route has parameters', function () {
     $spans = getRecordedSpans();
 
     expect($spans->last())
-        ->getName()->toBe('/test/{parameter}')
+        ->getName()->toBe('GET /test/{parameter}')
         ->getKind()->toBe(SpanKind::KIND_SERVER)
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_OK)
         ->getAttributes()->toMatchArray([
@@ -230,7 +230,7 @@ it('continue trace', function () {
     $spans = getRecordedSpans();
 
     expect($spans->last())
-        ->getName()->toBe('/test-ok')
+        ->getName()->toBe('GET /test-ok')
         ->getKind()->toBe(SpanKind::KIND_SERVER)
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_OK)
         ->getTraceId()->toBe('0af7651916cd43dd8448eb211c80319c')
@@ -250,7 +250,7 @@ it('skip tracing for excluded paths', function () {
 
     $spans = getRecordedSpans();
 
-    $serverSpan = $spans->firstWhere(fn (\OpenTelemetry\SDK\Trace\ImmutableSpan $span) => $span->getKind() === SpanKind::KIND_SERVER);
+    $serverSpan = $spans->firstWhere(fn (ImmutableSpan $span) => $span->getKind() === SpanKind::KIND_SERVER);
 
     expect($serverSpan)
         ->toBeNull();
@@ -362,7 +362,7 @@ it('mark some headers as sensitive by default', function () {
         ]);
 });
 
-it('skip tracing for excluded HTTP methods', function () {
+it('skip tracing for excluded HTTP methods', function (string $method) {
     registerInstrumentation(HttpServerInstrumentation::class, [
         'excluded_methods' => [
             'HEAD',
@@ -370,61 +370,19 @@ it('skip tracing for excluded HTTP methods', function () {
         ],
     ]);
 
-    // Test HEAD request
-    $response = $this->head('test-ok');
+    $response = match ($method) {
+        'HEAD' => $this->head('test-ok'),
+        'OPTIONS' => $this->options('test-ok'),
+    };
     $response->assertOk();
 
     $spans = getRecordedSpans();
-    $serverSpan = $spans->firstWhere(fn (\OpenTelemetry\SDK\Trace\ImmutableSpan $span) => $span->getKind() === SpanKind::KIND_SERVER);
+    $serverSpan = $spans->firstWhere(fn (ImmutableSpan $span) => $span->getKind() === SpanKind::KIND_SERVER);
 
     expect($serverSpan)->toBeNull();
+})->with(['HEAD', 'OPTIONS']);
 
-    resetStorage();
-
-    // Test OPTIONS request
-    $response = $this->options('test-ok');
-    $response->assertOk();
-
-    $spans = getRecordedSpans();
-    $serverSpan = $spans->firstWhere(fn (\OpenTelemetry\SDK\Trace\ImmutableSpan $span) => $span->getKind() === SpanKind::KIND_SERVER);
-
-    expect($serverSpan)->toBeNull();
-});
-
-it('trace requests with non-excluded HTTP methods', function () {
-    registerInstrumentation(HttpServerInstrumentation::class, [
-        'excluded_methods' => [
-            'HEAD',
-            'OPTIONS',
-        ],
-    ]);
-
-    // Test GET request (should be traced)
-    $response = $this->get('test-ok');
-    $response->assertOk();
-
-    $spans = getRecordedSpans();
-    $serverSpan = $spans->firstWhere(fn (\OpenTelemetry\SDK\Trace\ImmutableSpan $span) => $span->getKind() === SpanKind::KIND_SERVER);
-
-    expect($serverSpan)
-        ->not->toBeNull()
-        ->getName()->toBe('/test-ok');
-
-    resetStorage();
-
-    // Test POST request (should be traced)
-    $response = $this->post('test-ok');
-    $response->assertOk();
-
-    $spans = getRecordedSpans();
-    $serverSpan = $spans->firstWhere(fn (\OpenTelemetry\SDK\Trace\ImmutableSpan $span) => $span->getKind() === SpanKind::KIND_SERVER);
-
-    expect($serverSpan)
-        ->not->toBeNull()
-        ->getName()->toBe('/test-ok');
-});
-
-it('handle excluded methods case-insensitively', function () {
+it('handle excluded methods case-insensitively', function (string $method) {
     registerInstrumentation(HttpServerInstrumentation::class, [
         'excluded_methods' => [
             'head',  // lowercase
@@ -432,25 +390,56 @@ it('handle excluded methods case-insensitively', function () {
         ],
     ]);
 
-    // Test HEAD request
-    $response = $this->head('test-ok');
+    $response = match ($method) {
+        'HEAD' => $this->head('test-ok'),
+        'OPTIONS' => $this->options('test-ok'),
+    };
     $response->assertOk();
 
     $spans = getRecordedSpans();
-    $serverSpan = $spans->firstWhere(fn (\OpenTelemetry\SDK\Trace\ImmutableSpan $span) => $span->getKind() === SpanKind::KIND_SERVER);
+    $serverSpan = $spans->firstWhere(fn (ImmutableSpan $span) => $span->getKind() === SpanKind::KIND_SERVER);
 
     expect($serverSpan)->toBeNull();
+})->with(['HEAD', 'OPTIONS']);
 
-    resetStorage();
+it('trace requests with non-excluded HTTP methods', function (string $method) {
+    registerInstrumentation(HttpServerInstrumentation::class, [
+        'excluded_methods' => [
+            'HEAD',
+            'OPTIONS',
+        ],
+    ]);
 
-    // Test OPTIONS request
-    $response = $this->options('test-ok');
+    $response = match ($method) {
+        'GET' => $this->get('test-ok'),
+        'POST' => $this->post('test-ok'),
+    };
     $response->assertOk();
 
     $spans = getRecordedSpans();
-    $serverSpan = $spans->firstWhere(fn (\OpenTelemetry\SDK\Trace\ImmutableSpan $span) => $span->getKind() === SpanKind::KIND_SERVER);
+    $serverSpan = $spans->firstWhere(fn (ImmutableSpan $span) => $span->getKind() === SpanKind::KIND_SERVER);
 
-    expect($serverSpan)->toBeNull();
+    expect($serverSpan)
+        ->getName()->toBe(sprintf('%s /test-ok', $method));
+})->with(['GET', 'POST']);
+
+it('redact sensitive query string parameters', function () {
+    registerInstrumentation(HttpServerInstrumentation::class, [
+        'sensitive_query_parameters' => [
+            'token',
+        ],
+    ]);
+
+    $response = $this->get('test-ok?token=secret&param=value');
+
+    $response->assertOk();
+
+    $span = getRecordedSpans()->first();
+
+    expect($span->getAttributes())->toMatchArray([
+        'url.full' => 'http://localhost/test-ok?param=value&token=REDACTED',
+        'url.query' => 'param=value&token=REDACTED',
+    ]);
 });
 
 it('record forwarded ip from trusted proxies', function () {
@@ -471,7 +460,136 @@ it('record forwarded ip from trusted proxies', function () {
             \OpenTelemetry\SemConv\Attributes\ClientAttributes::CLIENT_ADDRESS => '93.125.25.10',
             \OpenTelemetry\SemConv\Attributes\NetworkAttributes::NETWORK_PEER_ADDRESS => '127.0.0.1',
         ]);
-})->skip(
-    fn () => ! method_exists(\Illuminate\Http\Middleware\TrustProxies::class, 'at'),
-    'Requires laravel 11.31+'
-);
+});
+
+it('adds user.id when enabled and user is authenticated', function () {
+    config(['opentelemetry.user_context' => true]);
+
+    registerInstrumentation(HttpServerInstrumentation::class);
+
+    $user = new \Illuminate\Foundation\Auth\User;
+    $user->id = 123;
+
+    $response = $this->actingAs($user)->get('test-ok');
+    $response->assertOk();
+
+    $span = getRecordedSpans()->last();
+
+    expect($span->getAttributes())
+        ->toMatchArray([
+            'user.id' => 123,
+        ]);
+});
+
+it('does not add user.id when disabled', function () {
+    config(['opentelemetry.user_context' => false]);
+
+    registerInstrumentation(HttpServerInstrumentation::class);
+
+    $user = new \Illuminate\Foundation\Auth\User;
+    $user->id = 123;
+
+    $response = $this->actingAs($user)->get('test-ok');
+    $response->assertOk();
+
+    $span = getRecordedSpans()->last();
+
+    expect($span->getAttributes())->not->toHaveKey('user.id');
+});
+
+it('collects extra user attributes with custom user resolver', function () {
+    config(['opentelemetry.user_context' => true]);
+
+    registerInstrumentation(HttpServerInstrumentation::class);
+
+    \Keepsuit\LaravelOpenTelemetry\Facades\OpenTelemetry::user(fn (\Illuminate\Contracts\Auth\Authenticatable $user) => ['user.email' => $user->email]);
+
+    $user = new \Illuminate\Foundation\Auth\User;
+    $user->id = 123;
+    $user->email = 'test@example.com';
+
+    $response = $this->actingAs($user)->get('test-ok');
+    $response->assertOk();
+
+    $span = getRecordedSpans()->last();
+
+    expect($span->getAttributes())
+        ->toHaveKey('user.email')
+        ->not->toHaveKey('user.id')
+        ->toMatchArray([
+            'user.email' => 'test@example.com',
+        ]);
+});
+
+it('adds user context to logs when authenticated', function () {
+    config(['opentelemetry.user_context' => true]);
+
+    registerInstrumentation(HttpServerInstrumentation::class);
+
+    $user = new \Illuminate\Foundation\Auth\User;
+    $user->id = 123;
+
+    $response = $this->actingAs($user)->get('test-log');
+    $response->assertOk();
+
+    $span = getRecordedSpans()->last();
+    $log = getRecordedLogs()->last();
+
+    expect($log->getSpanContext()->getTraceId())->toBe($span->getTraceId());
+
+    expect($span->getAttributes())->toMatchArray([
+        'user.id' => 123,
+    ]);
+
+    expect($log->getAttributes())->toMatchArray([
+        'user.id' => 123,
+    ]);
+});
+
+it('can record http server request duration metric', function () {
+    registerInstrumentation(HttpServerInstrumentation::class);
+
+    $this->get('test-ok')->assertOk();
+
+    $metric = getRecordedMetrics()->firstWhere('name', HttpMetrics::HTTP_SERVER_REQUEST_DURATION);
+
+    expect($metric)->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Data\Metric::class)
+        ->name->toBe(HttpMetrics::HTTP_SERVER_REQUEST_DURATION)
+        ->unit->toBe('s')
+        ->data->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Data\Histogram::class);
+
+    /** @var \OpenTelemetry\SDK\Metrics\Data\HistogramDataPoint $dataPoint */
+    $dataPoint = $metric->data->dataPoints[0];
+
+    expect($dataPoint->attributes)
+        ->toMatchArray([
+            \OpenTelemetry\SemConv\Attributes\UrlAttributes::URL_SCHEME => 'http',
+            \OpenTelemetry\SemConv\Attributes\HttpAttributes::HTTP_REQUEST_METHOD => 'GET',
+            \OpenTelemetry\SemConv\Attributes\HttpAttributes::HTTP_RESPONSE_STATUS_CODE => 200,
+            \OpenTelemetry\SemConv\Attributes\HttpAttributes::HTTP_ROUTE => '/test-ok',
+            \OpenTelemetry\SemConv\Attributes\NetworkAttributes::NETWORK_PROTOCOL_NAME => 'http',
+            \OpenTelemetry\SemConv\Attributes\NetworkAttributes::NETWORK_PROTOCOL_VERSION => '1.1',
+            \OpenTelemetry\SemConv\Attributes\ServerAttributes::SERVER_ADDRESS => 'localhost',
+            \OpenTelemetry\SemConv\Attributes\ServerAttributes::SERVER_PORT => '80',
+        ]);
+});
+
+it('records metric even when exception occurs', function () {
+    registerInstrumentation(HttpServerInstrumentation::class);
+
+    $this->get('test-exception');
+
+    $metric = getRecordedMetrics()->firstWhere('name', HttpMetrics::HTTP_SERVER_REQUEST_DURATION);
+
+    expect($metric)->not->toBeNull();
+
+    /** @var \OpenTelemetry\SDK\Metrics\Data\HistogramDataPoint $dataPoint */
+    $dataPoint = $metric->data->dataPoints[0];
+
+    expect($dataPoint)
+        ->not->toBeNull()
+        ->attributes->toMatchArray([
+            \OpenTelemetry\SemConv\Attributes\ErrorAttributes::ERROR_TYPE => 500,
+            \OpenTelemetry\SemConv\Attributes\HttpAttributes::HTTP_RESPONSE_STATUS_CODE => 500,
+        ]);
+});

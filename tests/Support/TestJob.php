@@ -15,6 +15,8 @@ class TestJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public int $tries = 1;
+
     public function __construct(
         protected Valuestore $valuestore,
         protected bool $fail = false

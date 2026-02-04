@@ -5,8 +5,8 @@ namespace Keepsuit\LaravelOpenTelemetry\Instrumentation;
 use Illuminate\Contracts\View\Engine;
 use Illuminate\Contracts\View\View;
 use Illuminate\View\Engines\EngineResolver;
-use Keepsuit\LaravelOpenTelemetry\Support\InstrumentationUtilities;
-use Keepsuit\LaravelOpenTelemetry\Support\View\TracedViewEngine;
+use Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\InstrumentationUtilities;
+use Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\View\TracedViewEngine;
 
 class ViewInstrumentation implements Instrumentation
 {

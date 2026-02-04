@@ -6,8 +6,29 @@ use Keepsuit\LaravelOpenTelemetry\Instrumentation\ConsoleInstrumentation;
 use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Output\BufferedOutput;
 
-test('trace console command', function () {
-    registerInstrumentation(ConsoleInstrumentation::class);
+test('trace console command (class)', function () {
+    registerInstrumentation(ConsoleInstrumentation::class, [
+        'commands' => [\Keepsuit\LaravelOpenTelemetry\Tests\Support\TestCommand::class],
+    ]);
+
+    simulateTestConsoleCommand();
+
+    $spans = getRecordedSpans();
+
+    expect($spans)->toHaveCount(1);
+
+    $consoleSpan = $spans->first();
+
+    expect($consoleSpan)
+        ->toBeInstanceOf(\OpenTelemetry\SDK\Trace\ImmutableSpan::class)
+        ->getName()->toBe('test:command')
+        ->getStatus()->getCode()->toBe(\OpenTelemetry\API\Trace\StatusCode::STATUS_OK);
+});
+
+test('trace console command (name)', function () {
+    registerInstrumentation(ConsoleInstrumentation::class, [
+        'commands' => ['test:command'],
+    ]);
 
     simulateTestConsoleCommand();
 
@@ -24,7 +45,9 @@ test('trace console command', function () {
 });
 
 test('trace console command with failing status', function () {
-    registerInstrumentation(ConsoleInstrumentation::class);
+    registerInstrumentation(ConsoleInstrumentation::class, [
+        'commands' => [\Keepsuit\LaravelOpenTelemetry\Tests\Support\TestCommand::class],
+    ]);
 
     simulateTestConsoleCommand(exitCode: 1);
 
@@ -40,22 +63,8 @@ test('trace console command with failing status', function () {
         ->getStatus()->getCode()->toBe(\OpenTelemetry\API\Trace\StatusCode::STATUS_ERROR);
 });
 
-test('exclude commands from tracing', function () {
-    registerInstrumentation(ConsoleInstrumentation::class, [
-        'excluded' => ['test:command'],
-    ]);
-
-    simulateTestConsoleCommand();
-
-    $spans = getRecordedSpans();
-
-    expect($spans)->toHaveCount(0);
-});
-
-test('exclude commands with class from tracing', function () {
-    registerInstrumentation(ConsoleInstrumentation::class, [
-        'excluded' => [\Keepsuit\LaravelOpenTelemetry\Tests\Support\TestCommand::class],
-    ]);
+test('commands not listed are not traced', function () {
+    registerInstrumentation(ConsoleInstrumentation::class);
 
     simulateTestConsoleCommand();
 

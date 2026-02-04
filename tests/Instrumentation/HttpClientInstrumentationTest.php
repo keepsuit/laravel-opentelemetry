@@ -6,6 +6,7 @@ use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\HttpClientInstrumentation;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
+use OpenTelemetry\SemConv\Metrics\HttpMetrics;
 
 test('http client span is not created when trace is not started', function () {
     registerInstrumentation(HttpClientInstrumentation::class);
@@ -89,22 +90,28 @@ it('injects propagation headers manually to client request', function () {
         ->header('traceparent')->toBe([sprintf('00-%s-%s-01', $traceId, $httpSpan->getSpanId())]);
 });
 
-it('create http client span', function () {
-    registerInstrumentation(HttpClientInstrumentation::class);
+it('create http client span', function (array $options, bool $withTrace) {
+    registerInstrumentation(HttpClientInstrumentation::class, $options);
 
     Http::fake([
         '*' => Http::response('', 200, ['Content-Length' => 0]),
     ]);
 
-    withRootSpan(function () {
-        Http::get(Server::$url);
+    withRootSpan(function () use ($withTrace) {
+        if ($withTrace) {
+            Http::withTrace()->get(Server::$url);
+        } else {
+            Http::get(Server::$url);
+        }
     });
+
+    expect(getRecordedSpans()->count())->toBe(2);
 
     $httpSpan = getRecordedSpans()->first();
 
     expect($httpSpan)
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
-        ->getName()->toBe('HTTP GET')
+        ->getName()->toBe('GET')
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_UNSET)
         ->getAttributes()->toMatchArray([
             'url.full' => 'http://127.0.0.1/',
@@ -117,7 +124,20 @@ it('create http client span', function () {
             'server.port' => 8126,
             'http.response.status_code' => 200,
         ]);
-});
+})->with([
+    'global' => [
+        'options' => ['manual' => false],
+        'withTrace' => false,
+    ],
+    'manual' => [
+        'options' => ['manual' => true],
+        'withTrace' => true,
+    ],
+    'both' => [
+        'options' => ['manual' => false],
+        'withTrace' => true,
+    ],
+]);
 
 it('set span status to error on 4xx and 5xx status code', function () {
     registerInstrumentation(HttpClientInstrumentation::class);
@@ -134,7 +154,7 @@ it('set span status to error on 4xx and 5xx status code', function () {
 
     expect($httpSpan)
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
-        ->getName()->toBe('HTTP GET')
+        ->getName()->toBe('GET')
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_ERROR)
         ->getAttributes()->toMatchArray([
             'http.response.status_code' => 500,
@@ -246,4 +266,106 @@ it('mark some headers as sensitive by default', function () {
             'http.request.header.cookie' => ['*****'],
             'http.response.header.set-cookie' => ['*****'],
         ]);
+});
+
+it('redact sensitive query string parameters', function () {
+    registerInstrumentation(HttpClientInstrumentation::class, [
+        'sensitive_query_parameters' => [
+            'token',
+        ],
+    ]);
+
+    Http::fake([
+        '*' => Http::response('', 200, ['Content-Length' => 0]),
+    ]);
+
+    withRootSpan(function () {
+        Http::get(Server::$url.'?param=value&token=secret');
+    });
+
+    $span = getRecordedSpans()->first();
+
+    expect($span->getAttributes())->toMatchArray([
+        'url.full' => 'http://127.0.0.1/?param=value&token=REDACTED',
+        'url.query' => 'param=value&token=REDACTED',
+    ]);
+});
+
+it('can resolve route name', function () {
+    registerInstrumentation(HttpClientInstrumentation::class);
+
+    HttpClientInstrumentation::setRouteNameResolver(function (\Psr\Http\Message\RequestInterface $request) {
+        return match (true) {
+            str_starts_with($request->getUri()->getPath(), '/products/') => '/products/{id}',
+            default => null,
+        };
+    });
+
+    Http::fake([
+        '*' => Http::response('', 200, ['Content-Length' => 0]),
+    ]);
+
+    withRootSpan(function () {
+        Http::get(Server::$url.'products/123');
+    });
+
+    $span = getRecordedSpans()->first();
+
+    expect($span)
+        ->getName()->toBe('GET /products/{id}')
+        ->getAttributes()->toMatchArray([
+            'url.template' => '/products/{id}',
+        ]);
+});
+
+it('can record http client request duration metric', function () {
+    registerInstrumentation(HttpClientInstrumentation::class);
+
+    Http::fake([
+        '*' => Http::response('', 200, ['Content-Length' => 0]),
+    ]);
+
+    withRootSpan(function () {
+        Http::get(Server::$url);
+    });
+
+    $metric = getRecordedMetrics()->firstWhere('name', HttpMetrics::HTTP_CLIENT_REQUEST_DURATION);
+
+    expect($metric)->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Data\Metric::class)
+        ->name->toBe(HttpMetrics::HTTP_CLIENT_REQUEST_DURATION)
+        ->unit->toBe('s')
+        ->data->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Data\Histogram::class);
+
+    /** @var \OpenTelemetry\SDK\Metrics\Data\HistogramDataPoint $dataPoint */
+    $dataPoint = $metric->data->dataPoints[0];
+
+    expect($dataPoint)
+        ->count->toBeGreaterThanOrEqual(1)
+        ->sum->toBeGreaterThan(0);
+
+    expect($dataPoint->attributes)
+        ->toMatchArray([
+            \OpenTelemetry\SemConv\Attributes\UrlAttributes::URL_SCHEME => 'http',
+            \OpenTelemetry\SemConv\Attributes\HttpAttributes::HTTP_REQUEST_METHOD => 'GET',
+            \OpenTelemetry\SemConv\Attributes\HttpAttributes::HTTP_RESPONSE_STATUS_CODE => 200,
+            \OpenTelemetry\SemConv\Attributes\NetworkAttributes::NETWORK_PROTOCOL_NAME => 'http',
+            \OpenTelemetry\SemConv\Attributes\NetworkAttributes::NETWORK_PROTOCOL_VERSION => '1.1',
+            \OpenTelemetry\SemConv\Attributes\ServerAttributes::SERVER_ADDRESS => '127.0.0.1',
+        ])
+        ->toHaveKey(\OpenTelemetry\SemConv\Attributes\ServerAttributes::SERVER_PORT);
+});
+
+it('no metric recorded when trace not started for client', function () {
+    registerInstrumentation(HttpClientInstrumentation::class);
+
+    Http::fake([
+        '*' => Http::response('', 200, ['Content-Length' => 0]),
+    ]);
+
+    // Make request without trace
+    Http::get(Server::$url);
+
+    $metric = getRecordedMetrics()->firstWhere('name', HttpMetrics::HTTP_CLIENT_REQUEST_DURATION);
+
+    expect($metric)->toBeNull();
 });

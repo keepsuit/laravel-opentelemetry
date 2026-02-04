@@ -18,10 +18,10 @@ class InstrumentationServiceProvider extends ServiceProvider
                 continue;
             }
 
-            $watcher = $this->app->make($key);
+            $instrumentation = $this->app->make($key);
 
-            if ($watcher instanceof Instrumentation) {
-                $watcher->register(is_array($options) ? $options : []);
+            if ($instrumentation instanceof Instrumentation) {
+                $instrumentation->register(is_array($options) ? $options : []);
             }
         }
     }

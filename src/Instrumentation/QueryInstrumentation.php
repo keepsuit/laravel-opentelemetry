@@ -5,10 +5,14 @@ namespace Keepsuit\LaravelOpenTelemetry\Instrumentation;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Str;
 use Illuminate\Support\Stringable;
+use Keepsuit\LaravelOpenTelemetry\Facades\Meter;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
+use OpenTelemetry\API\Common\Time\Clock;
+use OpenTelemetry\API\Common\Time\ClockInterface;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\SemConv\Attributes\DbAttributes;
 use OpenTelemetry\SemConv\Attributes\ServerAttributes;
+use OpenTelemetry\SemConv\Metrics\DbMetrics;
 
 class QueryInstrumentation implements Instrumentation
 {
@@ -25,7 +29,7 @@ class QueryInstrumentation implements Instrumentation
             return;
         }
 
-        $operationName = Str::of($event->sql)
+        $operationName = (string) Str::of($event->sql)
             ->before(' ')
             ->upper()
             ->when(
@@ -38,17 +42,56 @@ class QueryInstrumentation implements Instrumentation
             return;
         }
 
-        $span = Tracer::newSpan(sprintf('sql %s', $operationName))
+        $sharedAttributes = $this->sharedTraceMetricAttributes($event, $operationName);
+
+        $this->recordTraceSpan($event, $operationName, $sharedAttributes);
+        $this->recordOperationDurationMetric($event, $sharedAttributes);
+    }
+
+    /**
+     * @param  array<non-empty-string, bool|int|float|string|array|null>  $attributes
+     */
+    protected function recordTraceSpan(QueryExecuted $event, string $operationName, array $attributes): void
+    {
+        $span = Tracer::newSpan($operationName)
             ->setSpanKind(SpanKind::KIND_CLIENT)
             ->setStartTimestamp($this->getEventStartTimestampNs($event->time))
-            ->setAttribute(DbAttributes::DB_SYSTEM_NAME, $event->connection->getDriverName())
-            ->setAttribute(DbAttributes::DB_NAMESPACE, $event->connection->getDatabaseName())
-            ->setAttribute(DbAttributes::DB_OPERATION_NAME, $operationName)
-            ->setAttribute(DbAttributes::DB_QUERY_TEXT, $event->sql)
-            ->setAttribute(ServerAttributes::SERVER_ADDRESS, $event->connection->getConfig('host'))
-            ->setAttribute(ServerAttributes::SERVER_PORT, $event->connection->getConfig('port'))
+            ->setAttributes($attributes)
             ->start();
 
         $span->end();
+    }
+
+    /**
+     * @param  array<non-empty-string, bool|int|float|string|array|null>  $attributes
+     */
+    protected function recordOperationDurationMetric(QueryExecuted $event, array $attributes): void
+    {
+        $duration = (Clock::getDefault()->now() - $this->getEventStartTimestampNs($event->time)) / ClockInterface::NANOS_PER_SECOND;
+
+        // @see https://opentelemetry.io/docs/specs/semconv/db/database-metrics/#metric-dbclientoperationduration
+        Meter::histogram(
+            name: DbMetrics::DB_CLIENT_OPERATION_DURATION,
+            unit: 's',
+            description: 'Duration of database client operations.',
+            advisory: [
+                'ExplicitBucketBoundaries' => [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0],
+            ])
+            ->record($duration, $attributes);
+    }
+
+    /**
+     * @return array<non-empty-string, bool|int|float|string|array|null>
+     */
+    protected function sharedTraceMetricAttributes(QueryExecuted $event, string $operationName): array
+    {
+        return [
+            DbAttributes::DB_SYSTEM_NAME => $event->connection->getDriverName(),
+            DbAttributes::DB_NAMESPACE => $event->connection->getDatabaseName(),
+            DbAttributes::DB_OPERATION_NAME => $operationName,
+            DbAttributes::DB_QUERY_TEXT => Str::limit($event->sql, 500),
+            ServerAttributes::SERVER_ADDRESS => $event->connection->getConfig('host'),
+            ServerAttributes::SERVER_PORT => $event->connection->getConfig('port'),
+        ];
     }
 }
