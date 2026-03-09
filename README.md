@@ -469,6 +469,65 @@ Console commands are not traced by default. You can trace console commands by ad
 
 You can disable this instrumentation by setting `OTEL_INSTRUMENTATION_CONSOLE` to `false` or removing `ConsoleInstrumentation::class` from the config.
 
+You can add commands either by their signature or by their class name.
+
+By signature:
+
+```php
+use Keepsuit\LaravelOpenTelemetry\Instrumentation;
+
+return [
+    // ...
+    
+    /**
+     * List of instrumentation used for application tracing
+     */
+    'instrumentation' => [
+        // ...
+        
+        Instrumentation\ConsoleInstrumentation::class => [
+            'enabled' => env('OTEL_INSTRUMENTATION_CONSOLE', true),
+            'commands' => [
+                'app:example-command',
+             ],
+        ],
+        
+        // ...
+    ],
+    
+    // ...
+];
+```
+
+By class name:
+
+```php
+use Keepsuit\LaravelOpenTelemetry\Instrumentation;
+use App\Console\Commands\ExampleCommand;
+
+return [
+    // ...
+    
+    /**
+     * List of instrumentation used for application tracing
+     */
+    'instrumentation' => [
+        // ...
+        
+        Instrumentation\ConsoleInstrumentation::class => [
+            'enabled' => env('OTEL_INSTRUMENTATION_CONSOLE', true),
+            'commands' => [
+                ExampleCommand::class,
+             ],
+        ],
+        
+        // ...
+    ],
+    
+    // ...
+];
+```
+
 ### Scout
 
 Tracing of laravel scout operations requires the `opentelemetry` php extension to be installed and enabled.
