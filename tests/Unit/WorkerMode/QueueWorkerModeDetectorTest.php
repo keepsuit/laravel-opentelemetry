@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Contracts\Queue\Job;
 use Illuminate\Queue\Events\JobAttempted;
 use Keepsuit\LaravelOpenTelemetry\WorkerMode\Detectors\QueueWorkerModeDetector;
 
@@ -41,7 +42,7 @@ test('registers callback for JobAttempted event', function () {
     });
 
     // Create a mock job that satisfies the JobAttempted event constructor
-    $mockJob = Mockery::mock(Illuminate\Contracts\Queue\Job::class);
+    $mockJob = Mockery::mock(Job::class);
     $mockJob->shouldReceive('hasFailed')->andReturn(false);
 
     event(new JobAttempted('default', $mockJob, false));

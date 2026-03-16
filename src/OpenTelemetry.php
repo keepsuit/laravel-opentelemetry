@@ -30,7 +30,7 @@ class OpenTelemetry
     /**
      * Resolve user context attributes.
      *
-     * @param  Closure(\Illuminate\Contracts\Auth\Authenticatable): array<non-empty-string, bool|int|float|string|array|null>  $resolver
+     * @param  Closure(Authenticatable): array<non-empty-string, bool|int|float|string|array|null>  $resolver
      */
     public function user(Closure $resolver): void
     {

@@ -5,6 +5,9 @@ use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\QueryInstrumentation;
 use OpenTelemetry\API\Common\Time\Clock;
 use OpenTelemetry\API\Trace\SpanKind;
+use OpenTelemetry\SDK\Metrics\Data\Histogram;
+use OpenTelemetry\SDK\Metrics\Data\HistogramDataPoint;
+use OpenTelemetry\SDK\Metrics\Data\Metric;
 use OpenTelemetry\SDK\Trace\ImmutableSpan;
 use OpenTelemetry\SemConv\Attributes\DbAttributes;
 use OpenTelemetry\SemConv\Metrics\DbMetrics;
@@ -108,11 +111,11 @@ it('can record query duration metric', function () {
     $metric = getRecordedMetrics()->firstWhere('name', DbMetrics::DB_CLIENT_OPERATION_DURATION);
 
     expect($metric)
-        ->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Data\Metric::class)
+        ->toBeInstanceOf(Metric::class)
         ->unit->toBe('s')
-        ->data->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Data\Histogram::class);
+        ->data->toBeInstanceOf(Histogram::class);
 
-    /** @var \OpenTelemetry\SDK\Metrics\Data\HistogramDataPoint $dataPoint */
+    /** @var HistogramDataPoint $dataPoint */
     $dataPoint = $metric->data->dataPoints[0];
 
     expect($dataPoint->attributes)

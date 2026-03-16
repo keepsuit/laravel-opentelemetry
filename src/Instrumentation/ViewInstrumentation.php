@@ -3,6 +3,7 @@
 namespace Keepsuit\LaravelOpenTelemetry\Instrumentation;
 
 use Illuminate\Contracts\View\Engine;
+use Illuminate\Contracts\View\Factory;
 use Illuminate\Contracts\View\View;
 use Illuminate\View\Engines\EngineResolver;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\InstrumentationUtilities;
@@ -34,7 +35,7 @@ class ViewInstrumentation implements Instrumentation
 
     protected function wrapViewEngine(string $name, Engine $realEngine): Engine
     {
-        /** @var \Illuminate\Contracts\View\Factory $viewFactory */
+        /** @var Factory $viewFactory */
         $viewFactory = app()->make('view');
 
         $viewFactory->composer('*', static function (View $view) use ($viewFactory): void {

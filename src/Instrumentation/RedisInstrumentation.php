@@ -14,6 +14,8 @@ use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\SemConv\Attributes\DbAttributes;
 use OpenTelemetry\SemConv\Attributes\ServerAttributes;
 use OpenTelemetry\SemConv\Metrics\DbMetrics;
+use Predis\Client;
+use Predis\Connection\NodeConnectionInterface;
 
 class RedisInstrumentation implements Instrumentation
 {
@@ -92,10 +94,10 @@ class RedisInstrumentation implements Instrumentation
             return $client->getHost() ?: null;
         }
 
-        if ($client instanceof \Predis\Client) {
+        if ($client instanceof Client) {
             $connection = $client->getConnection();
 
-            return $connection instanceof \Predis\Connection\NodeConnectionInterface
+            return $connection instanceof NodeConnectionInterface
                 ? ($connection->getParameters()->host ?? null)
                 : null;
         }

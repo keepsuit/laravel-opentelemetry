@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Http\Request;
 use Keepsuit\LaravelOpenTelemetry\WorkerMode\Detectors\OctaneWorkerModeDetector;
 use Laravel\Octane\Events\RequestTerminated;
 use Symfony\Component\HttpFoundation\Response;
@@ -30,7 +31,7 @@ test('registers callback for RequestTerminated event', function () {
         $called = true;
     });
 
-    $request = new \Illuminate\Http\Request;
+    $request = new Request;
     $response = new Response;
     event(new RequestTerminated(app(), app(), $request, $response));
 

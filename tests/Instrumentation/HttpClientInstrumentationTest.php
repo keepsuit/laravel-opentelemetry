@@ -1,12 +1,21 @@
 <?php
 
 use GuzzleHttp\Server\Server;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\HttpClientInstrumentation;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
+use OpenTelemetry\SDK\Metrics\Data\Histogram;
+use OpenTelemetry\SDK\Metrics\Data\HistogramDataPoint;
+use OpenTelemetry\SDK\Metrics\Data\Metric;
+use OpenTelemetry\SemConv\Attributes\HttpAttributes;
+use OpenTelemetry\SemConv\Attributes\NetworkAttributes;
+use OpenTelemetry\SemConv\Attributes\ServerAttributes;
+use OpenTelemetry\SemConv\Attributes\UrlAttributes;
 use OpenTelemetry\SemConv\Metrics\HttpMetrics;
+use Psr\Http\Message\RequestInterface;
 
 test('http client span is not created when trace is not started', function () {
     registerInstrumentation(HttpClientInstrumentation::class);
@@ -40,7 +49,7 @@ it('injects propagation headers to all client requests', function () {
     $httpSpan = getRecordedSpans()->first();
 
     $request = Http::recorded()->first()[0];
-    assert($request instanceof \Illuminate\Http\Client\Request);
+    assert($request instanceof Request);
 
     expect($request)
         ->header('traceparent')->toBe([sprintf('00-%s-%s-01', $traceId, $httpSpan->getSpanId())]);
@@ -84,7 +93,7 @@ it('injects propagation headers manually to client request', function () {
     $httpSpan = getRecordedSpans()->first();
 
     $request = Http::recorded()->first()[0];
-    assert($request instanceof \Illuminate\Http\Client\Request);
+    assert($request instanceof Request);
 
     expect($request)
         ->header('traceparent')->toBe([sprintf('00-%s-%s-01', $traceId, $httpSpan->getSpanId())]);
@@ -294,7 +303,7 @@ it('redact sensitive query string parameters', function () {
 it('can resolve route name', function () {
     registerInstrumentation(HttpClientInstrumentation::class);
 
-    HttpClientInstrumentation::setRouteNameResolver(function (\Psr\Http\Message\RequestInterface $request) {
+    HttpClientInstrumentation::setRouteNameResolver(function (RequestInterface $request) {
         return match (true) {
             str_starts_with($request->getUri()->getPath(), '/products/') => '/products/{id}',
             default => null,
@@ -331,12 +340,12 @@ it('can record http client request duration metric', function () {
 
     $metric = getRecordedMetrics()->firstWhere('name', HttpMetrics::HTTP_CLIENT_REQUEST_DURATION);
 
-    expect($metric)->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Data\Metric::class)
+    expect($metric)->toBeInstanceOf(Metric::class)
         ->name->toBe(HttpMetrics::HTTP_CLIENT_REQUEST_DURATION)
         ->unit->toBe('s')
-        ->data->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Data\Histogram::class);
+        ->data->toBeInstanceOf(Histogram::class);
 
-    /** @var \OpenTelemetry\SDK\Metrics\Data\HistogramDataPoint $dataPoint */
+    /** @var HistogramDataPoint $dataPoint */
     $dataPoint = $metric->data->dataPoints[0];
 
     expect($dataPoint)
@@ -345,14 +354,14 @@ it('can record http client request duration metric', function () {
 
     expect($dataPoint->attributes)
         ->toMatchArray([
-            \OpenTelemetry\SemConv\Attributes\UrlAttributes::URL_SCHEME => 'http',
-            \OpenTelemetry\SemConv\Attributes\HttpAttributes::HTTP_REQUEST_METHOD => 'GET',
-            \OpenTelemetry\SemConv\Attributes\HttpAttributes::HTTP_RESPONSE_STATUS_CODE => 200,
-            \OpenTelemetry\SemConv\Attributes\NetworkAttributes::NETWORK_PROTOCOL_NAME => 'http',
-            \OpenTelemetry\SemConv\Attributes\NetworkAttributes::NETWORK_PROTOCOL_VERSION => '1.1',
-            \OpenTelemetry\SemConv\Attributes\ServerAttributes::SERVER_ADDRESS => '127.0.0.1',
+            UrlAttributes::URL_SCHEME => 'http',
+            HttpAttributes::HTTP_REQUEST_METHOD => 'GET',
+            HttpAttributes::HTTP_RESPONSE_STATUS_CODE => 200,
+            NetworkAttributes::NETWORK_PROTOCOL_NAME => 'http',
+            NetworkAttributes::NETWORK_PROTOCOL_VERSION => '1.1',
+            ServerAttributes::SERVER_ADDRESS => '127.0.0.1',
         ])
-        ->toHaveKey(\OpenTelemetry\SemConv\Attributes\ServerAttributes::SERVER_PORT);
+        ->toHaveKey(ServerAttributes::SERVER_PORT);
 });
 
 it('no metric recorded when trace not started for client', function () {
