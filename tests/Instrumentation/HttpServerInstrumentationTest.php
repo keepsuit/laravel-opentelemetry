@@ -7,6 +7,7 @@ use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
+use Keepsuit\LaravelOpenTelemetry\Facades\OpenTelemetry;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\HttpServerInstrumentation;
 use Keepsuit\LaravelOpenTelemetry\Tests\Support\Product;
@@ -516,7 +517,7 @@ it('collects extra user attributes with custom user resolver', function () {
 
     registerInstrumentation(HttpServerInstrumentation::class);
 
-    Keepsuit\LaravelOpenTelemetry\Facades\OpenTelemetry::user(fn (Authenticatable $user) => ['user.email' => $user->email]);
+    OpenTelemetry::user(fn (Authenticatable $user) => ['user.email' => $user->email]);
 
     $user = new User;
     $user->id = 123;
