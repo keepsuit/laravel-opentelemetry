@@ -84,10 +84,10 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 {
     public function packageRegistered(): void
     {
-        $this->app->singleton(\Keepsuit\LaravelOpenTelemetry\Meter::class);
-        $this->app->singleton(\Keepsuit\LaravelOpenTelemetry\Tracer::class);
-        $this->app->singleton(\Keepsuit\LaravelOpenTelemetry\Logger::class);
-        $this->app->singleton(\Keepsuit\LaravelOpenTelemetry\OpenTelemetry::class);
+        $this->app->singleton(Meter::class);
+        $this->app->singleton(Tracer::class);
+        $this->app->singleton(Logger::class);
+        $this->app->singleton(OpenTelemetry::class);
         $this->app->singleton(UserContextResolver::class);
 
         $this->configureEnvironmentVariables();
@@ -159,7 +159,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
             }
 
             $handler->reportable(function (Throwable $e) {
-                \Keepsuit\LaravelOpenTelemetry\Facades\Tracer::activeSpan()
+                Facades\Tracer::activeSpan()
                     ->recordException($e)
                     ->setStatus(StatusCode::STATUS_ERROR);
             });

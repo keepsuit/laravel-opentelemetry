@@ -3,9 +3,11 @@
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\CacheInstrumentation;
+use OpenTelemetry\SDK\Trace\Event;
+use Spatie\TestTime\TestTime;
 
 beforeEach(function () {
-    \Spatie\TestTime\TestTime::freeze();
+    TestTime::freeze();
 
     registerInstrumentation(CacheInstrumentation::class);
 });
@@ -18,7 +20,7 @@ it('records cache hits', function () {
 
     $rootSpan = getRecordedSpans()->last();
 
-    /** @var \OpenTelemetry\SDK\Trace\Event $event */
+    /** @var Event $event */
     $event = Arr::last($rootSpan->getEvents());
 
     expect($event)
@@ -37,7 +39,7 @@ it('records cache miss', function () {
 
     $rootSpan = getRecordedSpans()->last();
 
-    /** @var \OpenTelemetry\SDK\Trace\Event $event */
+    /** @var Event $event */
     $event = Arr::last($rootSpan->getEvents());
 
     expect($event)
@@ -56,7 +58,7 @@ it('records cache put without a ttl', function () {
 
     $rootSpan = getRecordedSpans()->last();
 
-    /** @var \OpenTelemetry\SDK\Trace\Event $event */
+    /** @var Event $event */
     $event = Arr::last($rootSpan->getEvents());
 
     expect($event)
@@ -80,7 +82,7 @@ it('records cache put with a ttl', function () {
 
     $rootSpan = getRecordedSpans()->last();
 
-    /** @var \OpenTelemetry\SDK\Trace\Event $event */
+    /** @var Event $event */
     $event = Arr::last($rootSpan->getEvents());
 
     expect($event)
@@ -103,7 +105,7 @@ it('records cache forget', function () {
 
     $rootSpan = getRecordedSpans()->last();
 
-    /** @var \OpenTelemetry\SDK\Trace\Event $event */
+    /** @var Event $event */
     $event = Arr::last($rootSpan->getEvents());
 
     expect($event)

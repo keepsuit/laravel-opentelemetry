@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Str;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation;
 use Keepsuit\LaravelOpenTelemetry\Support\ResourceAttributesParser;
 use Keepsuit\LaravelOpenTelemetry\TailSampling;
@@ -10,7 +11,7 @@ return [
     /**
      * Service name
      */
-    'service_name' => env(Variables::OTEL_SERVICE_NAME, \Illuminate\Support\Str::slug((string) env('APP_NAME', 'laravel-app'))),
+    'service_name' => env(Variables::OTEL_SERVICE_NAME, Str::slug((string) env('APP_NAME', 'laravel-app'))),
 
     /**
      * Service instance id

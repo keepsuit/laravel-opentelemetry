@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Log;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use OpenTelemetry\API\Common\Time\Clock;
+use OpenTelemetry\API\Trace\NonRecordingSpan;
 use OpenTelemetry\API\Trace\SpanInterface;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
@@ -14,13 +15,13 @@ beforeEach(function () {
 });
 
 it('can resolve laravel tracer', function () {
-    /** @var \Keepsuit\LaravelOpenTelemetry\Tracer $tracer */
-    $tracer = app(\Keepsuit\LaravelOpenTelemetry\Tracer::class);
+    /** @var Keepsuit\LaravelOpenTelemetry\Tracer $tracer */
+    $tracer = app(Keepsuit\LaravelOpenTelemetry\Tracer::class);
 
     expect($tracer)
-        ->toBeInstanceOf(\Keepsuit\LaravelOpenTelemetry\Tracer::class)
+        ->toBeInstanceOf(Keepsuit\LaravelOpenTelemetry\Tracer::class)
         ->traceId()->toBeNull()
-        ->activeSpan()->toBeInstanceOf(\OpenTelemetry\API\Trace\NonRecordingSpan::class);
+        ->activeSpan()->toBeInstanceOf(NonRecordingSpan::class);
 });
 
 it('can measure a span', function () {

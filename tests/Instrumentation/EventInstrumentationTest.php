@@ -3,6 +3,7 @@
 use Illuminate\Support\Arr;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\EventInstrumentation;
 use Keepsuit\LaravelOpenTelemetry\Tests\Support\TestEvent;
+use OpenTelemetry\SDK\Trace\Event;
 
 it('records string event', function () {
     registerInstrumentation(EventInstrumentation::class);
@@ -13,7 +14,7 @@ it('records string event', function () {
 
     $rootSpan = getRecordedSpans()->last();
 
-    /** @var \OpenTelemetry\SDK\Trace\Event $event */
+    /** @var Event $event */
     $event = Arr::last($rootSpan->getEvents());
 
     expect($event)
@@ -33,7 +34,7 @@ it('records class event', function () {
 
     $rootSpan = getRecordedSpans()->last();
 
-    /** @var \OpenTelemetry\SDK\Trace\Event $event */
+    /** @var Event $event */
     $event = Arr::last($rootSpan->getEvents());
 
     expect($event)
@@ -55,7 +56,7 @@ it('can ignore events', function () {
 
     $rootSpan = getRecordedSpans()->last();
 
-    /** @var \OpenTelemetry\SDK\Trace\Event $event */
+    /** @var Event $event */
     $event = Arr::last($rootSpan->getEvents());
 
     expect($event)->toBeNull();

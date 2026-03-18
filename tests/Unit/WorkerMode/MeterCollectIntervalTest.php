@@ -2,6 +2,7 @@
 
 use Keepsuit\LaravelOpenTelemetry\Facades\Meter;
 use Keepsuit\LaravelOpenTelemetry\WorkerMode\WorkerModeDetectorInterface;
+use Keepsuit\LaravelOpenTelemetry\WorkerMode\WorkerModeManager;
 use Spatie\TestTime\TestTime;
 
 test('calls meter collect based on interval', function () {
@@ -29,7 +30,7 @@ test('calls meter collect based on interval', function () {
         }
     };
 
-    new \Keepsuit\LaravelOpenTelemetry\WorkerMode\WorkerModeManager(
+    new WorkerModeManager(
         flushAfterEachIteration: false,
         metricsExportInterval: 60,
         detectors: [$detector]

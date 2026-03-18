@@ -3,6 +3,9 @@
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\ScoutInstrumentation;
 use Keepsuit\LaravelOpenTelemetry\Tests\Support\SearchableProduct;
 use OpenTelemetry\API\Trace\SpanKind;
+use OpenTelemetry\SDK\Metrics\Data\Histogram;
+use OpenTelemetry\SDK\Metrics\Data\HistogramDataPoint;
+use OpenTelemetry\SDK\Metrics\Data\Metric;
 use OpenTelemetry\SDK\Trace\SpanDataInterface;
 use OpenTelemetry\SemConv\Attributes\DbAttributes;
 use OpenTelemetry\SemConv\Metrics\DbMetrics;
@@ -129,11 +132,11 @@ test('records scout operation duration metric', function () {
     $metric = getRecordedMetrics()->where('name', DbMetrics::DB_CLIENT_OPERATION_DURATION)->sole();
 
     expect($metric)
-        ->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Data\Metric::class)
+        ->toBeInstanceOf(Metric::class)
         ->unit->toBe('s')
-        ->data->toBeInstanceOf(\OpenTelemetry\SDK\Metrics\Data\Histogram::class);
+        ->data->toBeInstanceOf(Histogram::class);
 
-    /** @var \OpenTelemetry\SDK\Metrics\Data\HistogramDataPoint $dataPoint */
+    /** @var HistogramDataPoint $dataPoint */
     $dataPoint = $metric->data->dataPoints[0];
 
     expect($dataPoint->attributes)

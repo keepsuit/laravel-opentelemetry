@@ -3,12 +3,15 @@
 use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Console\Events\CommandStarting;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\ConsoleInstrumentation;
+use Keepsuit\LaravelOpenTelemetry\Tests\Support\TestCommand;
+use OpenTelemetry\API\Trace\StatusCode;
+use OpenTelemetry\SDK\Trace\ImmutableSpan;
 use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Output\BufferedOutput;
 
 test('trace console command (class)', function () {
     registerInstrumentation(ConsoleInstrumentation::class, [
-        'commands' => [\Keepsuit\LaravelOpenTelemetry\Tests\Support\TestCommand::class],
+        'commands' => [TestCommand::class],
     ]);
 
     simulateTestConsoleCommand();
@@ -20,9 +23,9 @@ test('trace console command (class)', function () {
     $consoleSpan = $spans->first();
 
     expect($consoleSpan)
-        ->toBeInstanceOf(\OpenTelemetry\SDK\Trace\ImmutableSpan::class)
+        ->toBeInstanceOf(ImmutableSpan::class)
         ->getName()->toBe('test:command')
-        ->getStatus()->getCode()->toBe(\OpenTelemetry\API\Trace\StatusCode::STATUS_OK);
+        ->getStatus()->getCode()->toBe(StatusCode::STATUS_OK);
 });
 
 test('trace console command (name)', function () {
@@ -39,14 +42,14 @@ test('trace console command (name)', function () {
     $consoleSpan = $spans->first();
 
     expect($consoleSpan)
-        ->toBeInstanceOf(\OpenTelemetry\SDK\Trace\ImmutableSpan::class)
+        ->toBeInstanceOf(ImmutableSpan::class)
         ->getName()->toBe('test:command')
-        ->getStatus()->getCode()->toBe(\OpenTelemetry\API\Trace\StatusCode::STATUS_OK);
+        ->getStatus()->getCode()->toBe(StatusCode::STATUS_OK);
 });
 
 test('trace console command with failing status', function () {
     registerInstrumentation(ConsoleInstrumentation::class, [
-        'commands' => [\Keepsuit\LaravelOpenTelemetry\Tests\Support\TestCommand::class],
+        'commands' => [TestCommand::class],
     ]);
 
     simulateTestConsoleCommand(exitCode: 1);
@@ -58,9 +61,9 @@ test('trace console command with failing status', function () {
     $consoleSpan = $spans->first();
 
     expect($consoleSpan)
-        ->toBeInstanceOf(\OpenTelemetry\SDK\Trace\ImmutableSpan::class)
+        ->toBeInstanceOf(ImmutableSpan::class)
         ->getName()->toBe('test:command')
-        ->getStatus()->getCode()->toBe(\OpenTelemetry\API\Trace\StatusCode::STATUS_ERROR);
+        ->getStatus()->getCode()->toBe(StatusCode::STATUS_ERROR);
 });
 
 test('commands not listed are not traced', function () {

@@ -8,8 +8,10 @@ use Keepsuit\LaravelOpenTelemetry\TailSampling\TailSamplingProcessor;
 use Keepsuit\LaravelOpenTelemetry\TailSampling\TraceBuffer;
 use Keepsuit\LaravelOpenTelemetry\Tests\Support\TestSpanProcessor;
 use Keepsuit\LaravelOpenTelemetry\Tests\Support\TestTailSamplingRule;
+use OpenTelemetry\API\Trace\StatusCode;
 use OpenTelemetry\SDK\Trace\Sampler\AlwaysOffSampler;
 use OpenTelemetry\SDK\Trace\Sampler\AlwaysOnSampler;
+use OpenTelemetry\SDK\Trace\Span;
 use Spatie\TestTime\TestTime;
 
 beforeEach(function () {
@@ -23,8 +25,8 @@ test('errors rules keep traces with errors', function () {
     $rule->initialize([]);
 
     $span = Tracer::newSpan('root')->start();
-    assert($span instanceof \OpenTelemetry\SDK\Trace\Span);
-    $span->setStatus(\OpenTelemetry\API\Trace\StatusCode::STATUS_ERROR);
+    assert($span instanceof Span);
+    $span->setStatus(StatusCode::STATUS_ERROR);
     $span->end();
     $buffer->addSpan($span);
     expect($rule->evaluate($buffer))->toBe(SamplingResult::Keep);
@@ -37,7 +39,7 @@ test('errors rules forwards traces without errors', function () {
     $rule->initialize([]);
 
     $span = Tracer::newSpan('root')->start();
-    assert($span instanceof \OpenTelemetry\SDK\Trace\Span);
+    assert($span instanceof Span);
     $span->end();
     $buffer->addSpan($span);
     expect($rule->evaluate($buffer))->toBe(SamplingResult::Forward);
@@ -49,7 +51,7 @@ test('slow trace rule keeps traces exceeding threshold duration', function () {
     $rule->initialize(['threshold_ms' => 10]);
 
     $span = Tracer::newSpan('root')->start();
-    assert($span instanceof \OpenTelemetry\SDK\Trace\Span);
+    assert($span instanceof Span);
     TestTime::addSeconds(3);
     $span->end();
     $buffer->addSpan($span);
@@ -63,7 +65,7 @@ test('slow trace rule forwards traces under threshold duration', function () {
     $rule->initialize(['threshold_ms' => 1000]); // 1 second
 
     $span = Tracer::newSpan('root')->start();
-    assert($span instanceof \OpenTelemetry\SDK\Trace\Span);
+    assert($span instanceof Span);
     TestTime::addMillis(100);
     $span->end();
     $buffer->addSpan($span);
@@ -79,11 +81,11 @@ it('forwards buffered spans when a rule returns Keep (root ends triggers evaluat
 
     // create parent and child spans using the package tracer helpers
     $root = Tracer::newSpan('root')->start();
-    assert($root instanceof \OpenTelemetry\SDK\Trace\Span);
+    assert($root instanceof Span);
     $scope = $root->activate();
 
     $child = Tracer::newSpan('child')->start();
-    assert($child instanceof \OpenTelemetry\SDK\Trace\Span);
+    assert($child instanceof Span);
 
     // advance time and end child first
     TestTime::addSecond();
@@ -111,11 +113,11 @@ it('evaluates opportunistically when evaluation window is exceeded', function ()
 
     // create an active parent so the span we end is not considered the root
     $parent = Tracer::newSpan('parent')->start();
-    assert($parent instanceof \OpenTelemetry\SDK\Trace\Span);
+    assert($parent instanceof Span);
     $scope = $parent->activate();
 
     $child = Tracer::newSpan('child-opportunistic')->start();
-    assert($child instanceof \OpenTelemetry\SDK\Trace\Span);
+    assert($child instanceof Span);
     TestTime::addSecond();
     $child->end();
 
@@ -140,11 +142,11 @@ it('evaluates opportunistically when evaluation window is exceeded and rules ret
 
     // create an active parent so the span we end is not considered the root
     $parent = Tracer::newSpan('parent')->start();
-    assert($parent instanceof \OpenTelemetry\SDK\Trace\Span);
+    assert($parent instanceof Span);
     $scope = $parent->activate();
 
     $child = Tracer::newSpan('child-opportunistic')->start();
-    assert($child instanceof \OpenTelemetry\SDK\Trace\Span);
+    assert($child instanceof Span);
     TestTime::addSecond();
     $child->end();
 
@@ -168,11 +170,11 @@ it('uses fallback sampler when all rules return Forward and sampler returns RECO
     $processor = new TailSamplingProcessor($downstream, new AlwaysOnSampler, [$rule], decisionWait: 5000);
 
     $root = Tracer::newSpan('root')->start();
-    assert($root instanceof \OpenTelemetry\SDK\Trace\Span);
+    assert($root instanceof Span);
     $scope = $root->activate();
 
     $child = Tracer::newSpan('child')->start();
-    assert($child instanceof \OpenTelemetry\SDK\Trace\Span);
+    assert($child instanceof Span);
     $child->end();
 
     $scope->detach();
@@ -197,11 +199,11 @@ it('uses fallback sampler when all rules return Forward and sampler returns DROP
     $processor = new TailSamplingProcessor($downstream, new AlwaysOffSampler, [$rule], decisionWait: 5000);
 
     $root = Tracer::newSpan('root')->start();
-    assert($root instanceof \OpenTelemetry\SDK\Trace\Span);
+    assert($root instanceof Span);
     $scope = $root->activate();
 
     $child = Tracer::newSpan('child')->start();
-    assert($child instanceof \OpenTelemetry\SDK\Trace\Span);
+    assert($child instanceof Span);
     $child->end();
 
     $scope->detach();
@@ -225,7 +227,7 @@ it('uses fallback sampler with multiple Forward rules', function () {
     $processor = new TailSamplingProcessor($downstream, new AlwaysOnSampler, [$rule1, $rule2, $rule3], decisionWait: 5000);
 
     $root = Tracer::newSpan('root')->start();
-    assert($root instanceof \OpenTelemetry\SDK\Trace\Span);
+    assert($root instanceof Span);
     $root->end();
 
     $processor->onEnd($root);
@@ -244,11 +246,11 @@ it('does not forward buffered spans when a rule returns Drop', function () {
 
     // create parent and child spans
     $root = Tracer::newSpan('root')->start();
-    assert($root instanceof \OpenTelemetry\SDK\Trace\Span);
+    assert($root instanceof Span);
     $scope = $root->activate();
 
     $child = Tracer::newSpan('child')->start();
-    assert($child instanceof \OpenTelemetry\SDK\Trace\Span);
+    assert($child instanceof Span);
 
     // advance time and end child first
     TestTime::addSecond();
