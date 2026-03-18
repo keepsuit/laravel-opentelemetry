@@ -2,6 +2,20 @@
 
 All notable changes to `laravel-opentelemetry` will be documented in this file.
 
+## v2.1.0 - 2026-03-18
+
+### What's Changed
+
+* Examples for console instrumentation by @VampireAotD in https://github.com/keepsuit/laravel-opentelemetry/pull/78
+* Bump ramsey/composer-install from 3 to 4 by @dependabot[bot] in https://github.com/keepsuit/laravel-opentelemetry/pull/79
+* support laravel 13 by @cappuc in https://github.com/keepsuit/laravel-opentelemetry/pull/77
+
+### New Contributors
+
+* @VampireAotD made their first contribution in https://github.com/keepsuit/laravel-opentelemetry/pull/78
+
+**Full Changelog**: https://github.com/keepsuit/laravel-opentelemetry/compare/2.0.0...2.1.0
+
 ## v2.0.0 - 2026-02-04
 
 ### What's Changed
@@ -150,6 +164,7 @@ Instrumentation\ConsoleInstrumentation::class => [
 
 
 
+
 ```
 **Full Changelog**: https://github.com/keepsuit/laravel-opentelemetry/compare/1.7.0...1.8.0
 
@@ -264,6 +279,7 @@ Tracer::newSpan('name')->setSpanKind(SpanKind::KIND_PRODUCER)->measure(callback)
 
 
 
+
 ```
 `Tracer::recordExceptionToSpan` has been removed and exception should be recorded directly to span: `$span->recordException($exception)`
 
@@ -284,6 +300,7 @@ This is the injected `otlp` channel:
         'level' => 'debug',
     ]
 ]
+
 
 
 
