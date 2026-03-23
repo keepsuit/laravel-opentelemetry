@@ -2,6 +2,18 @@
 
 All notable changes to `laravel-opentelemetry` will be documented in this file.
 
+## v2.2.0 - 2026-03-23
+
+### What's Changed
+
+* Allow to disabled OTEL SDK from config by @edem-yakubov in https://github.com/keepsuit/laravel-opentelemetry/pull/80
+
+### New Contributors
+
+* @edem-yakubov made their first contribution in https://github.com/keepsuit/laravel-opentelemetry/pull/80
+
+**Full Changelog**: https://github.com/keepsuit/laravel-opentelemetry/compare/2.1.0...2.2.0
+
 ## v2.1.0 - 2026-03-18
 
 ### What's Changed
@@ -165,6 +177,7 @@ Instrumentation\ConsoleInstrumentation::class => [
 
 
 
+
 ```
 **Full Changelog**: https://github.com/keepsuit/laravel-opentelemetry/compare/1.7.0...1.8.0
 
@@ -280,6 +293,7 @@ Tracer::newSpan('name')->setSpanKind(SpanKind::KIND_PRODUCER)->measure(callback)
 
 
 
+
 ```
 `Tracer::recordExceptionToSpan` has been removed and exception should be recorded directly to span: `$span->recordException($exception)`
 
@@ -300,6 +314,7 @@ This is the injected `otlp` channel:
         'level' => 'debug',
     ]
 ]
+
 
 
 
