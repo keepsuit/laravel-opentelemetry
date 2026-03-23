@@ -170,34 +170,13 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
     {
         $envRepository = Env::getRepository();
 
-        $this->normalizeOtelBooleanEnv('OTEL_SDK_DISABLED', $envRepository);
+        $sdkDisabled = filter_var(config('opentelemetry.disabled', false), FILTER_VALIDATE_BOOLEAN);
+        $envRepository->set(OTELVariables::OTEL_SDK_DISABLED, $sdkDisabled ? 'true' : 'false');
 
         $envRepository->set(OTELVariables::OTEL_SERVICE_NAME, config('opentelemetry.service_name'));
 
         // Disable debug scopes wrapping
         $envRepository->set('OTEL_PHP_DEBUG_SCOPES_DISABLED', '1');
-    }
-
-    /**
-     * Normalize boolean-like env vars (1/0, yes/no, on/off) to "true"/"false"
-     * before the OpenTelemetry SDK reads them, as the SDK only accepts "true"/"false".
-     */
-    protected function normalizeOtelBooleanEnv(string $name, \Dotenv\Repository\RepositoryInterface $envRepository): void
-    {
-        $value = env($name);
-
-        if ($value === null) {
-            return;
-        }
-
-        $lower = strtolower((string) $value);
-
-        if (in_array($lower, ['true', 'false'], true)) {
-            return;
-        }
-
-        $normalized = filter_var($value, FILTER_VALIDATE_BOOLEAN) ? 'true' : 'false';
-        $envRepository->set($name, $normalized);
     }
 
     protected function buildTracerProvider(ResourceInfo $resource, MeterProviderInterface $meterProvider): TracerProviderInterface

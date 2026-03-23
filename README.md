@@ -63,6 +63,11 @@ use OpenTelemetry\SDK\Common\Configuration\Variables;
 
 return [
     /**
+     * When set to true, Opentelemetry SDK will be disabled
+     */
+    'disabled' => env(Variables::OTEL_SDK_DISABLED, false),
+    
+    /**
      * Service name
      */
     'service_name' => env(Variables::OTEL_SERVICE_NAME, \Illuminate\Support\Str::slug((string) env('APP_NAME', 'laravel-app'))),
