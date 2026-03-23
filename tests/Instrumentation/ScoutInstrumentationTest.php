@@ -10,6 +10,10 @@ use OpenTelemetry\SDK\Trace\SpanDataInterface;
 use OpenTelemetry\SemConv\Attributes\DbAttributes;
 use OpenTelemetry\SemConv\Metrics\DbMetrics;
 
+beforeEach(function () {
+    skipWithoutOtelExtension();
+});
+
 test('trace scout search operation', function () {
     registerInstrumentation(ScoutInstrumentation::class);
 

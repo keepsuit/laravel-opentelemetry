@@ -49,6 +49,13 @@ function resetStorage(): void
     $loggerExporter->getStorage()->exchangeArray([]);
 }
 
+function skipWithoutOtelExtension(): void
+{
+    if (! extension_loaded('opentelemetry')) {
+        test()->markTestSkipped('OpenTelemetry extension is not loaded');
+    }
+}
+
 /**
  * @return Collection<array-key,ImmutableSpan>
  */
