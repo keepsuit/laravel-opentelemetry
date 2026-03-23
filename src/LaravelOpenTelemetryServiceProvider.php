@@ -170,6 +170,9 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
     {
         $envRepository = Env::getRepository();
 
+        $sdkDisabled = filter_var(config('opentelemetry.disabled', false), FILTER_VALIDATE_BOOLEAN);
+        $envRepository->set(OTELVariables::OTEL_SDK_DISABLED, $sdkDisabled ? 'true' : 'false');
+
         $envRepository->set(OTELVariables::OTEL_SERVICE_NAME, config('opentelemetry.service_name'));
 
         // Disable debug scopes wrapping
