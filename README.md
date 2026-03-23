@@ -55,6 +55,7 @@ php artisan vendor:publish --provider="Keepsuit\LaravelOpenTelemetry\LaravelOpen
 This is the contents of the published config file:
 
 ```php
+use Illuminate\Support\Str;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation;
 use Keepsuit\LaravelOpenTelemetry\Support\ResourceAttributesParser;
 use Keepsuit\LaravelOpenTelemetry\TailSampling;
@@ -63,14 +64,9 @@ use OpenTelemetry\SDK\Common\Configuration\Variables;
 
 return [
     /**
-     * When set to true, Opentelemetry SDK will be disabled
-     */
-    'disabled' => env(Variables::OTEL_SDK_DISABLED, false),
-    
-    /**
      * Service name
      */
-    'service_name' => env(Variables::OTEL_SERVICE_NAME, \Illuminate\Support\Str::slug((string) env('APP_NAME', 'laravel-app'))),
+    'service_name' => env(Variables::OTEL_SERVICE_NAME, Str::slug((string) env('APP_NAME', 'laravel-app'))),
 
     /**
      * Service instance id
@@ -292,7 +288,7 @@ return [
             'enabled' => env('OTEL_INSTRUMENTATION_CONSOLE', true),
             'commands' => [],
         ],
-        
+
         Instrumentation\ScoutInstrumentation::class => env('OTEL_INSTRUMENTATION_SCOUT', true),
     ],
 
@@ -368,7 +364,7 @@ Each instrumentation is configurable in `config/opentelemetry.php` and, when app
 
 ### Http Server Requests
 
-Http server requests are automatically traced by injecting `\Keepsuit\LaravelOpenTelemetry\Support\HttpServer\TraceRequestMiddleware::class` to the global middlewares.
+Http server requests are automatically traced by injecting `\Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\Http\Server\TraceRequestMiddleware::class` to the global middlewares.
 
 Configuration options:
 
