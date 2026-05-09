@@ -2,6 +2,18 @@
 
 All notable changes to `laravel-opentelemetry` will be documented in this file.
 
+## v2.2.1 - 2026-05-09
+
+### What's Changed
+
+* Normalize boolean env values in opentelemetry config. by @Scott-McMullan-ABB in https://github.com/keepsuit/laravel-opentelemetry/pull/82
+
+### New Contributors
+
+* @Scott-McMullan-ABB made their first contribution in https://github.com/keepsuit/laravel-opentelemetry/pull/82
+
+**Full Changelog**: https://github.com/keepsuit/laravel-opentelemetry/compare/2.2.0...2.2.1
+
 ## v2.2.0 - 2026-03-23
 
 ### What's Changed
@@ -178,6 +190,7 @@ Instrumentation\ConsoleInstrumentation::class => [
 
 
 
+
 ```
 **Full Changelog**: https://github.com/keepsuit/laravel-opentelemetry/compare/1.7.0...1.8.0
 
@@ -294,6 +307,7 @@ Tracer::newSpan('name')->setSpanKind(SpanKind::KIND_PRODUCER)->measure(callback)
 
 
 
+
 ```
 `Tracer::recordExceptionToSpan` has been removed and exception should be recorded directly to span: `$span->recordException($exception)`
 
@@ -314,6 +328,7 @@ This is the injected `otlp` channel:
         'level' => 'debug',
     ]
 ]
+
 
 
 
