@@ -11,7 +11,7 @@ return [
     /**
      * When set to true, Opentelemetry SDK will be disabled
      */
-    'disabled' => env(Variables::OTEL_SDK_DISABLED, false),
+    'disabled' => filter_var(env(Variables::OTEL_SDK_DISABLED, false), FILTER_VALIDATE_BOOLEAN),
 
     /**
      * Service name
@@ -35,7 +35,7 @@ return [
     /**
      * Include authenticated user context on traces and logs.
      */
-    'user_context' => env('OTEL_USER_CONTEXT', true),
+    'user_context' => filter_var(env('OTEL_USER_CONTEXT', true), FILTER_VALIDATE_BOOLEAN),
 
     /**
      * Comma separated list of propagators to use.
@@ -73,7 +73,7 @@ return [
             /**
              * Wraps the sampler in a parent based sampler
              */
-            'parent' => env('OTEL_TRACES_SAMPLER_PARENT', true),
+            'parent' => filter_var(env('OTEL_TRACES_SAMPLER_PARENT', true), FILTER_VALIDATE_BOOLEAN),
 
             /**
              * Sampler type
@@ -89,14 +89,14 @@ return [
             ],
 
             'tail_sampling' => [
-                'enabled' => env('OTEL_TRACES_TAIL_SAMPLING_ENABLED', false),
+                'enabled' => filter_var(env('OTEL_TRACES_TAIL_SAMPLING_ENABLED', false), FILTER_VALIDATE_BOOLEAN),
                 // Maximum time to wait for the end of the trace before making a sampling decision (in milliseconds)
                 'decision_wait' => (int) env('OTEL_TRACES_TAIL_SAMPLING_DECISION_WAIT', 5000),
 
                 'rules' => [
-                    TailSampling\Rules\ErrorsRule::class => env('OTEL_TRACES_TAIL_SAMPLING_RULE_KEEP_ERRORS', true),
+                    TailSampling\Rules\ErrorsRule::class => filter_var(env('OTEL_TRACES_TAIL_SAMPLING_RULE_KEEP_ERRORS', true), FILTER_VALIDATE_BOOLEAN),
                     TailSampling\Rules\SlowTraceRule::class => [
-                        'enabled' => env('OTEL_TRACES_TAIL_SAMPLING_RULE_SLOW_TRACES', true),
+                        'enabled' => filter_var(env('OTEL_TRACES_TAIL_SAMPLING_RULE_SLOW_TRACES', true), FILTER_VALIDATE_BOOLEAN),
                         'threshold_ms' => (int) env('OTEL_TRACES_TAIL_SAMPLING_SLOW_TRACES_THRESHOLD_MS', 2000),
                     ],
                 ],
@@ -201,7 +201,7 @@ return [
      */
     'instrumentation' => [
         Instrumentation\HttpServerInstrumentation::class => [
-            'enabled' => env('OTEL_INSTRUMENTATION_HTTP_SERVER', true),
+            'enabled' => filter_var(env('OTEL_INSTRUMENTATION_HTTP_SERVER', true), FILTER_VALIDATE_BOOLEAN),
             'excluded_paths' => [],
             'excluded_methods' => [],
             'allowed_headers' => [],
@@ -210,36 +210,36 @@ return [
         ],
 
         Instrumentation\HttpClientInstrumentation::class => [
-            'enabled' => env('OTEL_INSTRUMENTATION_HTTP_CLIENT', true),
+            'enabled' => filter_var(env('OTEL_INSTRUMENTATION_HTTP_CLIENT', true), FILTER_VALIDATE_BOOLEAN),
             'manual' => false, // When set to true, you need to call `withTrace()` on the request to enable tracing
             'allowed_headers' => [],
             'sensitive_headers' => [],
             'sensitive_query_parameters' => [],
         ],
 
-        Instrumentation\QueryInstrumentation::class => env('OTEL_INSTRUMENTATION_QUERY', true),
+        Instrumentation\QueryInstrumentation::class => filter_var(env('OTEL_INSTRUMENTATION_QUERY', true), FILTER_VALIDATE_BOOLEAN),
 
-        Instrumentation\RedisInstrumentation::class => env('OTEL_INSTRUMENTATION_REDIS', true),
+        Instrumentation\RedisInstrumentation::class => filter_var(env('OTEL_INSTRUMENTATION_REDIS', true), FILTER_VALIDATE_BOOLEAN),
 
-        Instrumentation\QueueInstrumentation::class => env('OTEL_INSTRUMENTATION_QUEUE', true),
+        Instrumentation\QueueInstrumentation::class => filter_var(env('OTEL_INSTRUMENTATION_QUEUE', true), FILTER_VALIDATE_BOOLEAN),
 
-        Instrumentation\CacheInstrumentation::class => env('OTEL_INSTRUMENTATION_CACHE', true),
+        Instrumentation\CacheInstrumentation::class => filter_var(env('OTEL_INSTRUMENTATION_CACHE', true), FILTER_VALIDATE_BOOLEAN),
 
         Instrumentation\EventInstrumentation::class => [
-            'enabled' => env('OTEL_INSTRUMENTATION_EVENT', true),
+            'enabled' => filter_var(env('OTEL_INSTRUMENTATION_EVENT', true), FILTER_VALIDATE_BOOLEAN),
             'excluded' => [],
         ],
 
-        Instrumentation\ViewInstrumentation::class => env('OTEL_INSTRUMENTATION_VIEW', true),
+        Instrumentation\ViewInstrumentation::class => filter_var(env('OTEL_INSTRUMENTATION_VIEW', true), FILTER_VALIDATE_BOOLEAN),
 
-        Instrumentation\LivewireInstrumentation::class => env('OTEL_INSTRUMENTATION_LIVEWIRE', true),
+        Instrumentation\LivewireInstrumentation::class => filter_var(env('OTEL_INSTRUMENTATION_LIVEWIRE', true), FILTER_VALIDATE_BOOLEAN),
 
         Instrumentation\ConsoleInstrumentation::class => [
-            'enabled' => env('OTEL_INSTRUMENTATION_CONSOLE', true),
+            'enabled' => filter_var(env('OTEL_INSTRUMENTATION_CONSOLE', true), FILTER_VALIDATE_BOOLEAN),
             'commands' => [],
         ],
 
-        Instrumentation\ScoutInstrumentation::class => env('OTEL_INSTRUMENTATION_SCOUT', true),
+        Instrumentation\ScoutInstrumentation::class => filter_var(env('OTEL_INSTRUMENTATION_SCOUT', true), FILTER_VALIDATE_BOOLEAN),
     ],
 
     /**
@@ -253,7 +253,7 @@ return [
          * Flush after each iteration (e.g. http request, queue job).
          * If false, flushes are batched and executed periodically and on shutdown.
          */
-        'flush_after_each_iteration' => env('OTEL_WORKER_MODE_FLUSH_AFTER_EACH_ITERATION', false),
+        'flush_after_each_iteration' => filter_var(env('OTEL_WORKER_MODE_FLUSH_AFTER_EACH_ITERATION', false), FILTER_VALIDATE_BOOLEAN),
 
         /**
          * Metrics collection interval in seconds.

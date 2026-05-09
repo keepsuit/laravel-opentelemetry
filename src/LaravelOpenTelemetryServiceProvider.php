@@ -11,6 +11,7 @@ use Illuminate\Contracts\Debug\ExceptionHandler as ExceptionHandlerContract;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Env;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Str;
 use Keepsuit\LaravelOpenTelemetry\Support\CarbonClock;
 use Keepsuit\LaravelOpenTelemetry\Support\NoopSpanExporter;
@@ -170,8 +171,10 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
     {
         $envRepository = Env::getRepository();
 
-        $sdkDisabled = filter_var(config('opentelemetry.disabled', false), FILTER_VALIDATE_BOOLEAN);
-        $envRepository->set(OTELVariables::OTEL_SDK_DISABLED, $sdkDisabled ? 'true' : 'false');
+        $envRepository->set(
+            OTELVariables::OTEL_SDK_DISABLED,
+            Config::boolean('opentelemetry.disabled', false) ? 'true' : 'false'
+        );
 
         $envRepository->set(OTELVariables::OTEL_SERVICE_NAME, config('opentelemetry.service_name'));
 
