@@ -45,7 +45,7 @@ class HttpServerInstrumentation implements Instrumentation
     public function register(array $options): void
     {
         static::$excludedPaths = array_map(
-            fn (string $path) => ltrim($path, '/'),
+            fn (string $path) => $path === '/' ? '/' : ltrim($path, '/'),
             Arr::get($options, 'excluded_paths', []),
         );
 

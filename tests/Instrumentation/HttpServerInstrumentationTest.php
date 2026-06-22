@@ -271,6 +271,27 @@ it('skip tracing for excluded paths', function () {
         ->toBeNull();
 });
 
+it('skip tracing for excluded root path', function () {
+    Route::any('/', fn () => 'ok');
+
+    registerInstrumentation(HttpServerInstrumentation::class, [
+        'excluded_paths' => [
+            '/',
+        ],
+    ]);
+
+    $response = $this->get('/');
+
+    $response->assertOk();
+
+    $spans = getRecordedSpans();
+
+    $serverSpan = $spans->firstWhere(fn (ImmutableSpan $span) => $span->getKind() === SpanKind::KIND_SERVER);
+
+    expect($serverSpan)
+        ->toBeNull();
+});
+
 it('trace allowed request headers', function () {
     registerInstrumentation(HttpServerInstrumentation::class, [
         'allowed_headers' => [
