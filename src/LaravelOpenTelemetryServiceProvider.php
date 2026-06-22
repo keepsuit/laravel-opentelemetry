@@ -154,7 +154,6 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         $this->app->register(InstrumentationServiceProvider::class);
 
         $this->callAfterResolving(ExceptionHandlerContract::class, function (ExceptionHandlerContract $handler) {
-            /** @phpstan-ignore-next-line */
             if (! method_exists($handler, 'reportable')) {
                 return;
             }
