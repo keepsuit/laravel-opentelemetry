@@ -2,6 +2,18 @@
 
 All notable changes to `laravel-opentelemetry` will be documented in this file.
 
+## 2.2.3 - 2026-06-23
+
+### What's Changed
+
+* Fix leaked producer span on sync queue driver by @moysevich in https://github.com/keepsuit/laravel-opentelemetry/pull/87
+
+### New Contributors
+
+* @moysevich made their first contribution in https://github.com/keepsuit/laravel-opentelemetry/pull/87
+
+**Full Changelog**: https://github.com/keepsuit/laravel-opentelemetry/compare/2.2.2...2.2.3
+
 ## v2.2.2 - 2026-06-22
 
 ### What's Changed
@@ -201,6 +213,7 @@ Instrumentation\ConsoleInstrumentation::class => [
 
 
 
+
 ```
 **Full Changelog**: https://github.com/keepsuit/laravel-opentelemetry/compare/1.7.0...1.8.0
 
@@ -319,6 +332,7 @@ Tracer::newSpan('name')->setSpanKind(SpanKind::KIND_PRODUCER)->measure(callback)
 
 
 
+
 ```
 `Tracer::recordExceptionToSpan` has been removed and exception should be recorded directly to span: `$span->recordException($exception)`
 
@@ -339,6 +353,7 @@ This is the injected `otlp` channel:
         'level' => 'debug',
     ]
 ]
+
 
 
 
