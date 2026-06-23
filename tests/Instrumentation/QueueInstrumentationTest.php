@@ -100,6 +100,42 @@ it('can trace queue jobs', function () {
         ]);
 });
 
+it('can trace sync queue jobs', function () {
+    config()->set('queue.default', 'sync');
+
+    withRootSpan(function () {
+        dispatch(new TestJob($this->valuestore));
+    });
+
+    $root = getRecordedSpans()->first(fn (ImmutableSpan $span) => $span->getName() === 'root');
+    $enqueueSpan = getRecordedSpans()->first(fn (ImmutableSpan $span) => $span->getName() === 'send default');
+    $processSpan = getRecordedSpans()->first(fn (ImmutableSpan $span) => $span->getAttributes()->get(MessagingIncubatingAttributes::MESSAGING_OPERATION_TYPE) === 'process');
+
+    assert($root instanceof ImmutableSpan);
+    assert($enqueueSpan instanceof ImmutableSpan);
+    assert($processSpan instanceof ImmutableSpan);
+
+    expect($enqueueSpan)
+        ->getParentSpanId()->toBe($root->getSpanId())
+        ->getAttributes()->toMatchArray([
+            MessagingIncubatingAttributes::MESSAGING_SYSTEM => 'sync',
+            MessagingIncubatingAttributes::MESSAGING_OPERATION_TYPE => 'send',
+            MessagingIncubatingAttributes::MESSAGING_MESSAGE_ID => $this->valuestore->get('uuid'),
+            MessagingIncubatingAttributes::MESSAGING_DESTINATION_NAME => 'default',
+            'messaging.message.job_name' => TestJob::class,
+        ]);
+
+    expect($processSpan)
+        ->getTraceId()->toBe($enqueueSpan->getTraceId())
+        ->getParentSpanId()->toBe($enqueueSpan->getSpanId())
+        ->getAttributes()->toMatchArray([
+            MessagingIncubatingAttributes::MESSAGING_SYSTEM => 'sync',
+            MessagingIncubatingAttributes::MESSAGING_OPERATION_TYPE => 'process',
+            MessagingIncubatingAttributes::MESSAGING_MESSAGE_ID => $this->valuestore->get('uuid'),
+            'messaging.message.job_name' => TestJob::class,
+        ]);
+});
+
 it('can trace queue jobs dispatched after commit', function () {
     withRootSpan(function () {
         DB::transaction(function () {
