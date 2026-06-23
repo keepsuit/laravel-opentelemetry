@@ -100,6 +100,15 @@ class QueueInstrumentation implements Instrumentation
     protected function recordJobProcessing(): void
     {
         app('events')->listen(JobProcessing::class, function (JobProcessing $event) {
+            // The sync queue driver never dispatches JobQueued, so the producer span would otherwise leak and never be exported.
+            // Close any still-open producer span for this job before starting the consumer span.
+            // For async drivers JobQueued has already ended/removed it, so this is a no-op.
+            $producerUuid = $event->job->uuid();
+            if ($producerUuid !== null && isset($this->activeSpans[$producerUuid])) {
+                $this->activeSpans[$producerUuid]->end();
+                unset($this->activeSpans[$producerUuid]);
+            }
+
             $context = Tracer::extractContextFromPropagationHeaders($event->job->payload());
 
             $span = Tracer::newSpan(sprintf('process %s', $event->job->getQueue()))
