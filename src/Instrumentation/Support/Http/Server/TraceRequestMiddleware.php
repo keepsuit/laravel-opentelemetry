@@ -3,6 +3,7 @@
 namespace Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\Http\Server;
 
 use Closure;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
@@ -113,7 +114,7 @@ class TraceRequestMiddleware
             ->setAttribute(NetworkAttributes::NETWORK_PEER_ADDRESS, $request->server('REMOTE_ADDR'))
             ->setAttribute(ClientAttributes::CLIENT_ADDRESS, $request->ip());
 
-        if (config('opentelemetry.user_context') === true && $request->user() !== null) {
+        if (config('opentelemetry.user_context') === true && $request->user() instanceof Authenticatable) {
             $span->setAttributes(OpenTelemetry::collectUserContext($request->user()));
         }
 
