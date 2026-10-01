@@ -6,6 +6,7 @@ use Carbon\CarbonImmutable;
 use OpenTelemetry\API\Common\Time\ClockInterface;
 use OpenTelemetry\API\Trace\SpanContextValidator;
 use OpenTelemetry\SDK\Trace\ReadableSpanInterface;
+use OpenTelemetry\SDK\Trace\SpanDataInterface;
 
 final class TraceBuffer
 {
@@ -35,7 +36,7 @@ final class TraceBuffer
 
         $spanData = $span->toSpanData();
 
-        if ($this->root === null && ! SpanContextValidator::isValidSpanId($spanData->getParentSpanId())) {
+        if ($this->root === null && $this->isLocalRoot($spanData)) {
             $this->root = $span;
         }
 
@@ -75,5 +76,31 @@ final class TraceBuffer
         }
 
         return $this->traceEndedMs - $this->traceStartedMs;
+    }
+
+    /**
+     * A span is the local root when it has no parent, or when its parent comes from
+     * another process (for example a propagated `traceparent` header).
+     * A remote parent that is already in this buffer belongs to the same process
+     * (for example a job dispatched on the sync queue), so the trace is not complete yet.
+     */
+    protected function isLocalRoot(SpanDataInterface $spanData): bool
+    {
+        if (! SpanContextValidator::isValidSpanId($spanData->getParentSpanId())) {
+            return true;
+        }
+
+        return $spanData->getParentContext()->isRemote() && ! $this->hasSpan($spanData->getParentSpanId());
+    }
+
+    protected function hasSpan(string $spanId): bool
+    {
+        foreach ($this->spans as $span) {
+            if ($span->getContext()->getSpanId() === $spanId) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
