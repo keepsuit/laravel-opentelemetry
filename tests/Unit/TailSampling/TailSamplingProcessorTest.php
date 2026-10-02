@@ -8,6 +8,7 @@ use Keepsuit\LaravelOpenTelemetry\TailSampling\TailSamplingProcessor;
 use Keepsuit\LaravelOpenTelemetry\TailSampling\TraceBuffer;
 use Keepsuit\LaravelOpenTelemetry\Tests\Support\TestSpanProcessor;
 use Keepsuit\LaravelOpenTelemetry\Tests\Support\TestTailSamplingRule;
+use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
 use OpenTelemetry\SDK\Trace\Sampler\AlwaysOffSampler;
 use OpenTelemetry\SDK\Trace\Sampler\AlwaysOnSampler;
@@ -265,4 +266,131 @@ it('does not forward buffered spans when a rule returns Drop', function () {
 
     // verify that no spans were forwarded to downstream
     expect($downstream->ended)->toBeEmpty();
+});
+
+it('does not evaluate a locally rooted trace before its root span ends', function () {
+    $downstream = new TestSpanProcessor;
+    $rule = new TestTailSamplingRule(SamplingResult::Keep);
+
+    $processor = new TailSamplingProcessor($downstream, new AlwaysOffSampler, [$rule], decisionWait: 5000);
+
+    $root = Tracer::newSpan('root')->start();
+    assert($root instanceof Span);
+    $scope = $root->activate();
+
+    $child = Tracer::newSpan('child')->start();
+    assert($child instanceof Span);
+    $child->end();
+    $processor->onEnd($child);
+
+    $scope->detach();
+
+    expect($downstream->ended)->toBeEmpty();
+
+    $root->end();
+    $processor->onEnd($root);
+
+    expect($downstream->ended)
+        ->toHaveCount(2)
+        ->{0}->toBe($child)
+        ->{1}->toBe($root);
+});
+
+it('evaluates the trace when a span with a remote parent ends', function () {
+    $downstream = new TestSpanProcessor;
+    $rule = new TestTailSamplingRule(SamplingResult::Keep);
+
+    $processor = new TailSamplingProcessor($downstream, new AlwaysOffSampler, [$rule], decisionWait: 5000);
+
+    $remoteContext = Tracer::extractContextFromPropagationHeaders([
+        'traceparent' => '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01',
+    ]);
+
+    $server = Tracer::newSpan('GET /users')
+        ->setSpanKind(SpanKind::KIND_SERVER)
+        ->setParent($remoteContext)
+        ->start();
+    assert($server instanceof Span);
+    $scope = $server->activate();
+
+    $query = Tracer::newSpan('SELECT users')->start();
+    assert($query instanceof Span);
+    TestTime::addMillis(100);
+    $query->end();
+    $processor->onEnd($query);
+
+    $scope->detach();
+
+    expect($downstream->ended)->toBeEmpty();
+
+    TestTime::addMillis(100);
+    $server->end();
+    $processor->onEnd($server);
+
+    expect($downstream->ended)
+        ->toHaveCount(2)
+        ->{0}->toBe($query)
+        ->{1}->toBe($server);
+
+    // The trace buffer has been released, a later span of the same trace is evaluated on its own
+    $next = Tracer::newSpan('GET /users')
+        ->setSpanKind(SpanKind::KIND_SERVER)
+        ->setParent($remoteContext)
+        ->start();
+    assert($next instanceof Span);
+    $next->end();
+    $processor->onEnd($next);
+
+    expect($downstream->ended)
+        ->toHaveCount(3)
+        ->{2}->toBe($next);
+});
+
+it('does not evaluate the trace when a span with a remote parent already in the buffer ends', function () {
+    $downstream = new TestSpanProcessor;
+    $rule = new TestTailSamplingRule(SamplingResult::Keep);
+
+    $processor = new TailSamplingProcessor($downstream, new AlwaysOffSampler, [$rule], decisionWait: 5000);
+
+    $server = Tracer::newSpan('GET /users')
+        ->setSpanKind(SpanKind::KIND_SERVER)
+        ->setParent(Tracer::extractContextFromPropagationHeaders([
+            'traceparent' => '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01',
+        ]))
+        ->start();
+    assert($server instanceof Span);
+    $scope = $server->activate();
+
+    // A job dispatched and processed in the same process (e.g. sync queue driver):
+    // the producer span ends before the consumer span starts from the propagated context.
+    $producer = Tracer::newSpan('send default')
+        ->setSpanKind(SpanKind::KIND_PRODUCER)
+        ->start();
+    assert($producer instanceof Span);
+    $producer->end();
+    $processor->onEnd($producer);
+
+    $consumer = Tracer::newSpan('process default')
+        ->setSpanKind(SpanKind::KIND_CONSUMER)
+        ->setParent(Tracer::extractContextFromPropagationHeaders([
+            'traceparent' => sprintf('00-%s-%s-01', $producer->getContext()->getTraceId(), $producer->getContext()->getSpanId()),
+        ]))
+        ->start();
+    assert($consumer instanceof Span);
+    $consumer->end();
+    $processor->onEnd($consumer);
+
+    $scope->detach();
+
+    expect($consumer->getParentContext()->isRemote())->toBeTrue();
+    expect($downstream->ended)->toBeEmpty();
+
+    $server->end();
+    $processor->onEnd($server);
+
+    expect($downstream->ended)
+        ->toHaveCount(3)
+        ->{0}->toBe($producer)
+        ->{1}->toBe($consumer)
+        ->{2}->toBe($server);
 });

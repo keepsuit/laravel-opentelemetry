@@ -257,3 +257,51 @@ test('addSpan maintains insertion order regardless of span end times', function 
     // Trace duration should still be calculated correctly
     expect($buffer->getTraceDurationMs())->toBe(200);
 });
+
+test('getRootSpan identifies span with remote parent as root', function () {
+    $buffer = new TraceBuffer('trace-1');
+
+    $context = Tracer::extractContextFromPropagationHeaders([
+        'traceparent' => '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01',
+    ]);
+
+    $span = Tracer::newSpan('GET /users')->setParent($context)->start();
+    assert($span instanceof Span);
+    $span->end();
+
+    $buffer->addSpan($span);
+
+    expect($buffer->getRootSpan())->toBe($span);
+});
+
+test('getRootSpan does not identify span with remote parent already in the buffer as root', function () {
+    $buffer = new TraceBuffer('trace-1');
+
+    $root = Tracer::newSpan('root')->start();
+    assert($root instanceof Span);
+    $scope = $root->activate();
+
+    $producer = Tracer::newSpan('send default')->start();
+    assert($producer instanceof Span);
+    $producer->end();
+
+    $consumer = Tracer::newSpan('process default')
+        ->setParent(Tracer::extractContextFromPropagationHeaders([
+            'traceparent' => sprintf('00-%s-%s-01', $producer->getContext()->getTraceId(), $producer->getContext()->getSpanId()),
+        ]))
+        ->start();
+    assert($consumer instanceof Span);
+    $consumer->end();
+
+    $scope->detach();
+    $root->end();
+
+    $buffer->addSpan($producer);
+    $buffer->addSpan($consumer);
+
+    expect($buffer->getRootSpan())->toBeNull();
+
+    $buffer->addSpan($root);
+
+    expect($buffer->getRootSpan())->toBe($root);
+});
