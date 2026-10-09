@@ -1,8 +1,11 @@
 <?php
 
+use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Server\Server;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\HttpClientInstrumentation;
 use OpenTelemetry\API\Trace\SpanKind;
@@ -10,12 +13,25 @@ use OpenTelemetry\API\Trace\StatusCode;
 use OpenTelemetry\SDK\Metrics\Data\Histogram;
 use OpenTelemetry\SDK\Metrics\Data\HistogramDataPoint;
 use OpenTelemetry\SDK\Metrics\Data\Metric;
+use OpenTelemetry\SemConv\Attributes\ErrorAttributes;
 use OpenTelemetry\SemConv\Attributes\HttpAttributes;
 use OpenTelemetry\SemConv\Attributes\NetworkAttributes;
 use OpenTelemetry\SemConv\Attributes\ServerAttributes;
 use OpenTelemetry\SemConv\Attributes\UrlAttributes;
 use OpenTelemetry\SemConv\Metrics\HttpMetrics;
 use Psr\Http\Message\RequestInterface;
+
+function closedLocalPort(): int
+{
+    $socket = stream_socket_server('tcp://127.0.0.1:0');
+    assert($socket !== false);
+
+    $port = (int) Str::afterLast(stream_socket_get_name($socket, false), ':');
+
+    fclose($socket);
+
+    return $port;
+}
 
 test('http client span is not created when trace is not started', function () {
     registerInstrumentation(HttpClientInstrumentation::class);
@@ -168,6 +184,70 @@ it('set span status to error on 4xx and 5xx status code', function () {
         ->getAttributes()->toMatchArray([
             'http.response.status_code' => 500,
         ]);
+});
+
+it('ends http client span and records duration metric when the connection fails', function () {
+    registerInstrumentation(HttpClientInstrumentation::class, [
+        'sensitive_query_parameters' => [
+            'token',
+        ],
+    ]);
+
+    $closedPort = closedLocalPort();
+
+    withRootSpan(function () use ($closedPort) {
+        expect(fn () => Http::get(sprintf('http://127.0.0.1:%d/?token=supersecret', $closedPort)))
+            ->toThrow(ConnectionException::class);
+    });
+
+    expect(getRecordedSpans())->toHaveCount(2);
+
+    $httpSpan = getRecordedSpans()->first();
+    $rootSpan = getRecordedSpans()->last();
+
+    expect($httpSpan)
+        ->getKind()->toBe(SpanKind::KIND_CLIENT)
+        ->getName()->toBe('GET')
+        ->getParentSpanId()->toBe($rootSpan->getSpanId())
+        ->getStatus()->getCode()->toBe(StatusCode::STATUS_ERROR);
+
+    expect($httpSpan->getAttributes())
+        ->toMatchArray([
+            'error.type' => ConnectException::class,
+            'http.request.method' => 'GET',
+            'server.address' => '127.0.0.1',
+            'server.port' => $closedPort,
+            'url.full' => 'http://127.0.0.1/?token=REDACTED',
+        ])
+        ->not->toHaveKey('http.response.status_code');
+
+    $recordedOnSpan = json_encode([
+        $httpSpan->getAttributes()->toArray(),
+        $httpSpan->getStatus()->getDescription(),
+        collect($httpSpan->getEvents())->map(fn ($event) => [$event->getName(), $event->getAttributes()->toArray()]),
+    ]);
+
+    expect($recordedOnSpan)->not->toContain('supersecret');
+
+    $metric = getRecordedMetrics()->firstWhere('name', HttpMetrics::HTTP_CLIENT_REQUEST_DURATION);
+
+    expect($metric)->toBeInstanceOf(Metric::class)
+        ->data->toBeInstanceOf(Histogram::class)
+        ->data->dataPoints->toHaveCount(1);
+
+    $dataPoint = $metric->data->dataPoints[0];
+
+    expect($dataPoint->attributes)
+        ->toMatchArray([
+            ErrorAttributes::ERROR_TYPE => ConnectException::class,
+            HttpAttributes::HTTP_REQUEST_METHOD => 'GET',
+            ServerAttributes::SERVER_ADDRESS => '127.0.0.1',
+        ])
+        ->not->toHaveKey(HttpAttributes::HTTP_RESPONSE_STATUS_CODE);
+
+    expect($dataPoint)
+        ->count->toBe(1)
+        ->sum->toBeGreaterThan(0);
 });
 
 it('trace allowed request headers', function () {
