@@ -2,6 +2,19 @@
 
 All notable changes to `laravel-opentelemetry` will be documented in this file.
 
+## v2.2.8 - 2026-10-26
+
+### What's Changed
+
+* fix(http-server): prevent successful 2xx responses from being flagged as errors by @evoloshchuk in https://github.com/keepsuit/laravel-opentelemetry/pull/94
+* Allow Guzzle 8, drop guzzle7-adapter, fix PHPStan errors by @cappuc in https://github.com/keepsuit/laravel-opentelemetry/pull/95
+
+### New Contributors
+
+* @evoloshchuk made their first contribution in https://github.com/keepsuit/laravel-opentelemetry/pull/94
+
+**Full Changelog**: https://github.com/keepsuit/laravel-opentelemetry/compare/2.2.7...2.2.8
+
 ## v2.2.7 - 2026-10-09
 
 ### What's Changed
@@ -255,6 +268,7 @@ Instrumentation\ConsoleInstrumentation::class => [
 
 
 
+
 ```
 **Full Changelog**: https://github.com/keepsuit/laravel-opentelemetry/compare/1.7.0...1.8.0
 
@@ -378,6 +392,7 @@ Tracer::newSpan('name')->setSpanKind(SpanKind::KIND_PRODUCER)->measure(callback)
 
 
 
+
 ```
 `Tracer::recordExceptionToSpan` has been removed and exception should be recorded directly to span: `$span->recordException($exception)`
 
@@ -398,6 +413,7 @@ This is the injected `otlp` channel:
         'level' => 'debug',
     ]
 ]
+
 
 
 
