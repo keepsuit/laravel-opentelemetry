@@ -42,7 +42,7 @@ trait HandlesHttpQueryString
         parse_str($queryString, $query);
 
         return http_build_query(
-            Arr::map($query, fn (mixed $value, string $key) => in_array(strtolower($key), static::getSensitiveQueryParameters(), true) ? 'REDACTED' : $value)
+            Arr::map($query, fn (mixed $value, int|string $key) => in_array(strtolower((string) $key), static::getSensitiveQueryParameters(), true) ? 'REDACTED' : $value)
         );
     }
 

@@ -28,9 +28,9 @@
         "thecodingmachine/safe": "^2.0 || ^3.0"
     },
     "require-dev": {
-        "guzzlehttp/guzzle": "^7.3",
-        "guzzlehttp/psr7": "^2.0",
-        "guzzlehttp/test-server": "^0.7",
+        "guzzlehttp/guzzle": "^7.3 || ^8.0",
+        "guzzlehttp/psr7": "^2.0 || ^3.0",
+        "guzzlehttp/test-server": "^0.7 || ^1.0",
         "larastan/larastan": "^3.0",
         "laravel/octane": "^2.13",
         "laravel/pint": "^1.18",
@@ -43,7 +43,6 @@
         "orchestra/testbench": "^9.2 || ^10.0 || ^11.0",
         "pestphp/pest": "^3.0 || ^4.0",
         "pestphp/pest-plugin-laravel": "^3.0 || ^4.0",
-        "php-http/guzzle7-adapter": "^1.0",
         "phpstan/extension-installer": "^1.4",
         "phpstan/phpstan-deprecation-rules": "^2.0",
         "predis/predis": "^2.2 || ^3.0",
