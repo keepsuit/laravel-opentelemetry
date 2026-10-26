@@ -7,10 +7,10 @@ use OpenTelemetry\API\Common\Time\ClockInterface;
 
 trait SpanTimeAdapter
 {
-    protected function getEventStartTimestampNs(float $timeMs): int
+    protected function getEventStartTimestampNs(?float $timeMs): int
     {
         $nowNs = Clock::getDefault()->now();
-        $durationNs = (int) ($timeMs * ClockInterface::NANOS_PER_MILLISECOND);
+        $durationNs = (int) (($timeMs ?? 0) * ClockInterface::NANOS_PER_MILLISECOND);
 
         return $nowNs - $durationNs;
     }
