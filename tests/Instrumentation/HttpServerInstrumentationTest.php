@@ -32,6 +32,7 @@ use function Pest\Laravel\withoutExceptionHandling;
 beforeEach(function () {
     Route::middleware('web')->group(function () {
         Route::any('test-ok', fn () => Tracer::traceId());
+        Route::any('test-no-content', fn () => response()->noContent());
         Route::any('test-exception', fn () => throw TestException::create());
         Route::any('test-nested-exception', function () {
             $span = Tracer::newSpan('nested')->start();
@@ -628,4 +629,23 @@ it('records metric even when exception occurs', function () {
             ErrorAttributes::ERROR_TYPE => 500,
             HttpAttributes::HTTP_RESPONSE_STATUS_CODE => 500,
         ]);
+});
+
+it('can trace a request with 204 no content status without error type attribute', function () {
+    registerInstrumentation(HttpServerInstrumentation::class);
+
+    $response = $this->delete('test-no-content');
+
+    $response->assertNoContent();
+
+    $span = getRecordedSpans()->last();
+
+    expect($span)
+        ->getName()->toBe('DELETE /test-no-content')
+        ->getKind()->toBe(SpanKind::KIND_SERVER)
+        ->getStatus()->getCode()->toBe(StatusCode::STATUS_OK)
+        ->getAttributes()->toMatchArray([
+            'http.response.status_code' => 204,
+        ])
+        ->getAttributes()->not->toHaveKey(ErrorAttributes::ERROR_TYPE);
 });

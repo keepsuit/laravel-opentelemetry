@@ -165,7 +165,7 @@ class TraceRequestMiddleware
             HttpAttributes::HTTP_REQUEST_METHOD => $request->method(),
             HttpAttributes::HTTP_RESPONSE_STATUS_CODE => $response->getStatusCode(),
             HttpAttributes::HTTP_ROUTE => $this->resolveRouteName($request),
-            ErrorAttributes::ERROR_TYPE => $response->isOk() ? null : (string) $response->getStatusCode(),
+            ErrorAttributes::ERROR_TYPE => $response->isSuccessful() ? null : (string) $response->getStatusCode(),
             NetworkAttributes::NETWORK_PROTOCOL_NAME => 'http',
             NetworkAttributes::NETWORK_PROTOCOL_VERSION => match (true) {
                 $protocolVersion->isEmpty() => null,
