@@ -86,7 +86,11 @@ class QueryInstrumentation implements Instrumentation
     protected function sharedTraceMetricAttributes(QueryExecuted $event, string $operationName): array
     {
         return [
-            DbAttributes::DB_SYSTEM_NAME => $event->connection->getDriverName(),
+            DbAttributes::DB_SYSTEM_NAME => match ($driver = $event->connection->getDriverName()) {
+                'pgsql' => DbAttributes::DB_SYSTEM_NAME_VALUE_POSTGRESQL,
+                'sqlsrv' => DbAttributes::DB_SYSTEM_NAME_VALUE_MICROSOFT_SQL_SERVER,
+                default => $driver,
+            },
             DbAttributes::DB_NAMESPACE => $event->connection->getDatabaseName(),
             DbAttributes::DB_OPERATION_NAME => $operationName,
             DbAttributes::DB_QUERY_TEXT => Str::limit($event->sql, 500),

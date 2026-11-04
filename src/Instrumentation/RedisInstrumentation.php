@@ -127,8 +127,12 @@ class RedisInstrumentation implements Instrumentation
         return sprintf('%s %s', $command, $parameters);
     }
 
-    protected function resolveDbIndex(string $connectionName): ?string
+    protected function resolveDbIndex(?string $connectionName): ?string
     {
+        if ($connectionName === null) {
+            return null;
+        }
+
         return config(sprintf('database.redis.%s.database', $connectionName));
     }
 
