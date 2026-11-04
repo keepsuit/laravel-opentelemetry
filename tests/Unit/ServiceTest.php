@@ -2,6 +2,9 @@
 
 use Keepsuit\LaravelOpenTelemetry\Support\ResourceAttributesParser;
 use Keepsuit\LaravelOpenTelemetry\Support\ResourceBuilder;
+use OpenTelemetry\API\Globals;
+use OpenTelemetry\API\Instrumentation\ContextKeys;
+use OpenTelemetry\Context\Context;
 
 test('service resource attributes', function () {
     $resource = ResourceBuilder::build();
@@ -39,4 +42,17 @@ test('set resource attributes from config', function () {
     expect($resource->getAttributes())
         ->get('environment')->toBe('production')
         ->get('region')->toBe('us-west-2');
+});
+
+test('a repeated boot does not keep the previous sdk attached to the context', function () {
+    $previous = Globals::tracerProvider();
+
+    $this->refreshApplication();
+    expect(Globals::tracerProvider())->not->toBe($previous);
+
+    // Without the current boot's scope, nothing from the previous boot may remain attached.
+    Context::storage()->scope()?->detach();
+    expect(Context::getCurrent()->get(ContextKeys::tracerProvider()))->toBeNull();
+
+    $this->refreshApplication();
 });
