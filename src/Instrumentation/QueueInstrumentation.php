@@ -15,6 +15,7 @@ use Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\InstrumentationUtiliti
 use OpenTelemetry\API\Trace\SpanInterface;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
+use OpenTelemetry\SemConv\Attributes\ErrorAttributes;
 use OpenTelemetry\SemConv\Incubating\Attributes\MessagingIncubatingAttributes;
 use Throwable;
 
@@ -167,7 +168,8 @@ class QueueInstrumentation implements Instrumentation
 
         if ($exception !== null) {
             $span->recordException($exception)
-                ->setStatus(StatusCode::STATUS_ERROR);
+                ->setStatus(StatusCode::STATUS_ERROR)
+                ->setAttribute(ErrorAttributes::ERROR_TYPE, $exception::class);
         }
 
         $scope?->detach();

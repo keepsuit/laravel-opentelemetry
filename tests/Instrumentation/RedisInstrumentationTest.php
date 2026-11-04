@@ -89,3 +89,7 @@ it('can record redis call duration metric', function (string $client) {
     'predis',
     'phpredis',
 ]);
+
+it('resolves no db index for an unnamed connection', function () {
+    expect(invade(new RedisInstrumentation)->resolveDbIndex(null))->toBeNull();
+});

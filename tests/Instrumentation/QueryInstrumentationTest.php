@@ -1,5 +1,7 @@
 <?php
 
+use Illuminate\Database\Connection;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\QueryInstrumentation;
@@ -126,3 +128,14 @@ it('can record query duration metric', function () {
             DbAttributes::DB_QUERY_TEXT => 'select * from "users"',
         ]);
 });
+
+it('maps database drivers to well-known db systems', function (string $driver, string $expected) {
+    $event = new QueryExecuted('select 1', [], 1.0, new Connection(fn () => null, 'db', '', ['driver' => $driver]));
+
+    expect(invade(new QueryInstrumentation)->sharedTraceMetricAttributes($event, 'SELECT'))
+        ->toHaveKey(DbAttributes::DB_SYSTEM_NAME, $expected);
+})->with([
+    ['pgsql', 'postgresql'],
+    ['sqlsrv', 'microsoft.sql_server'],
+    ['mysql', 'mysql'],
+]);

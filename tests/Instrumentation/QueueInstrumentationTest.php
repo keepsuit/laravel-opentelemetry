@@ -8,6 +8,7 @@ use Keepsuit\LaravelOpenTelemetry\Tests\Support\RetryingTestJob;
 use Keepsuit\LaravelOpenTelemetry\Tests\Support\TestJob;
 use OpenTelemetry\API\Trace\StatusCode;
 use OpenTelemetry\SDK\Trace\ImmutableSpan;
+use OpenTelemetry\SemConv\Attributes\ErrorAttributes;
 use OpenTelemetry\SemConv\Incubating\Attributes\MessagingIncubatingAttributes;
 use Spatie\Valuestore\Valuestore;
 
@@ -213,6 +214,7 @@ it('can trace queue failing jobs', function () {
         ->getEvents()->toHaveCount(1)
         ->getEvents()->{0}->getName()->toBe('exception')
         ->getAttributes()->toMatchArray([
+            ErrorAttributes::ERROR_TYPE => Exception::class,
             MessagingIncubatingAttributes::MESSAGING_SYSTEM_NAME => 'redis',
             MessagingIncubatingAttributes::MESSAGING_OPERATION_NAME => 'process',
             MessagingIncubatingAttributes::MESSAGING_OPERATION_TYPE => 'process',
@@ -264,7 +266,9 @@ it('does not leak the active consumer span between retry attempts and later jobs
         ->toHaveCount(2)
         ->and($retryProcessSpans[0]->getStatus()->getCode())->toBe(StatusCode::STATUS_ERROR)
         ->and($retryProcessSpans[0]->getEvents())->toHaveCount(1)
-        ->and($retryProcessSpans[1]->getStatus()->getCode())->toBe(StatusCode::STATUS_UNSET);
+        ->and($retryProcessSpans[0]->getAttributes()->get(ErrorAttributes::ERROR_TYPE))->toBe(Exception::class)
+        ->and($retryProcessSpans[1]->getStatus()->getCode())->toBe(StatusCode::STATUS_UNSET)
+        ->and($retryProcessSpans[1]->getAttributes()->has(ErrorAttributes::ERROR_TYPE))->toBeFalse();
 
     expect($followingProcessSpan)
         ->not->toBeNull()
@@ -273,3 +277,12 @@ it('does not leak the active consumer span between retry attempts and later jobs
     $retryingJobStore->flush();
     $followingJobStore->flush();
 });
+
+it('maps queue drivers to well-known messaging systems', function (string $driver, string $expected) {
+    config()->set('queue.connections.mapped.driver', $driver);
+
+    expect(invade(new QueueInstrumentation)->connectionDriver('mapped'))->toBe($expected);
+})->with([
+    ['sqs', 'aws.sqs'],
+    ['redis', 'redis'],
+]);
