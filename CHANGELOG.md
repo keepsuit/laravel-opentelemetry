@@ -2,6 +2,37 @@
 
 All notable changes to `laravel-opentelemetry` will be documented in this file.
 
+## v2.3.0 - 2026-11-04
+
+### Upgrade notes
+
+**Laravel 11 is no longer supported.** Every `laravel/framework` 11.x release is covered by unpatched security advisories, so Composer blocks it by default. Laravel 11 apps stay on 2.2.x.
+
+**Emitted telemetry changes** (semantic conventions 1.45). Update dashboards, alerts and queries that rely on the old keys or values:
+
+| Spans / metrics | Before | After |
+|---|---|---|
+| Queue spans | `messaging.system` | `messaging.system.name` |
+| Queue spans, SQS driver | `messaging.system = sqs` | `messaging.system.name = aws.sqs` |
+| DB spans and `db.client.operation.duration`, PostgreSQL | `db.system.name = pgsql` | `db.system.name = postgresql` |
+| DB spans and `db.client.operation.duration`, SQL Server | `db.system.name = sqlsrv` | `db.system.name = microsoft.sql_server` |
+
+Queue spans now also carry `messaging.operation.name` (`send` / `process`), and failed job spans carry `error.type` (the exception class). The instrumentation schema URL is now 1.45.0, and `open-telemetry/sem-conv` `^1.45` is required.
+
+**Repeated boots no longer leak SDK providers.** In processes that boot the application more than once, such as a test suite, the previous SDK scope is now detached. Memory stays flat and suites no longer slow down as they grow.
+
+### What's Changed
+
+* Drop Laravel 11 support by @cappuc in https://github.com/keepsuit/laravel-opentelemetry/pull/99
+* Align with semantic conventions 1.45 by @cappuc in https://github.com/keepsuit/laravel-opentelemetry/pull/98
+* Detach the previous SDK scope when the provider boots again by @stplva in https://github.com/keepsuit/laravel-opentelemetry/pull/97
+
+### New Contributors
+
+* @stplva made their first contribution in https://github.com/keepsuit/laravel-opentelemetry/pull/97
+
+**Full Changelog**: https://github.com/keepsuit/laravel-opentelemetry/compare/2.2.8...2.3.0
+
 ## v2.2.8 - 2026-10-26
 
 ### What's Changed
@@ -269,6 +300,7 @@ Instrumentation\ConsoleInstrumentation::class => [
 
 
 
+
 ```
 **Full Changelog**: https://github.com/keepsuit/laravel-opentelemetry/compare/1.7.0...1.8.0
 
@@ -393,6 +425,7 @@ Tracer::newSpan('name')->setSpanKind(SpanKind::KIND_PRODUCER)->measure(callback)
 
 
 
+
 ```
 `Tracer::recordExceptionToSpan` has been removed and exception should be recorded directly to span: `$span->recordException($exception)`
 
@@ -413,6 +446,7 @@ This is the injected `otlp` channel:
         'level' => 'debug',
     ]
 ]
+
 
 
 
