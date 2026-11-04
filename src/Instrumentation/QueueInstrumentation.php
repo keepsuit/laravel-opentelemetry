@@ -15,6 +15,7 @@ use Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\InstrumentationUtiliti
 use OpenTelemetry\API\Trace\SpanInterface;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
+use OpenTelemetry\SemConv\Attributes\ErrorAttributes;
 use OpenTelemetry\SemConv\Incubating\Attributes\MessagingIncubatingAttributes;
 use Throwable;
 
@@ -74,7 +75,8 @@ class QueueInstrumentation implements Instrumentation
 
                 $span = Tracer::newSpan(sprintf('send %s', $queueName))
                     ->setSpanKind(SpanKind::KIND_PRODUCER)
-                    ->setAttribute(MessagingIncubatingAttributes::MESSAGING_SYSTEM, $this->connectionDriver($connection))
+                    ->setAttribute(MessagingIncubatingAttributes::MESSAGING_SYSTEM_NAME, $this->connectionDriver($connection))
+                    ->setAttribute(MessagingIncubatingAttributes::MESSAGING_OPERATION_NAME, 'send')
                     ->setAttribute(MessagingIncubatingAttributes::MESSAGING_OPERATION_TYPE, 'send')
                     ->setAttribute(MessagingIncubatingAttributes::MESSAGING_MESSAGE_ID, $uuid)
                     ->setAttribute(MessagingIncubatingAttributes::MESSAGING_DESTINATION_NAME, $queueName)
@@ -115,7 +117,8 @@ class QueueInstrumentation implements Instrumentation
             $span = Tracer::newSpan(sprintf('process %s', $event->job->getQueue()))
                 ->setSpanKind(SpanKind::KIND_CONSUMER)
                 ->setParent($context)
-                ->setAttribute(MessagingIncubatingAttributes::MESSAGING_SYSTEM, $this->connectionDriver($event->connectionName))
+                ->setAttribute(MessagingIncubatingAttributes::MESSAGING_SYSTEM_NAME, $this->connectionDriver($event->connectionName))
+                ->setAttribute(MessagingIncubatingAttributes::MESSAGING_OPERATION_NAME, 'process')
                 ->setAttribute(MessagingIncubatingAttributes::MESSAGING_OPERATION_TYPE, 'process')
                 ->setAttribute(MessagingIncubatingAttributes::MESSAGING_MESSAGE_ID, $event->job->uuid())
                 ->setAttribute(MessagingIncubatingAttributes::MESSAGING_DESTINATION_NAME, $event->job->getQueue())
@@ -152,7 +155,10 @@ class QueueInstrumentation implements Instrumentation
 
     protected function connectionDriver(string $connection): string
     {
-        return config(sprintf('queue.connections.%s.driver', $connection), 'unknown');
+        return match ($driver = config(sprintf('queue.connections.%s.driver', $connection), 'unknown')) {
+            'sqs' => MessagingIncubatingAttributes::MESSAGING_SYSTEM_NAME_VALUE_AWS_SQS,
+            default => $driver,
+        };
     }
 
     protected function finishActiveJobSpan(?Throwable $exception = null): void
@@ -162,7 +168,8 @@ class QueueInstrumentation implements Instrumentation
 
         if ($exception !== null) {
             $span->recordException($exception)
-                ->setStatus(StatusCode::STATUS_ERROR);
+                ->setStatus(StatusCode::STATUS_ERROR)
+                ->setAttribute(ErrorAttributes::ERROR_TYPE, $exception::class);
         }
 
         $scope?->detach();

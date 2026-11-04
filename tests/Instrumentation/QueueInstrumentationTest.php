@@ -8,6 +8,7 @@ use Keepsuit\LaravelOpenTelemetry\Tests\Support\RetryingTestJob;
 use Keepsuit\LaravelOpenTelemetry\Tests\Support\TestJob;
 use OpenTelemetry\API\Trace\StatusCode;
 use OpenTelemetry\SDK\Trace\ImmutableSpan;
+use OpenTelemetry\SemConv\Attributes\ErrorAttributes;
 use OpenTelemetry\SemConv\Incubating\Attributes\MessagingIncubatingAttributes;
 use Spatie\Valuestore\Valuestore;
 
@@ -77,7 +78,8 @@ it('can trace queue jobs', function () {
     expect($enqueueSpan)
         ->toBeInstanceOf(ImmutableSpan::class)
         ->getAttributes()->toMatchArray([
-            MessagingIncubatingAttributes::MESSAGING_SYSTEM => 'redis',
+            MessagingIncubatingAttributes::MESSAGING_SYSTEM_NAME => 'redis',
+            MessagingIncubatingAttributes::MESSAGING_OPERATION_NAME => 'send',
             MessagingIncubatingAttributes::MESSAGING_OPERATION_TYPE => 'send',
             MessagingIncubatingAttributes::MESSAGING_MESSAGE_ID => $this->valuestore->get('uuid'),
             MessagingIncubatingAttributes::MESSAGING_DESTINATION_NAME => 'default',
@@ -88,7 +90,8 @@ it('can trace queue jobs', function () {
         ->toBeInstanceOf(ImmutableSpan::class)
         ->getTraceId()->toBe($enqueueSpan->getTraceId())
         ->getAttributes()->toMatchArray([
-            MessagingIncubatingAttributes::MESSAGING_SYSTEM => 'redis',
+            MessagingIncubatingAttributes::MESSAGING_SYSTEM_NAME => 'redis',
+            MessagingIncubatingAttributes::MESSAGING_OPERATION_NAME => 'process',
             MessagingIncubatingAttributes::MESSAGING_OPERATION_TYPE => 'process',
             MessagingIncubatingAttributes::MESSAGING_MESSAGE_ID => $this->valuestore->get('uuid'),
             MessagingIncubatingAttributes::MESSAGING_DESTINATION_NAME => 'default',
@@ -114,7 +117,8 @@ it('can trace sync queue jobs', function () {
     expect($enqueueSpan)
         ->getParentSpanId()->toBe($root->getSpanId())
         ->getAttributes()->toMatchArray([
-            MessagingIncubatingAttributes::MESSAGING_SYSTEM => 'sync',
+            MessagingIncubatingAttributes::MESSAGING_SYSTEM_NAME => 'sync',
+            MessagingIncubatingAttributes::MESSAGING_OPERATION_NAME => 'send',
             MessagingIncubatingAttributes::MESSAGING_OPERATION_TYPE => 'send',
             MessagingIncubatingAttributes::MESSAGING_MESSAGE_ID => $this->valuestore->get('uuid'),
             MessagingIncubatingAttributes::MESSAGING_DESTINATION_NAME => 'default',
@@ -125,7 +129,8 @@ it('can trace sync queue jobs', function () {
         ->getTraceId()->toBe($enqueueSpan->getTraceId())
         ->getParentSpanId()->toBe($enqueueSpan->getSpanId())
         ->getAttributes()->toMatchArray([
-            MessagingIncubatingAttributes::MESSAGING_SYSTEM => 'sync',
+            MessagingIncubatingAttributes::MESSAGING_SYSTEM_NAME => 'sync',
+            MessagingIncubatingAttributes::MESSAGING_OPERATION_NAME => 'process',
             MessagingIncubatingAttributes::MESSAGING_OPERATION_TYPE => 'process',
             MessagingIncubatingAttributes::MESSAGING_MESSAGE_ID => $this->valuestore->get('uuid'),
             'messaging.message.job_name' => TestJob::class,
@@ -196,7 +201,8 @@ it('can trace queue failing jobs', function () {
     expect($enqueueSpan)
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_UNSET)
         ->getAttributes()->toMatchArray([
-            MessagingIncubatingAttributes::MESSAGING_SYSTEM => 'redis',
+            MessagingIncubatingAttributes::MESSAGING_SYSTEM_NAME => 'redis',
+            MessagingIncubatingAttributes::MESSAGING_OPERATION_NAME => 'send',
             MessagingIncubatingAttributes::MESSAGING_OPERATION_TYPE => 'send',
             MessagingIncubatingAttributes::MESSAGING_MESSAGE_ID => $this->valuestore->get('uuid'),
             MessagingIncubatingAttributes::MESSAGING_DESTINATION_NAME => 'default',
@@ -208,7 +214,9 @@ it('can trace queue failing jobs', function () {
         ->getEvents()->toHaveCount(1)
         ->getEvents()->{0}->getName()->toBe('exception')
         ->getAttributes()->toMatchArray([
-            MessagingIncubatingAttributes::MESSAGING_SYSTEM => 'redis',
+            ErrorAttributes::ERROR_TYPE => Exception::class,
+            MessagingIncubatingAttributes::MESSAGING_SYSTEM_NAME => 'redis',
+            MessagingIncubatingAttributes::MESSAGING_OPERATION_NAME => 'process',
             MessagingIncubatingAttributes::MESSAGING_OPERATION_TYPE => 'process',
             MessagingIncubatingAttributes::MESSAGING_MESSAGE_ID => $this->valuestore->get('uuid'),
             MessagingIncubatingAttributes::MESSAGING_DESTINATION_NAME => 'default',
@@ -258,7 +266,9 @@ it('does not leak the active consumer span between retry attempts and later jobs
         ->toHaveCount(2)
         ->and($retryProcessSpans[0]->getStatus()->getCode())->toBe(StatusCode::STATUS_ERROR)
         ->and($retryProcessSpans[0]->getEvents())->toHaveCount(1)
-        ->and($retryProcessSpans[1]->getStatus()->getCode())->toBe(StatusCode::STATUS_UNSET);
+        ->and($retryProcessSpans[0]->getAttributes()->get(ErrorAttributes::ERROR_TYPE))->toBe(Exception::class)
+        ->and($retryProcessSpans[1]->getStatus()->getCode())->toBe(StatusCode::STATUS_UNSET)
+        ->and($retryProcessSpans[1]->getAttributes()->has(ErrorAttributes::ERROR_TYPE))->toBeFalse();
 
     expect($followingProcessSpan)
         ->not->toBeNull()
@@ -267,3 +277,12 @@ it('does not leak the active consumer span between retry attempts and later jobs
     $retryingJobStore->flush();
     $followingJobStore->flush();
 });
+
+it('maps queue drivers to well-known messaging systems', function (string $driver, string $expected) {
+    config()->set('queue.connections.mapped.driver', $driver);
+
+    expect(invade(new QueueInstrumentation)->connectionDriver('mapped'))->toBe($expected);
+})->with([
+    ['sqs', 'aws.sqs'],
+    ['redis', 'redis'],
+]);
