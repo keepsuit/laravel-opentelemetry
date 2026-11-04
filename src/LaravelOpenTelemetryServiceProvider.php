@@ -33,6 +33,7 @@ use OpenTelemetry\API\Trace\StatusCode;
 use OpenTelemetry\API\Trace\TracerInterface;
 use OpenTelemetry\Context\Propagation\NoopTextMapPropagator;
 use OpenTelemetry\Context\Propagation\TextMapPropagatorInterface;
+use OpenTelemetry\Context\ScopeInterface;
 use OpenTelemetry\Contrib\Grpc\GrpcTransportFactory;
 use OpenTelemetry\Contrib\Otlp\ContentTypes;
 use OpenTelemetry\Contrib\Otlp\HttpEndpointResolver;
@@ -83,6 +84,12 @@ use Throwable;
 
 class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 {
+    /**
+     * Scope of the globally registered SDK. It outlives the application, so a repeated
+     * boot in the same process (e.g. one per test) must detach the previous one.
+     */
+    protected static ?ScopeInterface $sdkScope = null;
+
     public function packageRegistered(): void
     {
         $this->app->singleton(Meter::class);
@@ -125,7 +132,8 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         $tracerProvider = $this->buildTracerProvider($resource, meterProvider: $meterProvider);
         $loggerProvider = $this->buildLoggerProvider($resource, meterProvider: $meterProvider);
 
-        Sdk::builder()
+        static::$sdkScope?->detach();
+        static::$sdkScope = Sdk::builder()
             ->setTracerProvider($tracerProvider)
             ->setLoggerProvider($loggerProvider)
             ->setMeterProvider($meterProvider)
