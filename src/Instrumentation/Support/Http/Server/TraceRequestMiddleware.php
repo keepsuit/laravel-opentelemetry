@@ -137,10 +137,6 @@ class TraceRequestMiddleware
 
         $this->recordHeaders($span, $response);
 
-        if ($response->isSuccessful()) {
-            $span->setStatus(StatusCode::STATUS_OK);
-        }
-
         if ($response->isServerError()) {
             $span->setStatus(StatusCode::STATUS_ERROR);
         }

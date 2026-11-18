@@ -40,7 +40,7 @@ it('can record query span', function () {
 
     expect($span)
         ->toBeInstanceOf(ImmutableSpan::class)
-        ->getName()->toBe('SELECT')
+        ->getName()->toBe('SELECT :memory:')
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
         ->getAttributes()->toArray()->toBe([
             'db.system.name' => 'sqlite',
@@ -67,7 +67,7 @@ it('can record a query with bindings', function () {
 
     expect($span)
         ->toBeInstanceOf(ImmutableSpan::class)
-        ->getName()->toBe('SELECT')
+        ->getName()->toBe('SELECT :memory:')
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
         ->getAttributes()->toArray()->toBe([
             'db.system.name' => 'sqlite',
@@ -95,7 +95,7 @@ it('can record a query with named bindings', function () {
 
     expect($span)
         ->toBeInstanceOf(ImmutableSpan::class)
-        ->getName()->toBe('UPDATE')
+        ->getName()->toBe('UPDATE :memory:')
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
         ->getAttributes()->toArray()->toBe([
             'db.system.name' => 'sqlite',

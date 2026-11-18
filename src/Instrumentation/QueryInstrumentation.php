@@ -54,7 +54,10 @@ class QueryInstrumentation implements Instrumentation
      */
     protected function recordTraceSpan(QueryExecuted $event, string $operationName, array $attributes): void
     {
-        $span = Tracer::newSpan($operationName)
+        $namespace = $attributes[DbAttributes::DB_NAMESPACE] ?? null;
+        $spanName = is_string($namespace) && $namespace !== '' ? sprintf('%s %s', $operationName, $namespace) : $operationName;
+
+        $span = Tracer::newSpan($spanName)
             ->setSpanKind(SpanKind::KIND_CLIENT)
             ->setStartTimestamp($this->getEventStartTimestampNs($event->time))
             ->setAttributes($attributes)

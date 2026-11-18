@@ -74,7 +74,7 @@ it('can trace a request', function () {
     expect($spans->last())
         ->getName()->toBe('GET /test-ok')
         ->getKind()->toBe(SpanKind::KIND_SERVER)
-        ->getStatus()->getCode()->toBe(StatusCode::STATUS_OK)
+        ->getStatus()->getCode()->toBe(StatusCode::STATUS_UNSET)
         ->getTraceId()->toBe($traceId)
         ->getAttributes()->toMatchArray([
             'url.full' => 'http://localhost/test-ok',
@@ -115,7 +115,7 @@ it('can trace a request with route model binding', function () {
     expect($span)
         ->getName()->toBe('GET /products/{product}')
         ->getKind()->toBe(SpanKind::KIND_SERVER)
-        ->getStatus()->getCode()->toBe(StatusCode::STATUS_OK)
+        ->getStatus()->getCode()->toBe(StatusCode::STATUS_UNSET)
         ->getTraceId()->toBe($traceId)
         ->getAttributes()->toMatchArray([
             'url.full' => 'http://localhost/products/1',
@@ -228,7 +228,7 @@ it('set generic span name when route has parameters', function () {
     expect($spans->last())
         ->getName()->toBe('GET /test/{parameter}')
         ->getKind()->toBe(SpanKind::KIND_SERVER)
-        ->getStatus()->getCode()->toBe(StatusCode::STATUS_OK)
+        ->getStatus()->getCode()->toBe(StatusCode::STATUS_UNSET)
         ->getAttributes()->toMatchArray([
             'url.full' => 'http://localhost/test/user1',
             'url.path' => '/test/user1',
@@ -251,7 +251,7 @@ it('continue trace', function () {
     expect($spans->last())
         ->getName()->toBe('GET /test-ok')
         ->getKind()->toBe(SpanKind::KIND_SERVER)
-        ->getStatus()->getCode()->toBe(StatusCode::STATUS_OK)
+        ->getStatus()->getCode()->toBe(StatusCode::STATUS_UNSET)
         ->getTraceId()->toBe('0af7651916cd43dd8448eb211c80319c')
         ->getParentSpanId()->toBe('b7ad6b7169203331');
 });
@@ -701,7 +701,7 @@ it('can trace a request with 204 no content status without error type attribute'
     expect($span)
         ->getName()->toBe('DELETE /test-no-content')
         ->getKind()->toBe(SpanKind::KIND_SERVER)
-        ->getStatus()->getCode()->toBe(StatusCode::STATUS_OK)
+        ->getStatus()->getCode()->toBe(StatusCode::STATUS_UNSET)
         ->getAttributes()->toMatchArray([
             'http.response.status_code' => 204,
         ])
