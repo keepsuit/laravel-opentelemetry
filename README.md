@@ -30,6 +30,7 @@ This package allows you to integrate OpenTelemetry in a Laravel application.
 - [Metrics](#metrics)
     - [Meter API](#meter-api)
     - [Metrics Temporality](#metrics-temporality)
+    - [Metrics in per-request runtimes](#metrics-in-per-request-runtimes)
 - [Logs](#logs)
 - [Worker Mode](#worker-mode)
 - [Development Setup](#development-setup)
@@ -757,6 +758,18 @@ Meter::batchObserve([
 The OTLP exporter supports setting a preferred temporality for exported metrics with the `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE` env variable.
 The supported values are `delta` and `cumulative` (case-insensitive). Other values are ignored.
 If not set, the exporter and SDK defaults apply.
+
+### Metrics in per-request runtimes
+
+In per-request runtimes (PHP-FPM, FrankenPHP without worker mode) every request boots a new meter provider and exports its own cumulative metrics when it ends. The result depends on `service.instance.id`:
+
+- **Shared id** (e.g. the hostname): every request overwrites the same series with its own counts. Counters never exceed a single request's count, so `rate()` and `increase()` are meaningless.
+- **Random id** (the SDK default): every request creates a new series, which leads to unbounded cardinality.
+
+Delta temporality combined with the collector `deltatocumulative` processor does not fix this when requests run concurrently: the processor drops samples that arrive out of order or have an older start time, so counts come out too low.
+
+The built-in metrics are meaningful in long-running processes (queue workers, Octane or FrankenPHP worker mode), provided `service.instance.id` is unique per process, not per host or pod.
+In per-request mode, collect HTTP request metrics from the ingress or reverse proxy instead.
 
 ## Logs
 

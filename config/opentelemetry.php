@@ -20,8 +20,9 @@ return [
 
     /**
      * Service instance id
-     * Should be unique for each instance of your service.
-     * If not set, a random id will be generated on each request.
+     * Must be unique per process (not per host or pod).
+     * If not set, a random id is generated on each request: in per-request runtimes
+     * (PHP-FPM, FrankenPHP without worker mode) this creates a new metric series on every request.
      */
     'service_instance_id' => env('OTEL_SERVICE_INSTANCE_ID'),
 
