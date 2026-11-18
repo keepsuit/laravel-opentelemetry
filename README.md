@@ -22,6 +22,7 @@ This package allows you to integrate OpenTelemetry in a Laravel application.
     - [View](#view)
     - [Livewire](#livewire)
     - [Scout](#scout)
+    - [Reverb](#reverb)
     - [Console Commands](#console-commands)
 - [Traces](#traces)
     - [Manual Traces](#manual-traces)
@@ -296,6 +297,8 @@ return [
         ],
 
         Instrumentation\ScoutInstrumentation::class => env('OTEL_INSTRUMENTATION_SCOUT', true),
+
+        Instrumentation\ReverbInstrumentation::class => env('OTEL_INSTRUMENTATION_REVERB', true),
     ],
 
     /**
@@ -332,6 +335,7 @@ return [
         'detectors' => [
             WorkerMode\Detectors\OctaneWorkerModeDetector::class,
             WorkerMode\Detectors\QueueWorkerModeDetector::class,
+            WorkerMode\Detectors\ReverbWorkerModeDetector::class,
         ],
     ],
 ];
@@ -544,6 +548,32 @@ Tracing of laravel scout operations requires the `opentelemetry` php extension t
 The instrumentation trace operations performed by laravel scout in a generic way without tracking engine-specific attributes.
 
 You can disable this instrumentation by setting `OTEL_INSTRUMENTATION_SCOUT` to `false` or removing `ScoutInstrumentation::class` from the config.
+
+### Reverb
+
+When running the Laravel Reverb server (`reverb:start`), the following metrics are recorded:
+
+| Metric                              | Instrument      | Unit           | Attributes                                      |
+|-------------------------------------|-----------------|----------------|-------------------------------------------------|
+| `laravel.reverb.messages`           | Counter         | `{message}`    | `laravel.reverb.app.id`, `network.io.direction` |
+| `laravel.reverb.active_connections` | ObservableGauge | `{connection}` | `laravel.reverb.app.id`                         |
+
+`network.io.direction` is `receive` for messages received from clients and `transmit` for messages sent to clients (one per recipient, including protocol messages like `pusher:pong`).
+`laravel.reverb.active_connections` requires Reverb 1.14 or later and is not recorded on older versions.
+
+Each Reverb process counts only its own connections and messages: when scaling Reverb horizontally, sum the series of all instances to get the totals.
+
+Metrics are exported periodically by the `ReverbWorkerModeDetector` (see [Worker Mode](#worker-mode)).
+If you have already published the config file, add both `ReverbInstrumentation::class` to `instrumentation` and `ReverbWorkerModeDetector::class` to `worker_mode.detectors`.
+
+Do not add `reverb:start` to the `commands` option of `ConsoleInstrumentation`: the command runs for the whole life of the server, so its span would never end.
+
+> [!WARNING]
+> Exports run synchronously inside the Reverb event loop: while an export is in progress, no WebSocket message is handled.
+> If the collector is slow or unreachable, the export (with its retries) can block the server long enough for clients to time out.
+> For the Reverb process, export to a local collector (e.g. a sidecar), use a low timeout (`OTEL_EXPORTER_OTLP_TIMEOUT`, in milliseconds) and disable retries with `OTEL_EXPORTER_OTLP_MAX_RETRIES=0`.
+
+You can disable this instrumentation by setting `OTEL_INSTRUMENTATION_REVERB` to `false` or removing `ReverbInstrumentation::class` from the config.
 
 ## Traces
 
@@ -893,7 +923,9 @@ When Laravel is running in worker mode (e.g., Octane, Horizon, Queue workers), t
 By default, exports are batched and flushed periodically or on process shutdown.
 The `worker_mode.flush_after_each_iteration` config option allows to flush telemetry at the end of each iteration.
 
-Worker mode is automatically detected using built-in detectors (for Laravel octane, horizon and queue workers), but you can also implement custom detectors for other runtimes.
+Worker mode is automatically detected using built-in detectors (for Laravel octane, horizon, queue workers and reverb), but you can also implement custom detectors for other runtimes.
+
+The Reverb server has no requests or jobs: there an iteration is a timer on the event loop that fires every `OTEL_WORKER_MODE_COLLECT_INTERVAL` seconds.
 
 Worker mode can be configured with these environment variables (or editing the config file directly):
 

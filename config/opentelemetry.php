@@ -243,6 +243,8 @@ return [
         ],
 
         Instrumentation\ScoutInstrumentation::class => filter_var(env('OTEL_INSTRUMENTATION_SCOUT', true), FILTER_VALIDATE_BOOLEAN),
+
+        Instrumentation\ReverbInstrumentation::class => filter_var(env('OTEL_INSTRUMENTATION_REVERB', true), FILTER_VALIDATE_BOOLEAN),
     ],
 
     /**
@@ -279,6 +281,7 @@ return [
         'detectors' => [
             WorkerMode\Detectors\OctaneWorkerModeDetector::class,
             WorkerMode\Detectors\QueueWorkerModeDetector::class,
+            WorkerMode\Detectors\ReverbWorkerModeDetector::class,
         ],
     ],
 ];
