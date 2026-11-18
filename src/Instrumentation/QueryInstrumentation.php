@@ -98,8 +98,24 @@ class QueryInstrumentation implements Instrumentation
             DbAttributes::DB_NAMESPACE => $event->connection->getDatabaseName(),
             DbAttributes::DB_OPERATION_NAME => $operationName,
             DbAttributes::DB_QUERY_TEXT => Str::limit($event->sql, 500),
-            ServerAttributes::SERVER_ADDRESS => $event->connection->getConfig('host'),
-            ServerAttributes::SERVER_PORT => $event->connection->getConfig('port'),
+            ServerAttributes::SERVER_ADDRESS => ($host = $event->connection->getConfig('host')) ? implode(',', Arr::flatten(Arr::wrap($host))) : null,
+            ServerAttributes::SERVER_PORT => $this->serverPort($event->connection->getDriverName(), $event->connection->getConfig('port')),
         ];
+    }
+
+    protected function serverPort(string $driver, mixed $port): ?int
+    {
+        if (! is_numeric($port)) {
+            return null;
+        }
+
+        $defaultPort = match ($driver) {
+            'mysql', 'mariadb' => 3306,
+            'pgsql' => 5432,
+            'sqlsrv' => 1433,
+            default => null,
+        };
+
+        return (int) $port === $defaultPort ? null : (int) $port;
     }
 }

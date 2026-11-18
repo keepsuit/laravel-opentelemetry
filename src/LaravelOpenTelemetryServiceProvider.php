@@ -29,7 +29,6 @@ use OpenTelemetry\API\Instrumentation\CachedInstrumentation;
 use OpenTelemetry\API\Logs\LoggerInterface;
 use OpenTelemetry\API\Metrics\MeterInterface;
 use OpenTelemetry\API\Signals;
-use OpenTelemetry\API\Trace\StatusCode;
 use OpenTelemetry\API\Trace\TracerInterface;
 use OpenTelemetry\Context\Propagation\NoopTextMapPropagator;
 use OpenTelemetry\Context\Propagation\TextMapPropagatorInterface;
@@ -168,9 +167,8 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
             }
 
             $handler->reportable(function (Throwable $e) {
-                Facades\Tracer::activeSpan()
-                    ->recordException($e)
-                    ->setStatus(StatusCode::STATUS_ERROR);
+                // Status is left to each instrumentation: reported exceptions may be handled or rendered as 4xx.
+                Facades\Tracer::activeSpan()->recordException($e);
             });
         });
     }

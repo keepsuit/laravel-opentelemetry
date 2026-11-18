@@ -32,7 +32,7 @@ class UserContextResolver
     {
         $callback = match (true) {
             $this->resolver instanceof Closure => $this->resolver,
-            default => fn (Authenticatable $user) => ['user.id' => $user->getAuthIdentifier()],
+            default => fn (Authenticatable $user) => ['user.id' => (string) $user->getAuthIdentifier()],
         };
 
         return $callback($user);

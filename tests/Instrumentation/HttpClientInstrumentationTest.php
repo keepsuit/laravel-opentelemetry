@@ -139,7 +139,7 @@ it('create http client span', function (array $options, bool $withTrace) {
         ->getName()->toBe('GET')
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_UNSET)
         ->getAttributes()->toMatchArray([
-            'url.full' => 'http://127.0.0.1/',
+            'url.full' => 'http://127.0.0.1:8126/',
             'url.path' => '/',
             'url.query' => '',
             'http.request.method' => 'GET',
@@ -218,7 +218,7 @@ it('ends http client span and records duration metric when the connection fails'
             'http.request.method' => 'GET',
             'server.address' => '127.0.0.1',
             'server.port' => $closedPort,
-            'url.full' => 'http://127.0.0.1/?token=REDACTED',
+            'url.full' => sprintf('http://127.0.0.1:%d/?token=REDACTED', $closedPort),
         ])
         ->not->toHaveKey('http.response.status_code');
 
@@ -376,7 +376,7 @@ it('redact sensitive query string parameters', function () {
     $span = getRecordedSpans()->first();
 
     expect($span->getAttributes())->toMatchArray([
-        'url.full' => 'http://127.0.0.1/?param=value&token=REDACTED',
+        'url.full' => 'http://127.0.0.1:8126/?param=value&token=REDACTED',
         'url.query' => 'param=value&token=REDACTED',
     ]);
 });
@@ -501,3 +501,30 @@ it('knows the QUERY http method by default', function () {
         ->getAttributes()->toMatchArray([HttpAttributes::HTTP_REQUEST_METHOD => 'QUERY'])
         ->getAttributes()->not->toHaveKey(HttpAttributes::HTTP_REQUEST_METHOD_ORIGINAL);
 });
+
+it('strips user info from url.full and resolves default server port', function (string $url, string $fullUrl, int $port) {
+    registerInstrumentation(HttpClientInstrumentation::class);
+
+    Http::fake([
+        '*' => Http::response('', 200, ['Content-Length' => 0]),
+    ]);
+
+    withRootSpan(function () use ($url) {
+        Http::get($url);
+    });
+
+    expect(getRecordedSpans()->first()->getAttributes())
+        ->toMatchArray([
+            UrlAttributes::URL_FULL => $fullUrl,
+            ServerAttributes::SERVER_ADDRESS => 'example.com',
+        ])
+        ->get(ServerAttributes::SERVER_PORT)->toBe($port);
+
+    $dataPoint = getRecordedMetrics()->firstWhere('name', HttpMetrics::HTTP_CLIENT_REQUEST_DURATION)->data->dataPoints[0];
+
+    expect($dataPoint->attributes->get(ServerAttributes::SERVER_PORT))->toBe($port);
+})->with([
+    'http default port' => ['http://user:pw@example.com/a', 'http://example.com/a', 80],
+    'https default port' => ['https://example.com/a', 'https://example.com/a', 443],
+    'non-default port' => ['http://user:pw@example.com:8080/a', 'http://example.com:8080/a', 8080],
+]);
