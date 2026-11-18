@@ -1,11 +1,13 @@
 <?php
 
 use Keepsuit\LaravelOpenTelemetry\Facades\Meter;
+use Keepsuit\LaravelOpenTelemetry\LaravelOpenTelemetryServiceProvider;
 use OpenTelemetry\API\Metrics\MeterInterface;
 use OpenTelemetry\API\Metrics\ObserverInterface;
 use OpenTelemetry\SDK\Metrics\Counter;
 use OpenTelemetry\SDK\Metrics\Data\Metric;
 use OpenTelemetry\SDK\Metrics\Data\Sum;
+use OpenTelemetry\SDK\Metrics\Data\Temporality;
 use OpenTelemetry\SDK\Metrics\Gauge;
 use OpenTelemetry\SDK\Metrics\Histogram;
 use OpenTelemetry\SDK\Metrics\ObservableCounter;
@@ -173,3 +175,20 @@ test('observable up/down counter', function () {
         ->data->toBeInstanceOf(Sum::class)
         ->data->dataPoints->{0}->value->toBe(8);
 });
+
+it('accepts metrics temporality preference in any case', function (?string $value, ?string $expected) {
+    config()->set('opentelemetry.metrics.exporter', 'otlp');
+    config()->set('opentelemetry.exporters.otlp.metrics_temporality', $value);
+
+    $exporter = invade(app()->getProvider(LaravelOpenTelemetryServiceProvider::class))->buildMetricsExporter();
+
+    expect(invade($exporter)->temporality)->toBe($expected);
+})->with([
+    ['delta', Temporality::DELTA],
+    ['Delta', Temporality::DELTA],
+    ['DELTA', Temporality::DELTA],
+    ['cumulative', Temporality::CUMULATIVE],
+    ['Cumulative', Temporality::CUMULATIVE],
+    [null, null],
+    ['unknown', null],
+]);
