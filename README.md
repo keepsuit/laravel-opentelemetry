@@ -771,13 +771,77 @@ Concurrent requests aggregate correctly: the stream start time is fixed by the f
 
 All deltas of a stream must reach the **same** collector instance. Several replicas behind a load-balanced service each keep their own state and emit conflicting series. Use a node-local agent (e.g. a DaemonSet with `internalTrafficPolicy: Local`), a sidecar, or the `loadbalancing` exporter routing by `service.instance.id`.
 
+Both examples below receive OTLP over HTTP, convert deltas to cumulative and export to the Prometheus OTLP receiver (`--web.enable-otlp-receiver`).
+
+With [Grafana Alloy](https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.processor.deltatocumulative/), `otelcol.processor.deltatocumulative` is experimental and requires `--stability.level=experimental`:
+
+```alloy
+otelcol.receiver.otlp "default" {
+  http {
+    endpoint = "0.0.0.0:4318"
+  }
+
+  output {
+    metrics = [otelcol.processor.deltatocumulative.default.input]
+  }
+}
+
+otelcol.processor.deltatocumulative "default" {
+  max_stale = "5m"
+
+  output {
+    metrics = [otelcol.processor.batch.default.input]
+  }
+}
+
+otelcol.processor.batch "default" {
+  output {
+    metrics = [otelcol.exporter.otlphttp.prometheus.input]
+  }
+}
+
+otelcol.exporter.otlphttp "prometheus" {
+  client {
+    endpoint = "http://prometheus:9090/api/v1/otlp"
+  }
+}
+```
+
+With the [OpenTelemetry Collector](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/deltatocumulativeprocessor), the processor is available in the contrib distribution:
+
+```yaml
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  deltatocumulative:
+    max_stale: 5m
+  batch: {}
+
+exporters:
+  otlphttp/prometheus:
+    endpoint: http://prometheus:9090/api/v1/otlp
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [deltatocumulative, batch]
+      exporters: [otlphttp/prometheus]
+```
+
 Known limits:
 
 - deltas that reach the collector out of order are dropped;
 - after `max_stale` (default 5m) without samples the stream restarts from zero, which backends treat as a counter reset;
 - backends that ingest Delta natively need no conversion.
 
-Long-running processes (queue workers, Octane or FrankenPHP worker mode) work with either temporality, as long as `service.instance.id` is unique per process.
+Long-running processes (queue workers, Horizon, Octane or FrankenPHP worker mode) export once per `worker_mode.metrics_collect_interval`.
+They work with either temporality when `service.instance.id` is unique per process; with Delta, processes sharing an id (e.g. several workers in the same pod) are summed by the collector too.
+Keep `worker_mode.flush_after_each_iteration` disabled with Delta: exporting after every job or request brings back the out-of-order drops under load.
 
 ## Logs
 
