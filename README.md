@@ -331,6 +331,7 @@ return [
          * Built-in detectors:
          * - OctaneDetector: Detects Laravel Octane
          * - QueueDetector: Detects Laravel default queue worker and Laravel Horizon
+         * - ReverbDetector: Detects Laravel Reverb (`reverb:start`)
          */
         'detectors' => [
             WorkerMode\Detectors\OctaneWorkerModeDetector::class,
