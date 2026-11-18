@@ -42,7 +42,7 @@ it('can watch a redis call', function (string $client) {
             'db.system.name' => 'redis',
             'db.operation.name' => 'GET',
             'db.namespace' => '0',
-            'db.query.text' => 'get test',
+            'db.query.text' => 'GET ?',
             'server.address' => $config['host'],
         ])
         ->hasEnded()->toBeTrue()
@@ -83,8 +83,24 @@ it('can record redis call duration metric', function (string $client) {
             DbAttributes::DB_SYSTEM_NAME => 'redis',
             DbAttributes::DB_NAMESPACE => '0',
             DbAttributes::DB_OPERATION_NAME => 'GET',
-            DbAttributes::DB_QUERY_TEXT => 'get test',
         ]);
+
+    expect($dataPoint->attributes->has(DbAttributes::DB_QUERY_TEXT))->toBeFalse();
+})->with([
+    'predis',
+    'phpredis',
+]);
+
+it('sanitizes redis query text', function (string $client) {
+    config()->set('database.redis.client', $client);
+
+    withRootSpan(function () {
+        Redis::connection('default')->set('session:abc123', 'secret');
+        Redis::connection('default')->hmset('myhash', ['field1' => 'secret1', 'field2' => 'secret2']);
+    });
+
+    expect(getRecordedSpans()->take(2)->map(fn (ImmutableSpan $span) => $span->getAttributes()->get(DbAttributes::DB_QUERY_TEXT))->all())
+        ->toBe(['SET ? ?', 'HMSET ? ? ? ? ?']);
 })->with([
     'predis',
     'phpredis',

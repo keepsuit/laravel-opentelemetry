@@ -3,6 +3,7 @@
 namespace Keepsuit\LaravelOpenTelemetry\Instrumentation;
 
 use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use Illuminate\Support\Stringable;
 use Keepsuit\LaravelOpenTelemetry\Facades\Meter;
@@ -45,7 +46,7 @@ class QueryInstrumentation implements Instrumentation
         $sharedAttributes = $this->sharedTraceMetricAttributes($event, $operationName);
 
         $this->recordTraceSpan($event, $operationName, $sharedAttributes);
-        $this->recordOperationDurationMetric($event, $sharedAttributes);
+        $this->recordOperationDurationMetric($event, Arr::except($sharedAttributes, DbAttributes::DB_QUERY_TEXT));
     }
 
     /**
