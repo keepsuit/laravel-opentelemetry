@@ -259,8 +259,8 @@ return [
         'flush_after_each_iteration' => filter_var(env('OTEL_WORKER_MODE_FLUSH_AFTER_EACH_ITERATION', false), FILTER_VALIDATE_BOOLEAN),
 
         /**
-         * Metrics collection interval in seconds.
-         * When running in worker mode, metrics are collected and exported at this interval.
+         * Flush interval in seconds.
+         * When running in worker mode, metrics are collected and all signals are exported at this interval.
          * Note: This setting is ignored if 'flush_after_each_iteration' is true.
          * Note: The interval is checked after each iteration, so the actual interval may be longer
          */
@@ -269,7 +269,7 @@ return [
         /**
          * Detectors to use for worker mode detection
          *
-         * Detectors are checked in order, the first one that returns true determines the mode.
+         * Every detector that returns true is registered.
          * Custom detectors implementing DetectorInterface can be added here.
          *
          * Built-in detectors:

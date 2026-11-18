@@ -3,7 +3,6 @@
 namespace Keepsuit\LaravelOpenTelemetry\WorkerMode;
 
 use Carbon\Carbon;
-use Keepsuit\LaravelOpenTelemetry\Facades\Meter;
 use Keepsuit\LaravelOpenTelemetry\Facades\OpenTelemetry;
 
 class WorkerModeManager
@@ -42,7 +41,7 @@ class WorkerModeManager
 
         $timestamp = Carbon::now()->getTimestamp();
         if ($timestamp - $this->lastMetricsExportTimestamp >= $this->metricsExportInterval) {
-            Meter::collect();
+            OpenTelemetry::flush();
             $this->lastMetricsExportTimestamp = $timestamp;
         }
     }

@@ -312,8 +312,8 @@ return [
         'flush_after_each_iteration' => env('OTEL_WORKER_MODE_FLUSH_AFTER_EACH_ITERATION', false),
 
         /**
-         * Metrics collection interval in seconds.
-         * When running in worker mode, metrics are collected and exported at this interval.
+         * Flush interval in seconds.
+         * When running in worker mode, metrics are collected and all signals are exported at this interval.
          * Note: This setting is ignored if 'flush_after_each_iteration' is true.
          * Note: The interval is checked after each iteration, so the actual interval may be longer
          */
@@ -322,7 +322,7 @@ return [
         /**
          * Detectors to use for worker mode detection
          *
-         * Detectors are checked in order, the first one that returns true determines the mode.
+         * Every detector that returns true is registered.
          * Custom detectors implementing DetectorInterface can be added here.
          *
          * Built-in detectors:
@@ -895,9 +895,10 @@ Worker mode can be configured with these environment variables (or editing the c
 | Variable                                      | Description                                            | Default |
 |-----------------------------------------------|--------------------------------------------------------|---------|
 | `OTEL_WORKER_MODE_FLUSH_AFTER_EACH_ITERATION` | Enable per-iteration flushing                          | `false` |
-| `OTEL_WORKER_MODE_COLLECT_INTERVAL`           | Metrics collection interval in seconds for worker mode | `60`    |
+| `OTEL_WORKER_MODE_COLLECT_INTERVAL`           | Flush interval in seconds for worker mode              | `60`    |
 
-If `OTEL_WORKER_MODE_FLUSH_AFTER_EACH_ITERATION` is `true`, the per-iteration flush behavior is used and the periodic collection interval is ignored.
+Otherwise, after an iteration, if the interval has elapsed, metrics are collected and pending traces, metrics and logs are exported.
+If `OTEL_WORKER_MODE_FLUSH_AFTER_EACH_ITERATION` is `true`, the per-iteration flush behavior is used and the periodic interval is ignored.
 
 ## Development Setup
 

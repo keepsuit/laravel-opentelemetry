@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Facade;
  * @method static \Keepsuit\LaravelOpenTelemetry\Meter meter()
  * @method static \Keepsuit\LaravelOpenTelemetry\Logger logger()
  * @method static void user(\Closure $resolver)
+ * @method static void flush()
  * @method static array<non-empty-string, bool|int|float|string|array|null> collectUserContext(Authenticatable $user)
  */
 class OpenTelemetry extends Facade

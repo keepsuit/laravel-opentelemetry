@@ -1,14 +1,14 @@
 <?php
 
-use Keepsuit\LaravelOpenTelemetry\Facades\Meter;
+use Keepsuit\LaravelOpenTelemetry\Facades\OpenTelemetry;
 use Keepsuit\LaravelOpenTelemetry\WorkerMode\WorkerModeDetectorInterface;
 use Keepsuit\LaravelOpenTelemetry\WorkerMode\WorkerModeManager;
 use Spatie\TestTime\TestTime;
 
-test('calls meter collect based on interval', function () {
+test('flushes all signals based on interval', function () {
     TestTime::freezeAtSecond();
 
-    Meter::shouldReceive('collect')->once();
+    OpenTelemetry::shouldReceive('flush')->once();
 
     $detector = new class implements WorkerModeDetectorInterface
     {
