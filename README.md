@@ -761,15 +761,23 @@ If not set, the exporter and SDK defaults apply.
 
 ### Metrics in per-request runtimes
 
-In per-request runtimes (PHP-FPM, FrankenPHP without worker mode) every request boots a new meter provider and exports its own cumulative metrics when it ends. The result depends on `service.instance.id`:
+In per-request runtimes (PHP-FPM, FrankenPHP without worker mode) every request boots a new meter provider and exports its own metrics when it ends. With Cumulative temporality the result depends on `service.instance.id`:
 
-- **Shared id** (e.g. the hostname): every request overwrites the same series with its own counts. Counters never exceed a single request's count, so `rate()` and `increase()` are meaningless.
+- **Shared id** (e.g. the hostname): every request overwrites the same series with its own counts, so counters never exceed a single request's count and `rate()`/`increase()` return 0.
 - **Random id** (the SDK default): every request creates a new series, which leads to unbounded cardinality.
 
-Delta temporality combined with the collector `deltatocumulative` processor does not fix this when requests run concurrently: the processor drops samples that arrive out of order or have an older start time, so counts come out too low.
+Use Delta temporality instead (`OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=delta`) with a stable `service.instance.id` per host or pod, and convert to cumulative in the collector with the `deltatocumulative` processor.
+Concurrent requests aggregate correctly: the stream start time is fixed by the first sample and later deltas are summed.
 
-The built-in metrics are meaningful in long-running processes (queue workers, Octane or FrankenPHP worker mode), provided `service.instance.id` is unique per process, not per host or pod.
-In per-request mode, collect HTTP request metrics from the ingress or reverse proxy instead.
+All deltas of a stream must reach the **same** collector instance. Several replicas behind a load-balanced service each keep their own state and emit conflicting series. Use a node-local agent (e.g. a DaemonSet with `internalTrafficPolicy: Local`), a sidecar, or the `loadbalancing` exporter routing by `service.instance.id`.
+
+Known limits:
+
+- deltas that reach the collector out of order are dropped;
+- after `max_stale` (default 5m) without samples the stream restarts from zero, which backends treat as a counter reset;
+- backends that ingest Delta natively need no conversion.
+
+Long-running processes (queue workers, Octane or FrankenPHP worker mode) work with either temporality, as long as `service.instance.id` is unique per process.
 
 ## Logs
 
