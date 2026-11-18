@@ -177,7 +177,7 @@ return [
             'metrics_protocol' => env(Variables::OTEL_EXPORTER_OTLP_METRICS_PROTOCOL),
             /**
              * Preferred metrics temporality
-             * Supported values: "Delta", "Cumulative"
+             * Supported values: "delta", "cumulative" (case-insensitive)
              */
             'metrics_temporality' => env(Variables::OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE),
             'logs_timeout' => (int) env(Variables::OTEL_EXPORTER_OTLP_LOGS_TIMEOUT, env(Variables::OTEL_EXPORTER_OTLP_TIMEOUT, 10000)),

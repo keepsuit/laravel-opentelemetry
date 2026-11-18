@@ -56,6 +56,7 @@ use OpenTelemetry\SDK\Logs\LogRecordExporterInterface;
 use OpenTelemetry\SDK\Logs\LogRecordProcessorInterface;
 use OpenTelemetry\SDK\Logs\NoopLoggerProvider;
 use OpenTelemetry\SDK\Logs\Processor\BatchLogRecordProcessor;
+use OpenTelemetry\SDK\Metrics\Data\Temporality;
 use OpenTelemetry\SDK\Metrics\MeterProvider;
 use OpenTelemetry\SDK\Metrics\MeterProviderInterface;
 use OpenTelemetry\SDK\Metrics\MetricExporter\ConsoleMetricExporterFactory;
@@ -305,7 +306,11 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         return match ($metricsExporterDriver) {
             'otlp' => new MetricExporter(
                 $this->buildOtlpTransport($metricsExporterConfig ?? [], Signals::METRICS),
-                Arr::get($metricsExporterConfig, 'metrics_temporality')
+                match (strtolower((string) Arr::get($metricsExporterConfig, 'metrics_temporality'))) {
+                    'delta' => Temporality::DELTA,
+                    'cumulative' => Temporality::CUMULATIVE,
+                    default => null,
+                }
             ),
             'console' => (new ConsoleMetricExporterFactory)->create(),
             'memory' => (new InMemoryExporterFactory)->create(),
