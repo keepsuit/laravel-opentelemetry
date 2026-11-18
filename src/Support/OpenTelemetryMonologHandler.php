@@ -12,6 +12,6 @@ class OpenTelemetryMonologHandler extends AbstractProcessingHandler
     {
         $level = $record->level->toPsrLogLevel();
 
-        Logger::log($level, $record->message, $record->context);
+        Logger::log($level, $record->message, [...$record->extra, ...$record->context]);
     }
 }
