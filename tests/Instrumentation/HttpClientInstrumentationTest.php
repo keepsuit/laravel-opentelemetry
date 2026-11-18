@@ -459,3 +459,73 @@ it('no metric recorded when trace not started for client', function () {
 
     expect($metric)->toBeNull();
 });
+
+it('normalizes unknown http methods', function () {
+    registerInstrumentation(HttpClientInstrumentation::class);
+
+    Http::fake([
+        '*' => Http::response('', 200, ['Content-Length' => 0]),
+    ]);
+
+    withRootSpan(function () {
+        Http::send('PURGE', Server::$url);
+    });
+
+    expect(getRecordedSpans()->first())
+        ->getName()->toBe('HTTP')
+        ->getAttributes()->toMatchArray([
+            HttpAttributes::HTTP_REQUEST_METHOD => '_OTHER',
+            HttpAttributes::HTTP_REQUEST_METHOD_ORIGINAL => 'PURGE',
+        ]);
+
+    $dataPoint = getRecordedMetrics()->firstWhere('name', HttpMetrics::HTTP_CLIENT_REQUEST_DURATION)->data->dataPoints[0];
+
+    expect($dataPoint->attributes->toArray())
+        ->toMatchArray([HttpAttributes::HTTP_REQUEST_METHOD => '_OTHER'])
+        ->not->toHaveKey(HttpAttributes::HTTP_REQUEST_METHOD_ORIGINAL);
+});
+
+it('knows the QUERY http method by default', function () {
+    registerInstrumentation(HttpClientInstrumentation::class);
+
+    Http::fake([
+        '*' => Http::response('', 200, ['Content-Length' => 0]),
+    ]);
+
+    withRootSpan(function () {
+        Http::send('QUERY', Server::$url);
+    });
+
+    expect(getRecordedSpans()->first())
+        ->getName()->toBe('QUERY')
+        ->getAttributes()->toMatchArray([HttpAttributes::HTTP_REQUEST_METHOD => 'QUERY'])
+        ->getAttributes()->not->toHaveKey(HttpAttributes::HTTP_REQUEST_METHOD_ORIGINAL);
+});
+
+it('replaces the known http methods with the configured list', function () {
+    config()->set('opentelemetry.http_known_methods', 'GET, PURGE');
+
+    registerInstrumentation(HttpClientInstrumentation::class);
+
+    Http::fake([
+        '*' => Http::response('', 200, ['Content-Length' => 0]),
+    ]);
+
+    withRootSpan(function () {
+        Http::send('PURGE', Server::$url);
+        Http::post(Server::$url);
+    });
+
+    [$purgeSpan, $postSpan] = getRecordedSpans()->take(2)->all();
+
+    expect($purgeSpan)
+        ->getName()->toBe('PURGE')
+        ->getAttributes()->toMatchArray([HttpAttributes::HTTP_REQUEST_METHOD => 'PURGE']);
+
+    expect($postSpan)
+        ->getName()->toBe('HTTP')
+        ->getAttributes()->toMatchArray([
+            HttpAttributes::HTTP_REQUEST_METHOD => '_OTHER',
+            HttpAttributes::HTTP_REQUEST_METHOD_ORIGINAL => 'POST',
+        ]);
+});

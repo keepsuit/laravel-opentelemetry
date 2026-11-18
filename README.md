@@ -253,6 +253,12 @@ return [
     ],
 
     /**
+     * Comma separated, case-sensitive list of known HTTP methods. Other methods are recorded as "_OTHER".
+     * When set, it replaces the default list (RFC 9110 methods, PATCH and QUERY).
+     */
+    'http_known_methods' => env('OTEL_INSTRUMENTATION_HTTP_KNOWN_METHODS'),
+
+    /**
      * List of instrumentation used for application tracing
      */
     'instrumentation' => [
@@ -416,6 +422,11 @@ Metrics:
 - `http.client.request.duration` (histogram, seconds) - Outgoing HTTP request duration
 
 You can disable this instrumentation by setting `OTEL_INSTRUMENTATION_HTTP_CLIENT` to `false` or removing `HttpClientInstrumentation::class` from the config.
+
+### Http Methods
+
+Http server and client instrumentations record methods outside the known list as `_OTHER` (span name `HTTP`), with the original method in `http.request.method_original`.
+The default list contains the RFC 9110 methods, `PATCH` and `QUERY`. Set `OTEL_INSTRUMENTATION_HTTP_KNOWN_METHODS` to a comma separated, case-sensitive list (e.g. `GET,POST,PURGE`) to replace it.
 
 ### Database
 
