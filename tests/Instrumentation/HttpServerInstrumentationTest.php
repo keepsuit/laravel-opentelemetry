@@ -33,6 +33,9 @@ beforeEach(function () {
     Route::middleware('web')->group(function () {
         Route::any('test-ok', fn () => Tracer::traceId());
         Route::any('test-no-content', fn () => response()->noContent());
+        Route::any('test-not-found', fn () => abort(404));
+        Route::any('test-redirect', fn () => redirect('test-ok'));
+        Route::match(['FOO'], 'test-custom-method', fn () => 'ok');
         Route::any('test-exception', fn () => throw TestException::create());
         Route::any('test-nested-exception', function () {
             $span = Tracer::newSpan('nested')->start();
@@ -606,8 +609,13 @@ it('can record http server request duration metric', function () {
             HttpAttributes::HTTP_ROUTE => '/test-ok',
             NetworkAttributes::NETWORK_PROTOCOL_NAME => 'http',
             NetworkAttributes::NETWORK_PROTOCOL_VERSION => '1.1',
+        ])
+        ->not->toHaveKeys([ServerAttributes::SERVER_ADDRESS, ServerAttributes::SERVER_PORT]);
+
+    expect(getRecordedSpans()->last()->getAttributes())
+        ->toMatchArray([
             ServerAttributes::SERVER_ADDRESS => 'localhost',
-            ServerAttributes::SERVER_PORT => '80',
+            ServerAttributes::SERVER_PORT => 80,
         ]);
 });
 
@@ -626,9 +634,59 @@ it('records metric even when exception occurs', function () {
     expect($dataPoint)
         ->not->toBeNull()
         ->attributes->toMatchArray([
-            ErrorAttributes::ERROR_TYPE => 500,
+            ErrorAttributes::ERROR_TYPE => '500',
             HttpAttributes::HTTP_RESPONSE_STATUS_CODE => 500,
         ]);
+
+    expect(getRecordedSpans()->last()->getAttributes())
+        ->toMatchArray([ErrorAttributes::ERROR_TYPE => '500']);
+});
+
+it('does not set error type for 3xx and 4xx responses', function (string $path, int $status) {
+    registerInstrumentation(HttpServerInstrumentation::class);
+
+    $this->get($path)->assertStatus($status);
+
+    $span = getRecordedSpans()->last();
+
+    expect($span->getAttributes())
+        ->toMatchArray([HttpAttributes::HTTP_RESPONSE_STATUS_CODE => $status])
+        ->not->toHaveKey(ErrorAttributes::ERROR_TYPE);
+
+    $dataPoint = getRecordedMetrics()->firstWhere('name', HttpMetrics::HTTP_SERVER_REQUEST_DURATION)->data->dataPoints[0];
+
+    expect($dataPoint->attributes->toArray())->not->toHaveKey(ErrorAttributes::ERROR_TYPE);
+})->with([
+    'not found' => ['test-not-found', 404],
+    'redirect' => ['test-redirect', 302],
+]);
+
+it('normalizes unknown http methods', function () {
+    registerInstrumentation(HttpServerInstrumentation::class);
+
+    $this->call('FOO', 'test-custom-method')->assertOk();
+
+    expect(getRecordedSpans()->last())
+        ->getName()->toBe('HTTP /test-custom-method')
+        ->getAttributes()->toMatchArray([
+            HttpAttributes::HTTP_REQUEST_METHOD => '_OTHER',
+            HttpAttributes::HTTP_REQUEST_METHOD_ORIGINAL => 'FOO',
+        ]);
+
+    $dataPoint = getRecordedMetrics()->firstWhere('name', HttpMetrics::HTTP_SERVER_REQUEST_DURATION)->data->dataPoints[0];
+
+    expect($dataPoint->attributes->toArray())
+        ->toMatchArray([HttpAttributes::HTTP_REQUEST_METHOD => '_OTHER'])
+        ->not->toHaveKey(HttpAttributes::HTTP_REQUEST_METHOD_ORIGINAL);
+});
+
+it('does not set original method for known http methods', function () {
+    registerInstrumentation(HttpServerInstrumentation::class);
+
+    $this->get('test-ok')->assertOk();
+
+    expect(getRecordedSpans()->last()->getAttributes())
+        ->not->toHaveKey(HttpAttributes::HTTP_REQUEST_METHOD_ORIGINAL);
 });
 
 it('can trace a request with 204 no content status without error type attribute', function () {
