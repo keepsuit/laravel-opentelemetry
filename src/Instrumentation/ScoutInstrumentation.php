@@ -17,6 +17,7 @@ use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
 use OpenTelemetry\SDK\Trace\Span;
 use OpenTelemetry\SemConv\Attributes\DbAttributes;
+use OpenTelemetry\SemConv\Attributes\ErrorAttributes;
 use OpenTelemetry\SemConv\Metrics\DbMetrics;
 
 use function OpenTelemetry\Instrumentation\hook;
@@ -78,7 +79,7 @@ class ScoutInstrumentation implements Instrumentation
                 $attributes['db.operation.batch.ids'] = $params[0]->map(fn (Model $model) => $model->getKey())->values()->join(', ');
             }
 
-            $span = Tracer::newSpan(sprintf('%s %s', $operationName, $operationTarget))
+            $span = Tracer::newSpan(trim(sprintf('%s %s', $operationName, $operationTarget)))
                 ->setSpanKind(SpanKind::KIND_CLIENT)
                 ->setAttributes($attributes)
                 ->start();
@@ -101,6 +102,10 @@ class ScoutInstrumentation implements Instrumentation
                     DbAttributes::DB_NAMESPACE => $this->activeSpan->getAttribute(DbAttributes::DB_NAMESPACE),
                     DbAttributes::DB_OPERATION_NAME => $this->activeSpan->getAttribute(DbAttributes::DB_OPERATION_NAME),
                 ];
+
+                if ($exception !== null) {
+                    $attributes[ErrorAttributes::ERROR_TYPE] = $exception::class;
+                }
 
                 Meter::histogram(
                     name: DbMetrics::DB_CLIENT_OPERATION_DURATION,
@@ -143,6 +148,7 @@ class ScoutInstrumentation implements Instrumentation
     protected function endSpan(SpanInterface $span, ?\Throwable $exception = null): void
     {
         if ($exception !== null) {
+            $span->setAttribute(ErrorAttributes::ERROR_TYPE, $exception::class);
             $span->recordException($exception);
             $span->setStatus(StatusCode::STATUS_ERROR, $exception->getMessage());
         }

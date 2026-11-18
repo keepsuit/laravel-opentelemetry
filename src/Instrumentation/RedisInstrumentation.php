@@ -3,6 +3,7 @@
 namespace Keepsuit\LaravelOpenTelemetry\Instrumentation;
 
 use Illuminate\Redis\Events\CommandExecuted;
+use Illuminate\Redis\Events\CommandFailed;
 use Illuminate\Redis\RedisManager;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
@@ -12,7 +13,9 @@ use Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\InstrumentationUtiliti
 use OpenTelemetry\API\Common\Time\Clock;
 use OpenTelemetry\API\Common\Time\ClockInterface;
 use OpenTelemetry\API\Trace\SpanKind;
+use OpenTelemetry\API\Trace\StatusCode;
 use OpenTelemetry\SemConv\Attributes\DbAttributes;
+use OpenTelemetry\SemConv\Attributes\ErrorAttributes;
 use OpenTelemetry\SemConv\Attributes\ServerAttributes;
 use OpenTelemetry\SemConv\Metrics\DbMetrics;
 use Predis\Client;
@@ -27,33 +30,51 @@ class RedisInstrumentation implements Instrumentation
     {
         app('events')->listen(CommandExecuted::class, [$this, 'recordCommand']);
 
+        // CommandFailed was added during Laravel 12.x
+        if (class_exists(CommandFailed::class)) {
+            app('events')->listen(CommandFailed::class, [$this, 'recordCommand']);
+        }
+
         $this->callAfterResolving('redis', $this->registerRedisEvents(...));
     }
 
-    public function recordCommand(CommandExecuted $event): void
+    public function recordCommand(CommandExecuted|CommandFailed $event): void
     {
         if (! Tracer::traceStarted()) {
             return;
         }
 
         $operationName = strtoupper($event->command);
+        // CommandFailed carries no duration, so failed commands are recorded with a zero-length span.
+        $startTimestamp = $this->getEventStartTimestampNs($event instanceof CommandExecuted ? $event->time : null);
+        $exception = $event instanceof CommandFailed ? $event->exception : null;
 
         $sharedAttributes = $this->sharedTraceMetricAttributes($event, $operationName);
-        $this->recordTraceSpan($event, $operationName, $sharedAttributes);
-        $this->recordOperationDurationMetric($event, Arr::except($sharedAttributes, DbAttributes::DB_QUERY_TEXT));
+
+        if ($exception !== null) {
+            $sharedAttributes[ErrorAttributes::ERROR_TYPE] = $exception::class;
+        }
+
+        $this->recordTraceSpan($startTimestamp, $operationName, $sharedAttributes, $exception);
+        $this->recordOperationDurationMetric($startTimestamp, Arr::except($sharedAttributes, DbAttributes::DB_QUERY_TEXT));
     }
 
     /**
      * @param  array<non-empty-string, bool|int|float|string|array|null>  $attributes
      */
-    protected function recordTraceSpan(CommandExecuted $event, string $operationName, array $attributes): void
+    protected function recordTraceSpan(int $startTimestamp, string $operationName, array $attributes, ?\Throwable $exception): void
     {
         $span = Tracer::newSpan($operationName)
             ->setSpanKind(SpanKind::KIND_CLIENT)
-            ->setStartTimestamp($this->getEventStartTimestampNs($event->time))
+            ->setStartTimestamp($startTimestamp)
             ->start();
 
         $span->setAttributes($attributes);
+
+        if ($exception !== null) {
+            $span->recordException($exception);
+            $span->setStatus(StatusCode::STATUS_ERROR, $exception->getMessage());
+        }
 
         $span->end();
     }
@@ -61,9 +82,9 @@ class RedisInstrumentation implements Instrumentation
     /**
      * @param  array<non-empty-string, bool|int|float|string|array|null>  $attributes
      */
-    protected function recordOperationDurationMetric(CommandExecuted $event, array $attributes): void
+    protected function recordOperationDurationMetric(int $startTimestamp, array $attributes): void
     {
-        $duration = (Clock::getDefault()->now() - $this->getEventStartTimestampNs($event->time)) / ClockInterface::NANOS_PER_SECOND;
+        $duration = (Clock::getDefault()->now() - $startTimestamp) / ClockInterface::NANOS_PER_SECOND;
 
         Meter::histogram(
             name: DbMetrics::DB_CLIENT_OPERATION_DURATION,
@@ -78,32 +99,45 @@ class RedisInstrumentation implements Instrumentation
     /**
      * @return array<non-empty-string, bool|int|float|string|array|null>
      */
-    protected function sharedTraceMetricAttributes(CommandExecuted $event, string $operationName): array
+    protected function sharedTraceMetricAttributes(CommandExecuted|CommandFailed $event, string $operationName): array
     {
-        return [
+        [$address, $port] = $this->resolveRedisServer($event->connection->client());
+
+        $attributes = [
             DbAttributes::DB_SYSTEM_NAME => 'redis',
             DbAttributes::DB_OPERATION_NAME => $operationName,
             DbAttributes::DB_NAMESPACE => $this->resolveDbIndex($event->connectionName),
             DbAttributes::DB_QUERY_TEXT => Str::limit($this->formatCommand($operationName, $event->parameters), 500),
-            ServerAttributes::SERVER_ADDRESS => $this->resolveRedisAddress($event->connection->client()),
+            ServerAttributes::SERVER_ADDRESS => $address,
         ];
+
+        if ($address !== null && $port !== null && $port !== 6379) {
+            $attributes[ServerAttributes::SERVER_PORT] = $port;
+        }
+
+        return $attributes;
     }
 
-    protected function resolveRedisAddress(mixed $client): ?string
+    /**
+     * @return array{0: ?string, 1: ?int}
+     */
+    protected function resolveRedisServer(mixed $client): array
     {
         if ($client instanceof \Redis) {
-            return $client->getHost() ?: null;
+            return [$client->getHost() ?: null, $client->getPort() ?: null];
         }
 
         if ($client instanceof Client) {
             $connection = $client->getConnection();
 
-            return $connection instanceof NodeConnectionInterface
-                ? ($connection->getParameters()->host ?? null)
-                : null;
+            if ($connection instanceof NodeConnectionInterface) {
+                $parameters = $connection->getParameters();
+
+                return [$parameters->host ?? null, isset($parameters->port) ? (int) $parameters->port : null];
+            }
         }
 
-        return null;
+        return [null, null];
     }
 
     /**
