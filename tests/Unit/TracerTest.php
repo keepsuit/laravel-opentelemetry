@@ -203,7 +203,7 @@ it('provides headers for propagation', function () {
 
     expect(Tracer::propagationHeaders())
         ->toMatchArray([
-            'traceparent' => sprintf('00-%s-%s-01', $span->getContext()->getTraceId(), $span->getContext()->getSpanId()),
+            'traceparent' => sprintf('00-%s-%s-%02x', $span->getContext()->getTraceId(), $span->getContext()->getSpanId(), $span->getContext()->getTraceFlags()),
         ]);
 
     $scope->detach();

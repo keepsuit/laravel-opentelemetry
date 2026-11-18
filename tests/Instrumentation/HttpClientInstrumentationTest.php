@@ -68,7 +68,7 @@ it('injects propagation headers to all client requests', function () {
     assert($request instanceof Request);
 
     expect($request)
-        ->header('traceparent')->toBe([sprintf('00-%s-%s-01', $traceId, $httpSpan->getSpanId())]);
+        ->header('traceparent')->toBe([sprintf('00-%s-%s-%02x', $traceId, $httpSpan->getSpanId(), $httpSpan->getContext()->getTraceFlags())]);
 });
 
 test('doesnt auto inject propagation headers when manual', function () {
@@ -112,7 +112,7 @@ it('injects propagation headers manually to client request', function () {
     assert($request instanceof Request);
 
     expect($request)
-        ->header('traceparent')->toBe([sprintf('00-%s-%s-01', $traceId, $httpSpan->getSpanId())]);
+        ->header('traceparent')->toBe([sprintf('00-%s-%s-%02x', $traceId, $httpSpan->getSpanId(), $httpSpan->getContext()->getTraceFlags())]);
 });
 
 it('create http client span', function (array $options, bool $withTrace) {
