@@ -164,11 +164,11 @@ it('create http client span', function (array $options, bool $withTrace) {
     ],
 ]);
 
-it('set span status to error on 4xx and 5xx status code', function () {
+it('set span status to error on 4xx and 5xx status code', function (int $status) {
     registerInstrumentation(HttpClientInstrumentation::class);
 
     Http::fake([
-        '*' => Http::response('', 500, ['Content-Length' => 0]),
+        '*' => Http::response('', $status, ['Content-Length' => 0]),
     ]);
 
     withRootSpan(function () {
@@ -182,9 +182,10 @@ it('set span status to error on 4xx and 5xx status code', function () {
         ->getName()->toBe('GET')
         ->getStatus()->getCode()->toBe(StatusCode::STATUS_ERROR)
         ->getAttributes()->toMatchArray([
-            'http.response.status_code' => 500,
+            'http.response.status_code' => $status,
+            'error.type' => (string) $status,
         ]);
-});
+})->with([404, 500]);
 
 it('ends http client span and records duration metric when the connection fails', function () {
     registerInstrumentation(HttpClientInstrumentation::class, [

@@ -103,8 +103,6 @@ class ConsoleInstrumentation implements Instrumentation
 
         if ($event->exitCode !== 0) {
             $span->setStatus(StatusCode::STATUS_ERROR);
-        } else {
-            $span->setStatus(StatusCode::STATUS_OK);
         }
 
         $scope->detach();
