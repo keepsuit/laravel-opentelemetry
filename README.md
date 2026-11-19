@@ -808,6 +808,8 @@ The OTLP exporter supports setting a preferred temporality for exported metrics 
 The supported values are `delta` and `cumulative` (case-insensitive). Other values are ignored.
 If not set, the exporter and SDK defaults apply.
 
+With Delta, the SDK exports every instrument on each collection, also when nothing was recorded in between. The OTLP exporter leaves those metrics out, because Prometheus rejects a whole OTLP request that contains a metric without data points.
+
 ### Metrics in per-request runtimes
 
 In per-request runtimes (PHP-FPM, FrankenPHP without worker mode) every request boots a new meter provider and exports its own metrics when it ends. With Cumulative temporality the result depends on `service.instance.id`:
