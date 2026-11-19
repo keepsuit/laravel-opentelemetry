@@ -3,22 +3,21 @@
 namespace Keepsuit\LaravelOpenTelemetry\WorkerMode;
 
 use Carbon\Carbon;
-use Keepsuit\LaravelOpenTelemetry\Facades\Meter;
 use Keepsuit\LaravelOpenTelemetry\Facades\OpenTelemetry;
 
 class WorkerModeManager
 {
-    protected int $lastMetricsExportTimestamp;
+    protected int $lastFlushTimestamp;
 
     public function __construct(
         protected bool $flushAfterEachIteration = false,
-        protected int $metricsExportInterval = 60,
+        protected int $flushInterval = 60,
         /**
          * @var WorkerModeDetectorInterface[]
          */
         protected array $detectors = []
     ) {
-        $this->lastMetricsExportTimestamp = Carbon::now()->getTimestamp();
+        $this->lastFlushTimestamp = Carbon::now()->getTimestamp();
 
         $this->initDetectors();
     }
@@ -41,9 +40,9 @@ class WorkerModeManager
         }
 
         $timestamp = Carbon::now()->getTimestamp();
-        if ($timestamp - $this->lastMetricsExportTimestamp >= $this->metricsExportInterval) {
-            Meter::collect();
-            $this->lastMetricsExportTimestamp = $timestamp;
+        if ($timestamp - $this->lastFlushTimestamp >= $this->flushInterval) {
+            OpenTelemetry::flush();
+            $this->lastFlushTimestamp = $timestamp;
         }
     }
 }
