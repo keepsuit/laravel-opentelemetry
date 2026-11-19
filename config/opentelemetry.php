@@ -243,6 +243,8 @@ return [
         ],
 
         Instrumentation\ScoutInstrumentation::class => filter_var(env('OTEL_INSTRUMENTATION_SCOUT', true), FILTER_VALIDATE_BOOLEAN),
+
+        Instrumentation\ReverbInstrumentation::class => filter_var(env('OTEL_INSTRUMENTATION_REVERB', true), FILTER_VALIDATE_BOOLEAN),
     ],
 
     /**
@@ -275,10 +277,12 @@ return [
          * Built-in detectors:
          * - OctaneDetector: Detects Laravel Octane
          * - QueueDetector: Detects Laravel default queue worker and Laravel Horizon
+         * - ReverbDetector: Detects Laravel Reverb (`reverb:start`)
          */
         'detectors' => [
             WorkerMode\Detectors\OctaneWorkerModeDetector::class,
             WorkerMode\Detectors\QueueWorkerModeDetector::class,
+            WorkerMode\Detectors\ReverbWorkerModeDetector::class,
         ],
     ],
 ];

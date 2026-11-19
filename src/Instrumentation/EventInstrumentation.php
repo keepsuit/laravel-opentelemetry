@@ -38,6 +38,7 @@ class EventInstrumentation implements Instrumentation
             'Laravel\Octane\*',
             'Laravel\Scout\*',
             'Laravel\Horizon\*',
+            'Laravel\Reverb\*',
             'eloquent*',
             'bootstrapped*',
             'bootstrapping*',
