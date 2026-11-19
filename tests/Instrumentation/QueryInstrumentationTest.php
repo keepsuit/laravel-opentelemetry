@@ -40,7 +40,7 @@ it('can record query span', function () {
 
     expect($span)
         ->toBeInstanceOf(ImmutableSpan::class)
-        ->getName()->toBe('SELECT')
+        ->getName()->toBe('SELECT :memory:')
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
         ->getAttributes()->toArray()->toBe([
             'db.system.name' => 'sqlite',
@@ -67,7 +67,7 @@ it('can record a query with bindings', function () {
 
     expect($span)
         ->toBeInstanceOf(ImmutableSpan::class)
-        ->getName()->toBe('SELECT')
+        ->getName()->toBe('SELECT :memory:')
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
         ->getAttributes()->toArray()->toBe([
             'db.system.name' => 'sqlite',
@@ -95,7 +95,7 @@ it('can record a query with named bindings', function () {
 
     expect($span)
         ->toBeInstanceOf(ImmutableSpan::class)
-        ->getName()->toBe('UPDATE')
+        ->getName()->toBe('UPDATE :memory:')
         ->getKind()->toBe(SpanKind::KIND_CLIENT)
         ->getAttributes()->toArray()->toBe([
             'db.system.name' => 'sqlite',
@@ -125,8 +125,9 @@ it('can record query duration metric', function () {
             DbAttributes::DB_SYSTEM_NAME => 'sqlite',
             DbAttributes::DB_NAMESPACE => ':memory:',
             DbAttributes::DB_OPERATION_NAME => 'SELECT',
-            DbAttributes::DB_QUERY_TEXT => 'select * from "users"',
         ]);
+
+    expect($dataPoint->attributes->has(DbAttributes::DB_QUERY_TEXT))->toBeFalse();
 });
 
 it('maps database drivers to well-known db systems', function (string $driver, string $expected) {

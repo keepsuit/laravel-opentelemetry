@@ -15,3 +15,9 @@ parameters:
         - identifier: missingType.iterableValue
         - identifier: larastan.noEnvCallsOutsideOfConfig
           path: config/*
+        - identifier: new.deprecatedClass
+          path: src/LaravelOpenTelemetryServiceProvider.php
+          reportUnmatched: false
+        - identifier: method.deprecatedClass
+          path: src/LaravelOpenTelemetryServiceProvider.php
+          reportUnmatched: false

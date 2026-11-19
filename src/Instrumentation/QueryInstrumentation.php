@@ -3,6 +3,7 @@
 namespace Keepsuit\LaravelOpenTelemetry\Instrumentation;
 
 use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use Illuminate\Support\Stringable;
 use Keepsuit\LaravelOpenTelemetry\Facades\Meter;
@@ -45,7 +46,7 @@ class QueryInstrumentation implements Instrumentation
         $sharedAttributes = $this->sharedTraceMetricAttributes($event, $operationName);
 
         $this->recordTraceSpan($event, $operationName, $sharedAttributes);
-        $this->recordOperationDurationMetric($event, $sharedAttributes);
+        $this->recordOperationDurationMetric($event, Arr::except($sharedAttributes, DbAttributes::DB_QUERY_TEXT));
     }
 
     /**
@@ -53,7 +54,10 @@ class QueryInstrumentation implements Instrumentation
      */
     protected function recordTraceSpan(QueryExecuted $event, string $operationName, array $attributes): void
     {
-        $span = Tracer::newSpan($operationName)
+        $namespace = $attributes[DbAttributes::DB_NAMESPACE] ?? null;
+        $spanName = is_string($namespace) && $namespace !== '' ? sprintf('%s %s', $operationName, $namespace) : $operationName;
+
+        $span = Tracer::newSpan($spanName)
             ->setSpanKind(SpanKind::KIND_CLIENT)
             ->setStartTimestamp($this->getEventStartTimestampNs($event->time))
             ->setAttributes($attributes)

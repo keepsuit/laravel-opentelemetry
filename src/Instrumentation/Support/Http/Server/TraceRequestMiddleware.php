@@ -29,6 +29,8 @@ use Symfony\Component\HttpFoundation\Response;
 
 class TraceRequestMiddleware
 {
+    private const KNOWN_METHODS = ['CONNECT', 'DELETE', 'GET', 'HEAD', 'OPTIONS', 'PATCH', 'POST', 'PUT', 'TRACE'];
+
     public function handle(Request $request, Closure $next): mixed
     {
         if ($request->is(HttpServerInstrumentation::getExcludedPaths())) {
@@ -79,7 +81,10 @@ class TraceRequestMiddleware
 
         $route = $this->resolveRouteName($request);
 
-        $builder = Tracer::newSpan(trim(sprintf('%s %s', $request->method(), $route ?? '')))
+        $method = $this->normalizeMethod($request->method());
+        $spanMethod = $method === HttpAttributes::HTTP_REQUEST_METHOD_VALUE_OTHER ? 'HTTP' : $method;
+
+        $builder = Tracer::newSpan(trim(sprintf('%s %s', $spanMethod, $route ?? '')))
             ->setSpanKind(SpanKind::KIND_SERVER)
             ->setParent($context);
 
@@ -101,6 +106,10 @@ class TraceRequestMiddleware
     {
         $span->setAttributes($attributes);
 
+        if ($attributes[HttpAttributes::HTTP_REQUEST_METHOD] !== $request->method()) {
+            $span->setAttribute(HttpAttributes::HTTP_REQUEST_METHOD_ORIGINAL, $request->method());
+        }
+
         $redactedQueryString = HttpServerInstrumentation::redactQueryString($request->getQueryString() ?? '');
 
         $fullUrl = $redactedQueryString === '' ? $request->url() : sprintf('%s?%s', $request->url(), $redactedQueryString);
@@ -109,6 +118,8 @@ class TraceRequestMiddleware
             ->setAttribute(UrlAttributes::URL_FULL, $fullUrl)
             ->setAttribute(UrlAttributes::URL_PATH, $request->path() === '/' ? $request->path() : '/'.$request->path())
             ->setAttribute(UrlAttributes::URL_QUERY, $redactedQueryString)
+            ->setAttribute(ServerAttributes::SERVER_ADDRESS, $request->getHttpHost())
+            ->setAttribute(ServerAttributes::SERVER_PORT, $request->getPort())
             ->setAttribute(UserAgentAttributes::USER_AGENT_ORIGINAL, $request->userAgent())
             ->setAttribute(HttpIncubatingAttributes::HTTP_REQUEST_BODY_SIZE, $request->header('Content-Length'))
             ->setAttribute(NetworkAttributes::NETWORK_PEER_ADDRESS, $request->server('REMOTE_ADDR'))
@@ -125,10 +136,6 @@ class TraceRequestMiddleware
         }
 
         $this->recordHeaders($span, $response);
-
-        if ($response->isSuccessful()) {
-            $span->setStatus(StatusCode::STATUS_OK);
-        }
 
         if ($response->isServerError()) {
             $span->setStatus(StatusCode::STATUS_ERROR);
@@ -162,18 +169,16 @@ class TraceRequestMiddleware
 
         return [
             UrlAttributes::URL_SCHEME => $request->getScheme(),
-            HttpAttributes::HTTP_REQUEST_METHOD => $request->method(),
+            HttpAttributes::HTTP_REQUEST_METHOD => $this->normalizeMethod($request->method()),
             HttpAttributes::HTTP_RESPONSE_STATUS_CODE => $response->getStatusCode(),
             HttpAttributes::HTTP_ROUTE => $this->resolveRouteName($request),
-            ErrorAttributes::ERROR_TYPE => $response->isSuccessful() ? null : (string) $response->getStatusCode(),
+            ErrorAttributes::ERROR_TYPE => $response->isServerError() ? (string) $response->getStatusCode() : null,
             NetworkAttributes::NETWORK_PROTOCOL_NAME => 'http',
             NetworkAttributes::NETWORK_PROTOCOL_VERSION => match (true) {
                 $protocolVersion->isEmpty() => null,
                 $protocolVersion->contains('/') => $protocolVersion->after('/')->toString(),
                 default => $protocolVersion->toString(),
             },
-            ServerAttributes::SERVER_ADDRESS => $request->getHttpHost(),
-            ServerAttributes::SERVER_PORT => $request->getPort(),
         ];
     }
 
@@ -211,6 +216,11 @@ class TraceRequestMiddleware
         }
 
         return Clock::getDefault()->now();
+    }
+
+    private function normalizeMethod(string $method): string
+    {
+        return in_array($method, self::KNOWN_METHODS, true) ? $method : HttpAttributes::HTTP_REQUEST_METHOD_VALUE_OTHER;
     }
 
     protected function resolveRouteName(Request $request): ?string

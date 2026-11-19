@@ -25,7 +25,7 @@ test('trace console command (class)', function () {
     expect($consoleSpan)
         ->toBeInstanceOf(ImmutableSpan::class)
         ->getName()->toBe('test:command')
-        ->getStatus()->getCode()->toBe(StatusCode::STATUS_OK);
+        ->getStatus()->getCode()->toBe(StatusCode::STATUS_UNSET);
 });
 
 test('trace console command (name)', function () {
@@ -44,7 +44,7 @@ test('trace console command (name)', function () {
     expect($consoleSpan)
         ->toBeInstanceOf(ImmutableSpan::class)
         ->getName()->toBe('test:command')
-        ->getStatus()->getCode()->toBe(StatusCode::STATUS_OK);
+        ->getStatus()->getCode()->toBe(StatusCode::STATUS_UNSET);
 });
 
 test('trace console command with failing status', function () {

@@ -4,6 +4,7 @@ namespace Keepsuit\LaravelOpenTelemetry\Instrumentation;
 
 use Illuminate\Redis\Events\CommandExecuted;
 use Illuminate\Redis\RedisManager;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use Keepsuit\LaravelOpenTelemetry\Facades\Meter;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
@@ -39,7 +40,7 @@ class RedisInstrumentation implements Instrumentation
 
         $sharedAttributes = $this->sharedTraceMetricAttributes($event, $operationName);
         $this->recordTraceSpan($event, $operationName, $sharedAttributes);
-        $this->recordOperationDurationMetric($event, $sharedAttributes);
+        $this->recordOperationDurationMetric($event, Arr::except($sharedAttributes, DbAttributes::DB_QUERY_TEXT));
     }
 
     /**
@@ -83,7 +84,7 @@ class RedisInstrumentation implements Instrumentation
             DbAttributes::DB_SYSTEM_NAME => 'redis',
             DbAttributes::DB_OPERATION_NAME => $operationName,
             DbAttributes::DB_NAMESPACE => $this->resolveDbIndex($event->connectionName),
-            DbAttributes::DB_QUERY_TEXT => Str::limit($this->formatCommand($event->command, $event->parameters), 500),
+            DbAttributes::DB_QUERY_TEXT => Str::limit($this->formatCommand($operationName, $event->parameters), 500),
             ServerAttributes::SERVER_ADDRESS => $this->resolveRedisAddress($event->connection->client()),
         ];
     }
@@ -106,25 +107,23 @@ class RedisInstrumentation implements Instrumentation
     }
 
     /**
-     * Format the given Redis command.
+     * Format the given Redis command, replacing every argument (keys included) with a placeholder.
      */
     protected function formatCommand(string $command, array $parameters): string
     {
-        $parameters = collect($parameters)->map(function ($parameter) {
+        $placeholders = collect($parameters)->flatMap(function ($parameter) {
             if (is_array($parameter)) {
-                return collect($parameter)->map(function ($value, $key) {
-                    if (is_array($value)) {
-                        return \Safe\json_encode($value);
-                    }
-
-                    return is_int($key) ? $value : sprintf('%s %s', $key, $value);
-                })->implode(' ');
+                return collect($parameter)->flatMap(fn ($value, $key) => match (true) {
+                    ! is_int($key) => ['?', '?'],
+                    $value === null => [],
+                    default => ['?'],
+                });
             }
 
-            return $parameter;
-        })->implode(' ');
+            return $parameter === null ? [] : ['?'];
+        });
 
-        return sprintf('%s %s', $command, $parameters);
+        return $placeholders->prepend($command)->implode(' ');
     }
 
     protected function resolveDbIndex(?string $connectionName): ?string
