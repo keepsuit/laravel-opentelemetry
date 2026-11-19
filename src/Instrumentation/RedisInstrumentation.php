@@ -30,7 +30,7 @@ class RedisInstrumentation implements Instrumentation
     {
         app('events')->listen(CommandExecuted::class, [$this, 'recordCommand']);
 
-        // CommandFailed was added during Laravel 12.x
+        // CommandFailed was added in Laravel 12.45
         if (class_exists(CommandFailed::class)) {
             app('events')->listen(CommandFailed::class, [$this, 'recordCommand']);
         }
