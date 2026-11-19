@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Console\Events\CommandStarting;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\ReverbInstrumentation;
 use Laravel\Reverb\Application;
 use Laravel\Reverb\ConfigApplicationProvider;
@@ -12,24 +13,19 @@ use OpenTelemetry\SDK\Metrics\Data\Gauge;
 use OpenTelemetry\SDK\Metrics\Data\Metric;
 use OpenTelemetry\SDK\Metrics\Data\NumberDataPoint;
 use OpenTelemetry\SDK\Metrics\Data\Sum;
+use Symfony\Component\Console\Input\ArrayInput;
+use Symfony\Component\Console\Output\NullOutput;
 
 beforeEach(function () {
-    $this->originalServer = $_SERVER;
-
     app()->singleton(ConnectionRegistry::class);
     app()->instance(ApplicationProvider::class, new ConfigApplicationProvider(collect([
         ['app_id' => 'app-1', 'key' => 'key', 'secret' => 'secret', 'ping_interval' => 60, 'allowed_origins' => ['*'], 'max_message_size' => 10_000],
     ])));
 });
 
-afterEach(function () {
-    $_SERVER = $this->originalServer;
-});
-
-function runReverbStart(): void
+function startCommand(string $command): void
 {
-    $_SERVER['APP_RUNNING_IN_CONSOLE'] = '1';
-    $_SERVER['argv'] = ['artisan', 'reverb:start'];
+    event(new CommandStarting($command, new ArrayInput([]), new NullOutput));
 }
 
 function fakeReverbConnection(string $id): Connection
@@ -57,8 +53,8 @@ function fakeReverbConnection(string $id): Connection
 }
 
 test('counts received and sent messages', function () {
-    runReverbStart();
     registerInstrumentation(ReverbInstrumentation::class);
+    startCommand('reverb:start');
 
     $connection = fakeReverbConnection('1.1');
     MessageReceived::dispatch($connection, '{}');
@@ -80,8 +76,8 @@ test('counts received and sent messages', function () {
 });
 
 test('observes active connections', function () {
-    runReverbStart();
     registerInstrumentation(ReverbInstrumentation::class);
+    startCommand('reverb:start');
 
     $registry = app(ConnectionRegistry::class);
     $registry->add(fakeReverbConnection('1.1'));
@@ -105,6 +101,7 @@ test('observes active connections', function () {
 
 test('does not record metrics outside reverb:start', function () {
     registerInstrumentation(ReverbInstrumentation::class);
+    startCommand('queue:work');
 
     app(ConnectionRegistry::class)->add($connection = fakeReverbConnection('1.1'));
     MessageReceived::dispatch($connection, '{}');
