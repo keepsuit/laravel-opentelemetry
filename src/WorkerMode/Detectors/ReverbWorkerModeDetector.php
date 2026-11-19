@@ -20,8 +20,9 @@ class ReverbWorkerModeDetector implements WorkerModeDetectorInterface
 
     public function onIterationEnded(Closure $callback): void
     {
+        // The worker mode manager decides when an iteration flushes, so a short fixed tick is enough.
         $timer = Loop::addPeriodicTimer(
-            max(1, config()->integer('opentelemetry.worker_mode.metrics_collect_interval', 60)),
+            1,
             function () use ($callback) {
                 // An exception thrown inside a timer silently stops the Reverb server.
                 try {

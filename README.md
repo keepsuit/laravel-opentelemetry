@@ -926,7 +926,7 @@ The `worker_mode.flush_after_each_iteration` config option allows to flush telem
 
 Worker mode is automatically detected using built-in detectors (for Laravel octane, horizon, queue workers and reverb), but you can also implement custom detectors for other runtimes.
 
-The Reverb server has no requests or jobs: there an iteration is a timer on the event loop that fires every `OTEL_WORKER_MODE_COLLECT_INTERVAL` seconds.
+The Reverb server has no requests or jobs: there an iteration is a timer on the event loop that fires every second, and the flush interval applies as for other workers.
 
 Worker mode can be configured with these environment variables (or editing the config file directly):
 

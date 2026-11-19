@@ -42,9 +42,7 @@ test('does not detect when reverb:start is not running', function () {
     expect((new ReverbWorkerModeDetector)->detect())->toBeFalse();
 });
 
-test('registers a periodic timer at the metrics collect interval', function () {
-    config()->set('opentelemetry.worker_mode.metrics_collect_interval', 15);
-
+test('registers a periodic timer every second', function () {
     $called = false;
     (new ReverbWorkerModeDetector)->onIterationEnded(function () use (&$called) {
         $called = true;
@@ -52,16 +50,8 @@ test('registers a periodic timer at the metrics collect interval', function () {
 
     ($this->tick)();
 
-    expect($this->interval)->toEqual(15)
+    expect($this->interval)->toEqual(1)
         ->and($called)->toBeTrue();
-});
-
-test('uses an interval of at least one second', function () {
-    config()->set('opentelemetry.worker_mode.metrics_collect_interval', 0);
-
-    (new ReverbWorkerModeDetector)->onIterationEnded(fn () => null);
-
-    expect($this->interval)->toEqual(1);
 });
 
 test('reports exceptions thrown by the iteration callback', function () {
