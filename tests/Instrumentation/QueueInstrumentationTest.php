@@ -271,7 +271,7 @@ it('does not leak the active consumer span between retry attempts and later jobs
         ->and($retryProcessSpans[1]->getAttributes()->has(ErrorAttributes::ERROR_TYPE))->toBeFalse();
 
     expect($followingProcessSpan)
-        ->not->toBeNull()
+        ->toBeInstanceOf(ImmutableSpan::class)
         ->getTraceId()->not->toBe($retryTraceIds[1]);
 
     $retryingJobStore->flush();
