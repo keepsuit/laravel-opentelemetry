@@ -3,6 +3,7 @@
 namespace Keepsuit\LaravelOpenTelemetry;
 
 use Composer\InstalledVersions;
+use GuzzleHttp\Client as GuzzleClient;
 use Http\Discovery\Psr17FactoryDiscovery;
 use Http\Discovery\Psr18ClientDiscovery;
 use Illuminate\Config\Repository;
@@ -45,6 +46,7 @@ use OpenTelemetry\Contrib\Zipkin\Exporter as ZipkinExporter;
 use OpenTelemetry\SDK\Common\Configuration\Parser\MapParser;
 use OpenTelemetry\SDK\Common\Configuration\Variables as OTELVariables;
 use OpenTelemetry\SDK\Common\Export\Http\PsrTransportFactory;
+use OpenTelemetry\SDK\Common\Export\TransportFactoryInterface;
 use OpenTelemetry\SDK\Common\Export\TransportInterface;
 use OpenTelemetry\SDK\Logs\Exporter\ConsoleExporterFactory as LogsConsoleExporterFactory;
 use OpenTelemetry\SDK\Logs\Exporter\InMemoryExporterFactory as LogsInMemoryExporterFactory;
@@ -350,6 +352,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
      *     endpoint?: string,
      *     protocol?: string,
      *     max_retries?: int,
+     *     connect_timeout?: int,
      *     traces_protocol?: string,
      *     traces_timeout?: int,
      *     traces_headers?: string|array<string, string>,
@@ -367,7 +370,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
     {
         $endpoint = $config['endpoint'] ?? 'http://localhost:4318';
 
-        $maxRetries = $config['max_retries'] ?? 3;
+        $maxRetries = $config['max_retries'] ?? 1;
 
         $protocol = match ($signal) {
             Signals::TRACE => $config['traces_protocol'] ?? null,
@@ -380,6 +383,8 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
             Signals::METRICS => $config['metrics_timeout'] ?? 10000,
             Signals::LOGS => $config['logs_timeout'] ?? 10000,
         };
+
+        $httpTransportFactory = $this->otlpHttpTransportFactory($timeoutMillis, $config['connect_timeout'] ?? 1000);
 
         $headers = match ($signal) {
             Signals::TRACE => $config['traces_headers'] ?? [],
@@ -398,16 +403,17 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
             'grpc' => (new GrpcTransportFactory)->create(
                 endpoint: $endpoint.OtlpUtil::method($signal),
                 headers: $headers,
+                timeout: $timeoutMillis / 1000,
                 maxRetries: $maxRetries,
             ),
-            'http/json', 'json' => (new OtlpHttpTransportFactory)->create(
+            'http/json', 'json' => $httpTransportFactory->create(
                 endpoint: (new HttpEndpointResolver)->resolveToString($endpoint, $signal),
                 contentType: 'application/json',
                 headers: $headers,
                 timeout: $timeoutMillis / 1000,
                 maxRetries: $maxRetries
             ),
-            default => (new OtlpHttpTransportFactory)->create(
+            default => $httpTransportFactory->create(
                 endpoint: (new HttpEndpointResolver)->resolveToString($endpoint, $signal),
                 contentType: 'application/x-protobuf',
                 headers: $headers,
@@ -415,6 +421,27 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
                 maxRetries: $maxRetries,
             ),
         };
+    }
+
+    /**
+     * With Guzzle the connection phase gets its own limit: an unreachable collector fails within it instead of the full timeout.
+     */
+    protected function otlpHttpTransportFactory(int $timeoutMillis, int $connectTimeoutMillis): TransportFactoryInterface
+    {
+        if (! class_exists(GuzzleClient::class)) {
+            return new OtlpHttpTransportFactory;
+        }
+
+        return new PsrTransportFactory(
+            new GuzzleClient([
+                'timeout' => $timeoutMillis / 1000,
+                'connect_timeout' => $connectTimeoutMillis / 1000,
+                // The transport decodes the response body itself.
+                'decode_content' => false,
+            ]),
+            Psr17FactoryDiscovery::findRequestFactory(),
+            Psr17FactoryDiscovery::findStreamFactory(),
+        );
     }
 
     protected function buildZipkinExporter(array $config): ZipkinExporter
