@@ -36,6 +36,9 @@ beforeEach(function () {
 
         public ?Throwable $error = null;
 
+        /** Runs once inside the next send, like another process exporting meanwhile. */
+        public ?Closure $during = null;
+
         public function contentType(): string
         {
             return 'application/x-protobuf';
@@ -44,6 +47,12 @@ beforeEach(function () {
         public function send(string $payload, ?CancellationInterface $cancellation = null): FutureInterface
         {
             $this->calls++;
+
+            if ($this->during !== null) {
+                $during = $this->during;
+                $this->during = null;
+                $during();
+            }
 
             return $this->error !== null ? new ErrorFuture($this->error) : new CompletedFuture(null);
         }
@@ -117,4 +126,32 @@ it('keeps exporting after successful exports', function () {
     $transport->send('payload')->await();
 
     expect($this->inner->calls)->toBe(2);
+});
+
+it('lets one process probe the collector after the cooldown while the others keep skipping', function () {
+    $this->inner->error = new RuntimeException('Export retry limit exceeded');
+    rescue(fn () => cooldownTransport($this->inner, $this->stateFile)->send('payload')->await(), report: false);
+
+    TestTime::addSeconds(30);
+
+    $otherProcess = cooldownTransport($this->inner, $this->stateFile);
+    $this->inner->during = fn () => expect($otherProcess->send('payload')->await())->toBeNull();
+
+    rescue(fn () => cooldownTransport($this->inner, $this->stateFile)->send('payload')->await(), report: false);
+
+    expect($this->inner->calls)->toBe(2);
+});
+
+it('resumes exports for every process after a successful probe', function () {
+    $this->inner->error = new RuntimeException('Export retry limit exceeded');
+    rescue(fn () => cooldownTransport($this->inner, $this->stateFile)->send('payload')->await(), report: false);
+
+    TestTime::addSeconds(30);
+    $this->inner->error = null;
+
+    cooldownTransport($this->inner, $this->stateFile)->send('payload')->await();
+    cooldownTransport($this->inner, $this->stateFile)->send('payload')->await();
+
+    expect($this->inner->calls)->toBe(3)
+        ->and(file_exists($this->stateFile))->toBeFalse();
 });
