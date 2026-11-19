@@ -165,7 +165,15 @@ return [
              * Supported protocols: "grpc", "http/protobuf", "http/json"
              */
             'protocol' => env(Variables::OTEL_EXPORTER_OTLP_PROTOCOL, 'http/protobuf'),
-            'max_retries' => (int) env('OTEL_EXPORTER_OTLP_MAX_RETRIES', 3),
+            /**
+             * Retries after a failed export. Exports are synchronous: every attempt against an unreachable
+             * collector blocks the request, job or command for up to the timeout.
+             */
+            'max_retries' => (int) env('OTEL_EXPORTER_OTLP_MAX_RETRIES', 1),
+            /**
+             * Connection timeout in milliseconds, for http protocols when Guzzle is installed
+             */
+            'connect_timeout' => (int) env('OTEL_EXPORTER_OTLP_CONNECT_TIMEOUT', 1000),
             'traces_timeout' => (int) env(Variables::OTEL_EXPORTER_OTLP_TRACES_TIMEOUT, env(Variables::OTEL_EXPORTER_OTLP_TIMEOUT, 10000)),
             'traces_headers' => (string) env(Variables::OTEL_EXPORTER_OTLP_TRACES_HEADERS, env(Variables::OTEL_EXPORTER_OTLP_HEADERS, '')),
             /**

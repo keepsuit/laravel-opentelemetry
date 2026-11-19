@@ -34,6 +34,7 @@ This package allows you to integrate OpenTelemetry in a Laravel application.
     - [Metrics in per-request runtimes](#metrics-in-per-request-runtimes)
 - [Logs](#logs)
 - [Worker Mode](#worker-mode)
+- [Export Failures](#export-failures)
 - [Development Setup](#development-setup)
 - [Testing](#testing)
 - [Changelog](#changelog)
@@ -219,7 +220,15 @@ return [
              * Supported protocols: "grpc", "http/protobuf", "http/json"
              */
             'protocol' => env(Variables::OTEL_EXPORTER_OTLP_PROTOCOL, 'http/protobuf'),
-            'max_retries' => (int) env('OTEL_EXPORTER_OTLP_MAX_RETRIES', 3),
+            /**
+             * Retries after a failed export. Exports are synchronous: every attempt against an unreachable
+             * collector blocks the request, job or command for up to the timeout.
+             */
+            'max_retries' => (int) env('OTEL_EXPORTER_OTLP_MAX_RETRIES', 1),
+            /**
+             * Connection timeout in milliseconds, for http protocols when Guzzle is installed
+             */
+            'connect_timeout' => (int) env('OTEL_EXPORTER_OTLP_CONNECT_TIMEOUT', 1000),
             'traces_timeout' => (int) env(Variables::OTEL_EXPORTER_OTLP_TRACES_TIMEOUT, env(Variables::OTEL_EXPORTER_OTLP_TIMEOUT, 10000)),
             'traces_headers' => (string) env(Variables::OTEL_EXPORTER_OTLP_TRACES_HEADERS, env(Variables::OTEL_EXPORTER_OTLP_HEADERS, '')),
             /**
@@ -572,7 +581,7 @@ Do not add `reverb:start` to the `commands` option of `ConsoleInstrumentation`: 
 > [!WARNING]
 > Exports run synchronously inside the Reverb event loop: while an export is in progress, no WebSocket message is handled.
 > If the collector is slow or unreachable, the export (with its retries) can block the server long enough for clients to time out.
-> For the Reverb process, export to a local collector (e.g. a sidecar), use a low timeout (`OTEL_EXPORTER_OTLP_TIMEOUT`, in milliseconds) and disable retries with `OTEL_EXPORTER_OTLP_MAX_RETRIES=0`.
+> For the Reverb process, export to a local collector (e.g. a sidecar) and keep timeouts and retries low (see [Export Failures](#export-failures)).
 
 You can disable this instrumentation by setting `OTEL_INSTRUMENTATION_REVERB` to `false` or removing `ReverbInstrumentation::class` from the config.
 
@@ -939,6 +948,34 @@ The previous names, `OTEL_WORKER_MODE_COLLECT_INTERVAL` and the `worker_mode.met
 
 Otherwise, after an iteration, if the interval has elapsed, metrics are collected and pending traces, metrics and logs are exported.
 If `OTEL_WORKER_MODE_FLUSH_AFTER_EACH_ITERATION` is `true`, the per-iteration flush behavior is used and the periodic interval is ignored.
+
+## Export Failures
+
+Exports are synchronous: the request, job or command that triggers an export waits for it to finish.
+Every PHP process also exports its pending metrics when it shuts down, short Artisan commands included (for example the ones a container runs before starting the application).
+
+When the collector is not available, each export attempt costs:
+
+- connection refused (nothing listening on the endpoint): a few milliseconds;
+- unreachable host (packets dropped): up to `OTEL_EXPORTER_OTLP_CONNECT_TIMEOUT`;
+- the collector accepts the connection but does not answer: up to `OTEL_EXPORTER_OTLP_TIMEOUT`.
+
+An export makes `1 + OTEL_EXPORTER_OTLP_MAX_RETRIES` attempts.
+
+| Variable                             | Description                                                                                   | Default |
+|--------------------------------------|-----------------------------------------------------------------------------------------------|---------|
+| `OTEL_EXPORTER_OTLP_TIMEOUT`         | Export timeout in milliseconds (also per signal, e.g. `OTEL_EXPORTER_OTLP_TRACES_TIMEOUT`)    | `10000` |
+| `OTEL_EXPORTER_OTLP_CONNECT_TIMEOUT` | Connection timeout in milliseconds, for http protocols when Guzzle is installed               | `1000`  |
+| `OTEL_EXPORTER_OTLP_MAX_RETRIES`     | Retries after a failed export                                                                 | `1`     |
+
+`OTEL_EXPORTER_OTLP_CONNECT_TIMEOUT` and `OTEL_EXPORTER_OTLP_MAX_RETRIES` are options of this package, not OpenTelemetry standard variables.
+With gRPC the timeout covers the whole call, connection included.
+
+Retries default to 1, while the OpenTelemetry PHP SDK uses 3.
+The OTLP specification asks to retry transient errors but does not set a number of attempts, and with synchronous exports every retry adds a full wait to the request, job or command.
+Losing an export is cheaper: with cumulative temporality the next metrics export carries the totals, so only one data point is missing; spans and log records of the failed batch are lost.
+
+When the collector runs close to the application (same host or cluster), lower both timeouts, for example `OTEL_EXPORTER_OTLP_CONNECT_TIMEOUT=250` and `OTEL_EXPORTER_OTLP_TIMEOUT=2000`.
 
 ## Development Setup
 
