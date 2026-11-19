@@ -2,6 +2,90 @@
 
 All notable changes to `laravel-opentelemetry` will be documented in this file.
 
+## 2.4.0 - 2026-11-19
+
+### Upgrade notes
+
+**Laravel 12.45 or later is required** (`illuminate/*` `^12.45 || ^13.0`). It is the first version with the `CommandFailed` Redis event. Composer already blocks earlier 12.x releases because of security advisories. Apps on older versions stay on 2.3.x.
+
+**Published config files need new keys.** The config is merged one level deep, so a published `exporters`, `logs` or `worker_mode` array replaces the package one, and keys added in this release are missing. Without them the related environment variables are ignored and the defaults below apply:
+
+| Key | Add | Without it |
+|---|---|---|
+| `exporters.otlp.connect_timeout` | `(int) env('OTEL_EXPORTER_OTLP_CONNECT_TIMEOUT', 1000)` | `OTEL_EXPORTER_OTLP_CONNECT_TIMEOUT` is ignored, 1000 ms |
+| `exporters.otlp.failure_cooldown` | `(int) env('OTEL_EXPORTER_OTLP_FAILURE_COOLDOWN', 30)` | `OTEL_EXPORTER_OTLP_FAILURE_COOLDOWN` is ignored, the cooldown is on for 30s |
+| `exporters.otlp.max_retries` | change the default from `3` to `1` | the published default stays 3 |
+| `logs.level` | `env('LOG_LEVEL', 'debug')` | the `otlp` channel keeps exporting `debug` and above |
+| `worker_mode.flush_interval` | `(int) env('OTEL_WORKER_MODE_FLUSH_INTERVAL', env('OTEL_WORKER_MODE_COLLECT_INTERVAL', 60))` | `metrics_collect_interval` and `OTEL_WORKER_MODE_COLLECT_INTERVAL` are still read |
+| `instrumentation` | `Instrumentation\ReverbInstrumentation::class => env('OTEL_INSTRUMENTATION_REVERB', true)` | no Reverb metrics |
+| `worker_mode.detectors` | `WorkerMode\Detectors\ReverbWorkerModeDetector::class` | `reverb:start` exports only at shutdown |
+
+**Failed exports are much cheaper.** Exports are synchronous, and every PHP process also exports at shutdown, short Artisan commands included. Before, an unreachable collector could block each export for 10s × 4 attempts.
+
+- Over HTTP, a new connect timeout (`OTEL_EXPORTER_OTLP_CONNECT_TIMEOUT`, default 1000 ms, needs Guzzle) makes an unreachable host fail fast.
+- Retries default to 1 instead of 3.
+- gRPC exports now honour `OTEL_EXPORTER_OTLP_TIMEOUT`.
+- After an export fails (unreachable collector, timeout or 5xx), every export to that collector is dropped for 30 seconds (`OTEL_EXPORTER_OTLP_FAILURE_COOLDOWN`, `0` disables it). The pause is shared by every process of the application through a file in `storage/framework/cache`. When it expires, a single process tries again. Telemetry is lost for up to one cooldown, but under PHP-FPM or FrankenPHP requests no longer pay a failed export each. In a load test with the collector down, web throughput went from 13–32 req/s back to about 90–105 req/s.
+
+See the new "Export Failures" section of the README. For a collector in the same host or cluster, consider `OTEL_EXPORTER_OTLP_CONNECT_TIMEOUT=250` and `OTEL_EXPORTER_OTLP_TIMEOUT=2000`.
+
+**Worker mode flushes every signal.** The periodic interval used to collect only metrics. It now also exports pending spans and log records. The interval is renamed to `flush_interval` / `OTEL_WORKER_MODE_FLUSH_INTERVAL`, and the old names still work.
+
+**Logs**
+
+- Data added with Laravel's `Context` facade is exported as log record attributes. Hidden context is not exported.
+- The injected `otlp` channel follows `LOG_LEVEL` (`opentelemetry.logs.level`) instead of always `debug`.
+
+**Emitted telemetry changes.** Update dashboards, alerts and queries that rely on the old names or values:
+
+| Signal | Before | After |
+|---|---|---|
+| `http.server.request.duration` | `server.address`, `server.port` labels | removed |
+| HTTP server spans and metric | `error.type` on 3xx/4xx | only on 5xx |
+| HTTP server and client | unknown methods kept as sent | `_OTHER` (span name `HTTP`), original in `http.request.method_original` on spans |
+| HTTP server spans | handled `report($e)` set status Error | status unchanged |
+| HTTP server spans, 404 without route | `http.route = "/"` | no `http.route` |
+| HTTP client spans | 4xx not an error | 4xx sets status Error |
+| HTTP server spans | `server.address` could include the port | host only |
+| HTTP client spans and metric | no `server.port` when the URL has no port | `server.port` 80 / 443 |
+| All spans | status `Ok` set explicitly | status left `Unset` |
+| DB spans | name `SELECT` | name includes the database, e.g. `SELECT app` |
+| `db.client.operation.duration` | `db.query.text` label | removed |
+| DB spans | `server.port` as string | integer, omitted for the DBMS default port |
+| Redis spans | keys and values in `db.query.text` | replaced by `?` |
+| Redis | failed commands not recorded | span with `error.type`, no metric data point |
+| Redis spans and metric | no `server.port` | `server.port` when not 6379 |
+| Scout spans and metric | no `error.type` | `error.type` on failure |
+| Scout spans without target | `"<op> "` | `"<op>"` |
+| `user.id` | integer | string |
+
+`QUERY` is now a known HTTP method.
+
+**New: Laravel Reverb.** `reverb:start` exports periodically from its event loop and records `laravel.reverb.messages` and `laravel.reverb.active_connections` (Reverb 1.14+). Exports block the event loop, so keep the collector close and the timeouts low.
+
+**Metrics temporality.** `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE` is now case-insensitive. Unknown values fall back to cumulative.
+
+### What's Changed
+
+* Fix CI with latest OpenTelemetry SDK and Zipkin deprecation by @cappuc in https://github.com/keepsuit/laravel-opentelemetry/pull/110
+* Accept metrics temporality preference in any case by @cappuc in https://github.com/keepsuit/laravel-opentelemetry/pull/111
+* Document metrics limitations in per-request runtimes by @cappuc in https://github.com/keepsuit/laravel-opentelemetry/pull/106
+* Drop db.query.text from DB metrics and sanitize Redis query text by @cappuc in https://github.com/keepsuit/laravel-opentelemetry/pull/109
+* Fix HTTP server error.type, metric attributes and unknown methods by @cappuc in https://github.com/keepsuit/laravel-opentelemetry/pull/107
+* Align span names and status with semantic conventions by @cappuc in https://github.com/keepsuit/laravel-opentelemetry/pull/108
+* fix(logs): forward Monolog extra (Laravel Context) to OTLP log records by @andrewbroberg in https://github.com/keepsuit/laravel-opentelemetry/pull/117
+* fix(logs): respect LOG_LEVEL on the injected otlp channel by @andrewbroberg in https://github.com/keepsuit/laravel-opentelemetry/pull/118
+* Flush all signals on the worker mode interval by @cappuc in https://github.com/keepsuit/laravel-opentelemetry/pull/112
+* Speed up the test suite by avoiding exports of span graphs in negated assertions by @cappuc in https://github.com/keepsuit/laravel-opentelemetry/pull/119
+* Normalize unknown HTTP methods on the client and add QUERY by @cappuc in https://github.com/keepsuit/laravel-opentelemetry/pull/113
+* Fix semantic convention correctness issues by @cappuc in https://github.com/keepsuit/laravel-opentelemetry/pull/114
+* Record failed Redis commands, add error.type and server.port, require Laravel 12.45 by @cappuc in https://github.com/keepsuit/laravel-opentelemetry/pull/116
+* Add Laravel Reverb support by @cappuc in https://github.com/keepsuit/laravel-opentelemetry/pull/115
+* Make failed OTLP exports cheap: connect timeout, gRPC timeout and one retry by default by @cappuc in https://github.com/keepsuit/laravel-opentelemetry/pull/120
+* Drop OTLP exports for a cooldown after a failed export by @cappuc in https://github.com/keepsuit/laravel-opentelemetry/pull/121
+
+**Full Changelog**: https://github.com/keepsuit/laravel-opentelemetry/compare/2.3.0...2.4.0
+
 ## v2.3.0 - 2026-11-04
 
 ### Upgrade notes
@@ -301,6 +385,7 @@ Instrumentation\ConsoleInstrumentation::class => [
 
 
 
+
 ```
 **Full Changelog**: https://github.com/keepsuit/laravel-opentelemetry/compare/1.7.0...1.8.0
 
@@ -426,6 +511,7 @@ Tracer::newSpan('name')->setSpanKind(SpanKind::KIND_PRODUCER)->measure(callback)
 
 
 
+
 ```
 `Tracer::recordExceptionToSpan` has been removed and exception should be recorded directly to span: `$span->recordException($exception)`
 
@@ -446,6 +532,7 @@ This is the injected `otlp` channel:
         'level' => 'debug',
     ]
 ]
+
 
 
 
