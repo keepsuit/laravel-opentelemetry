@@ -12,8 +12,6 @@ use OpenTelemetry\SDK\Metrics\Data\HistogramDataPoint;
 use OpenTelemetry\SDK\Metrics\Data\Metric;
 use OpenTelemetry\SDK\Trace\ImmutableSpan;
 use OpenTelemetry\SemConv\Attributes\DbAttributes;
-use OpenTelemetry\SemConv\Attributes\ErrorAttributes;
-use OpenTelemetry\SemConv\Attributes\ServerAttributes;
 use OpenTelemetry\SemConv\Metrics\DbMetrics;
 
 beforeEach(function () {
@@ -144,10 +142,7 @@ it('records failed redis commands', function (string $client) {
     expect($span->getEvents())->toHaveCount(1)
         ->and($span->getEvents()[0]->getName())->toBe('exception');
 
-    /** @var HistogramDataPoint $dataPoint */
-    $dataPoint = getRecordedMetrics()->firstWhere('name', DbMetrics::DB_CLIENT_OPERATION_DURATION)->data->dataPoints[0];
-
-    expect($dataPoint->attributes->get(ErrorAttributes::ERROR_TYPE))->toBe($exception::class);
+    expect(getRecordedMetrics()->firstWhere('name', DbMetrics::DB_CLIENT_OPERATION_DURATION))->toBeNull();
 })->skip(fn () => ! class_exists(CommandFailed::class), 'CommandFailed is not available in this Laravel version')->with([
     'predis',
     'phpredis',
@@ -168,9 +163,4 @@ it('records non-default server port', function () {
             'server.address' => '127.0.0.1',
             'server.port' => 1,
         ]);
-
-    /** @var HistogramDataPoint $dataPoint */
-    $dataPoint = getRecordedMetrics()->firstWhere('name', DbMetrics::DB_CLIENT_OPERATION_DURATION)->data->dataPoints[0];
-
-    expect($dataPoint->attributes->get(ServerAttributes::SERVER_PORT))->toBe(1);
 })->skip(fn () => ! class_exists(CommandFailed::class), 'CommandFailed is not available in this Laravel version');

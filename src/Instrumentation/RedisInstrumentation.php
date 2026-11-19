@@ -45,7 +45,7 @@ class RedisInstrumentation implements Instrumentation
         }
 
         $operationName = strtoupper($event->command);
-        // CommandFailed carries no duration, so failed commands are recorded with a zero-length span.
+        // CommandFailed carries no duration: failed commands get a zero-length span and no metric, so latencies stay accurate.
         $startTimestamp = $this->getEventStartTimestampNs($event instanceof CommandExecuted ? $event->time : null);
         $exception = $event instanceof CommandFailed ? $event->exception : null;
 
@@ -56,7 +56,10 @@ class RedisInstrumentation implements Instrumentation
         }
 
         $this->recordTraceSpan($startTimestamp, $operationName, $sharedAttributes, $exception);
-        $this->recordOperationDurationMetric($startTimestamp, Arr::except($sharedAttributes, DbAttributes::DB_QUERY_TEXT));
+
+        if ($exception === null) {
+            $this->recordOperationDurationMetric($startTimestamp, Arr::except($sharedAttributes, DbAttributes::DB_QUERY_TEXT));
+        }
     }
 
     /**
