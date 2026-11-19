@@ -15,6 +15,7 @@ use Illuminate\Support\Env;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Str;
 use Keepsuit\LaravelOpenTelemetry\Support\CarbonClock;
+use Keepsuit\LaravelOpenTelemetry\Support\CooldownTransport;
 use Keepsuit\LaravelOpenTelemetry\Support\NoopSpanExporter;
 use Keepsuit\LaravelOpenTelemetry\Support\OpenTelemetryMonologHandler;
 use Keepsuit\LaravelOpenTelemetry\Support\PropagatorBuilder;
@@ -353,6 +354,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
      *     protocol?: string,
      *     max_retries?: int,
      *     connect_timeout?: int,
+     *     failure_cooldown?: int,
      *     traces_protocol?: string,
      *     traces_timeout?: int,
      *     traces_headers?: string|array<string, string>,
@@ -399,7 +401,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
             report: false
         );
 
-        return match ($protocol) {
+        $transport = match ($protocol) {
             'grpc' => (new GrpcTransportFactory)->create(
                 endpoint: $endpoint.OtlpUtil::method($signal),
                 headers: $headers,
@@ -421,6 +423,18 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
                 maxRetries: $maxRetries,
             ),
         };
+
+        $cooldown = $config['failure_cooldown'] ?? 30;
+
+        if ($cooldown <= 0) {
+            return $transport;
+        }
+
+        return new CooldownTransport(
+            $transport,
+            $cooldown,
+            storage_path(sprintf('framework/cache/opentelemetry-export-%s.pause', md5($endpoint))),
+        );
     }
 
     /**

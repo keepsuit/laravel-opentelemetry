@@ -229,6 +229,10 @@ return [
              * Connection timeout in milliseconds, for http protocols when Guzzle is installed
              */
             'connect_timeout' => (int) env('OTEL_EXPORTER_OTLP_CONNECT_TIMEOUT', 1000),
+            /**
+             * Seconds to drop exports after a failed one, shared by every process of the application (0 disables)
+             */
+            'failure_cooldown' => (int) env('OTEL_EXPORTER_OTLP_FAILURE_COOLDOWN', 30),
             'traces_timeout' => (int) env(Variables::OTEL_EXPORTER_OTLP_TRACES_TIMEOUT, env(Variables::OTEL_EXPORTER_OTLP_TIMEOUT, 10000)),
             'traces_headers' => (string) env(Variables::OTEL_EXPORTER_OTLP_TRACES_HEADERS, env(Variables::OTEL_EXPORTER_OTLP_HEADERS, '')),
             /**
@@ -967,14 +971,29 @@ An export makes `1 + OTEL_EXPORTER_OTLP_MAX_RETRIES` attempts.
 | `OTEL_EXPORTER_OTLP_TIMEOUT`         | Export timeout in milliseconds (also per signal, e.g. `OTEL_EXPORTER_OTLP_TRACES_TIMEOUT`)    | `10000` |
 | `OTEL_EXPORTER_OTLP_CONNECT_TIMEOUT` | Connection timeout in milliseconds, for http protocols when Guzzle is installed               | `1000`  |
 | `OTEL_EXPORTER_OTLP_MAX_RETRIES`     | Retries after a failed export                                                                 | `1`     |
+| `OTEL_EXPORTER_OTLP_FAILURE_COOLDOWN` | Seconds to drop exports after a failed one (`0` disables)                                    | `30`    |
 
-`OTEL_EXPORTER_OTLP_CONNECT_TIMEOUT` and `OTEL_EXPORTER_OTLP_MAX_RETRIES` are options of this package, not OpenTelemetry standard variables.
-If you published the config file before `connect_timeout` existed, add `'connect_timeout' => (int) env('OTEL_EXPORTER_OTLP_CONNECT_TIMEOUT', 1000)` to `exporters.otlp`: without it the variable is ignored and the default applies. A published config also keeps its own `max_retries` default (3).
+`OTEL_EXPORTER_OTLP_CONNECT_TIMEOUT`, `OTEL_EXPORTER_OTLP_MAX_RETRIES` and `OTEL_EXPORTER_OTLP_FAILURE_COOLDOWN` are options of this package, not OpenTelemetry standard variables.
+If you published the config file before these options existed, add them to `exporters.otlp`. Without them the variables are ignored and the defaults apply: the cooldown is still on, for 30 seconds.
+
+```php
+'connect_timeout' => (int) env('OTEL_EXPORTER_OTLP_CONNECT_TIMEOUT', 1000),
+'failure_cooldown' => (int) env('OTEL_EXPORTER_OTLP_FAILURE_COOLDOWN', 30),
+```
+
+A published config also keeps its own `max_retries` default (3).
 With gRPC the timeout covers the whole call, connection included.
 
 Retries default to 1, while the OpenTelemetry PHP SDK uses 3.
 The OTLP specification asks to retry transient errors but does not set a number of attempts, and with synchronous exports every retry adds a full wait to the request, job or command.
 Losing an export is cheaper: with cumulative temporality the next metrics export carries the totals, so only one data point is missing; spans and log records of the failed batch are lost.
+
+After an export fails because the collector is unreachable, times out or answers with a 5xx, every export to that collector is dropped for `OTEL_EXPORTER_OTLP_FAILURE_COOLDOWN` seconds. Each process that triggers a pause logs one warning.
+Without the cooldown every request would pay the failed attempt: under PHP-FPM each request exports when it ends.
+The pause is shared by every process of the application through a file in `storage/framework/cache`, named after the endpoint.
+When it expires, one process tries again while the others keep dropping exports: a success resumes exports everywhere, a failure starts a new pause.
+A 4xx answer means the collector rejected the payload, so it does not pause exports.
+Telemetry is lost for up to one cooldown after the collector recovers.
 
 When the collector runs close to the application (same host or cluster), lower both timeouts, for example `OTEL_EXPORTER_OTLP_CONNECT_TIMEOUT=250` and `OTEL_EXPORTER_OTLP_TIMEOUT=2000`.
 

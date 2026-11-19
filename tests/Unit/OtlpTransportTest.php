@@ -1,7 +1,9 @@
 <?php
 
 use Keepsuit\LaravelOpenTelemetry\LaravelOpenTelemetryServiceProvider;
+use Keepsuit\LaravelOpenTelemetry\Support\CooldownTransport;
 use OpenTelemetry\API\Signals;
+use OpenTelemetry\SDK\Common\Export\Http\PsrTransport;
 
 it('fails within the connect timeout when the collector is unreachable', function (string $protocol) {
     $transport = invade(new LaravelOpenTelemetryServiceProvider(app()))->buildOtlpTransport([
@@ -11,6 +13,7 @@ it('fails within the connect timeout when the collector is unreachable', functio
         'traces_timeout' => 10000,
         'connect_timeout' => 200,
         'max_retries' => 0,
+        'failure_cooldown' => 0,
     ], Signals::TRACE);
 
     $start = hrtime(true);
@@ -18,3 +21,12 @@ it('fails within the connect timeout when the collector is unreachable', functio
     expect(fn () => $transport->send('payload')->await())->toThrow(Exception::class);
     expect((hrtime(true) - $start) / 1_000_000)->toBeLessThan(2000);
 })->with(['http/protobuf', 'http/json']);
+
+it('pauses exports after a failure unless the cooldown is disabled', function (array $config, string $expected) {
+    $transport = invade(new LaravelOpenTelemetryServiceProvider(app()))->buildOtlpTransport($config, Signals::TRACE);
+
+    expect($transport)->toBeInstanceOf($expected);
+})->with([
+    'default' => [[], CooldownTransport::class],
+    'disabled' => [['failure_cooldown' => 0], PsrTransport::class],
+]);
