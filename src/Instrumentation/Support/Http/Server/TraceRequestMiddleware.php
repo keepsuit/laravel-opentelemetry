@@ -102,10 +102,9 @@ class TraceRequestMiddleware
     {
         $span->setAttributes($attributes);
 
-        // method() is uppercased and applies method overrides; the spec wants the request line method.
-        $originalMethod = $request->server('REQUEST_METHOD');
-        if (is_string($originalMethod) && $originalMethod !== $attributes[HttpAttributes::HTTP_REQUEST_METHOD]) {
-            $span->setAttribute(HttpAttributes::HTTP_REQUEST_METHOD_ORIGINAL, $originalMethod);
+        // method() applies method overrides (_method, X-HTTP-Method-Override); the original is the request line method.
+        if ($request->getRealMethod() !== $attributes[HttpAttributes::HTTP_REQUEST_METHOD]) {
+            $span->setAttribute(HttpAttributes::HTTP_REQUEST_METHOD_ORIGINAL, $request->getRealMethod());
         }
 
         $redactedQueryString = HttpServerInstrumentation::redactQueryString($request->getQueryString() ?? '');
