@@ -433,7 +433,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         return new CooldownTransport(
             $transport,
             $cooldown,
-            sprintf('%s/laravel-opentelemetry-export-%s.pause', sys_get_temp_dir(), md5($endpoint)),
+            storage_path(sprintf('framework/cache/opentelemetry-export-%s.pause', md5($endpoint))),
         );
     }
 

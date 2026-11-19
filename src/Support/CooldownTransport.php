@@ -31,7 +31,7 @@ final class CooldownTransport implements TransportInterface
 
     /**
      * @param  TransportInterface<CONTENT_TYPE>  $transport
-     * @param  string  $stateFile  Shared by every process that exports to the same collector: a short-lived process
+     * @param  string  $stateFile  Shared by every process of the application: a short-lived process
      *                             (a request under PHP-FPM, an Artisan command) would otherwise pay its own failure.
      */
     public function __construct(

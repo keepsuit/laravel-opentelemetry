@@ -175,7 +175,7 @@ return [
              */
             'connect_timeout' => (int) env('OTEL_EXPORTER_OTLP_CONNECT_TIMEOUT', 1000),
             /**
-             * Seconds to drop exports after a failed one, shared by every process on the host (0 disables)
+             * Seconds to drop exports after a failed one, shared by every process of the application (0 disables)
              */
             'failure_cooldown' => (int) env('OTEL_EXPORTER_OTLP_FAILURE_COOLDOWN', 30),
             'traces_timeout' => (int) env(Variables::OTEL_EXPORTER_OTLP_TRACES_TIMEOUT, env(Variables::OTEL_EXPORTER_OTLP_TIMEOUT, 10000)),

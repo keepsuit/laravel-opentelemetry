@@ -230,7 +230,7 @@ return [
              */
             'connect_timeout' => (int) env('OTEL_EXPORTER_OTLP_CONNECT_TIMEOUT', 1000),
             /**
-             * Seconds to drop exports after a failed one, shared by every process on the host (0 disables)
+             * Seconds to drop exports after a failed one, shared by every process of the application (0 disables)
              */
             'failure_cooldown' => (int) env('OTEL_EXPORTER_OTLP_FAILURE_COOLDOWN', 30),
             'traces_timeout' => (int) env(Variables::OTEL_EXPORTER_OTLP_TRACES_TIMEOUT, env(Variables::OTEL_EXPORTER_OTLP_TIMEOUT, 10000)),
@@ -990,7 +990,7 @@ Losing an export is cheaper: with cumulative temporality the next metrics export
 
 After an export fails because the collector is unreachable, times out or answers with a 5xx, every export to that collector is dropped for `OTEL_EXPORTER_OTLP_FAILURE_COOLDOWN` seconds. Each process that triggers a pause logs one warning.
 Without the cooldown every request would pay the failed attempt: under PHP-FPM each request exports when it ends.
-The pause is shared by every process on the host through a file in the system temp directory, named after the endpoint.
+The pause is shared by every process of the application through a file in `storage/framework/cache`, named after the endpoint.
 When it expires, one process tries again while the others keep dropping exports: a success resumes exports everywhere, a failure starts a new pause.
 A 4xx answer means the collector rejected the payload, so it does not pause exports.
 Telemetry is lost for up to one cooldown after the collector recovers.
