@@ -2,6 +2,25 @@
 
 All notable changes to `laravel-opentelemetry` will be documented in this file.
 
+## 2.4.1 - 2026-11-19
+
+### Fixes
+
+**Delta metrics no longer make Prometheus reject whole exports.** With Delta temporality, the OpenTelemetry PHP SDK exports every instrument on each collection, also when nothing was recorded since the previous one. Such a metric has no data points. Prometheus' OTLP endpoint rejects the whole request when it finds one, so every metric in the same export was lost. Typical cases:
+
+- an idle `laravel.reverb.messages` took `laravel.reverb.active_connections` down with it;
+- an idle histogram in a queue worker took the worker's other metrics down with it.
+
+The OTLP metrics exporter now leaves out metrics without data points, and makes no request when nothing is left. Cumulative exports are unaffected.
+
+If you use Delta and Prometheus, look for `empty data points. <metric> is dropped` in the Prometheus logs, or for HTTP 500 errors in your collector's exporter, to see whether you were affected.
+
+### What's Changed
+
+* Leave metrics without data points out of OTLP exports by @cappuc in https://github.com/keepsuit/laravel-opentelemetry/pull/122
+
+**Full Changelog**: https://github.com/keepsuit/laravel-opentelemetry/compare/2.4.0...2.4.1
+
 ## 2.4.0 - 2026-11-19
 
 ### Upgrade notes
@@ -386,6 +405,7 @@ Instrumentation\ConsoleInstrumentation::class => [
 
 
 
+
 ```
 **Full Changelog**: https://github.com/keepsuit/laravel-opentelemetry/compare/1.7.0...1.8.0
 
@@ -512,6 +532,7 @@ Tracer::newSpan('name')->setSpanKind(SpanKind::KIND_PRODUCER)->measure(callback)
 
 
 
+
 ```
 `Tracer::recordExceptionToSpan` has been removed and exception should be recorded directly to span: `$span->recordException($exception)`
 
@@ -532,6 +553,7 @@ This is the injected `otlp` channel:
         'level' => 'debug',
     ]
 ]
+
 
 
 
