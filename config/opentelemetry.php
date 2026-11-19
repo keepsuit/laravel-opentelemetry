@@ -200,12 +200,6 @@ return [
     ],
 
     /**
-     * Comma separated, case-sensitive list of known HTTP methods. Other methods are recorded as "_OTHER".
-     * When set, it replaces the default list (RFC 9110 methods, PATCH and QUERY).
-     */
-    'http_known_methods' => env('OTEL_INSTRUMENTATION_HTTP_KNOWN_METHODS'),
-
-    /**
      * List of instrumentation used for application tracing
      */
     'instrumentation' => [
