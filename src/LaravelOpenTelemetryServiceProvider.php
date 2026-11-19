@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Str;
 use Keepsuit\LaravelOpenTelemetry\Support\CarbonClock;
 use Keepsuit\LaravelOpenTelemetry\Support\CooldownTransport;
+use Keepsuit\LaravelOpenTelemetry\Support\NonEmptyMetricExporter;
 use Keepsuit\LaravelOpenTelemetry\Support\NoopSpanExporter;
 use Keepsuit\LaravelOpenTelemetry\Support\OpenTelemetryMonologHandler;
 use Keepsuit\LaravelOpenTelemetry\Support\PropagatorBuilder;
@@ -305,14 +306,14 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
         $metricsExporterDriver = is_array($metricsExporterConfig) ? $metricsExporterConfig['driver'] : $metricsExporter;
 
         return match ($metricsExporterDriver) {
-            'otlp' => new MetricExporter(
+            'otlp' => new NonEmptyMetricExporter(new MetricExporter(
                 $this->buildOtlpTransport($metricsExporterConfig ?? [], Signals::METRICS),
                 match (strtolower((string) Arr::get($metricsExporterConfig, 'metrics_temporality'))) {
                     'delta' => Temporality::DELTA,
                     'cumulative' => Temporality::CUMULATIVE,
                     default => null,
                 }
-            ),
+            )),
             'console' => (new ConsoleMetricExporterFactory)->create(),
             'memory' => (new InMemoryExporterFactory)->create(),
             default => new NoopMetricExporter,

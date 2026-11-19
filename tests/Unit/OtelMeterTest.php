@@ -182,7 +182,7 @@ it('accepts metrics temporality preference in any case', function (?string $valu
 
     $exporter = invade(app()->getProvider(LaravelOpenTelemetryServiceProvider::class))->buildMetricsExporter();
 
-    expect(invade($exporter)->temporality)->toBe($expected);
+    expect(invade(invade($exporter)->exporter)->temporality)->toBe($expected);
 })->with([
     ['delta', Temporality::DELTA],
     ['Delta', Temporality::DELTA],
