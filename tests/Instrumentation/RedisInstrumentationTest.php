@@ -5,6 +5,7 @@ use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\RedisInstrumentation;
 use OpenTelemetry\API\Common\Time\Clock;
 use OpenTelemetry\API\Trace\SpanKind;
+use OpenTelemetry\API\Trace\StatusCode;
 use OpenTelemetry\SDK\Metrics\Data\Histogram;
 use OpenTelemetry\SDK\Metrics\Data\HistogramDataPoint;
 use OpenTelemetry\SDK\Metrics\Data\Metric;
@@ -108,4 +109,57 @@ it('sanitizes redis query text', function (string $client) {
 
 it('resolves no db index for an unnamed connection', function () {
     expect(invade(new RedisInstrumentation)->resolveDbIndex(null))->toBeNull();
+});
+
+it('records failed redis commands', function (string $client) {
+    config()->set('database.redis.client', $client);
+
+    $exception = null;
+
+    withRootSpan(function () use (&$exception) {
+        try {
+            Redis::connection('default')->command('notacommand');
+        } catch (Throwable $e) {
+            $exception = $e;
+        }
+    });
+
+    expect($exception)->not->toBeNull();
+
+    $span = getRecordedSpans()->first();
+
+    expect($span)
+        ->getName()->toBe('NOTACOMMAND')
+        ->getStatus()->getCode()->toBe(StatusCode::STATUS_ERROR)
+        ->getAttributes()->toArray()->toMatchArray([
+            'db.system.name' => 'redis',
+            'db.operation.name' => 'NOTACOMMAND',
+            'db.query.text' => 'NOTACOMMAND',
+            'error.type' => $exception::class,
+        ]);
+
+    expect($span->getEvents())->toHaveCount(1)
+        ->and($span->getEvents()[0]->getName())->toBe('exception');
+
+    expect(getRecordedMetrics()->firstWhere('name', DbMetrics::DB_CLIENT_OPERATION_DURATION))->toBeNull();
+})->with([
+    'predis',
+    'phpredis',
+]);
+
+it('records non-default server port', function () {
+    config()->set('database.redis.client', 'predis');
+    config()->set('database.redis.unreachable', [
+        'host' => '127.0.0.1',
+        'port' => 1,
+        'database' => '0',
+    ]);
+
+    withRootSpan(fn () => rescue(fn () => Redis::connection('unreachable')->get('test'), report: false));
+
+    expect(getRecordedSpans()->first()->getAttributes()->toArray())
+        ->toMatchArray([
+            'server.address' => '127.0.0.1',
+            'server.port' => 1,
+        ]);
 });

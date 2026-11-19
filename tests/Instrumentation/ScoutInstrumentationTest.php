@@ -1,13 +1,19 @@
 <?php
 
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Schema;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\ScoutInstrumentation;
 use Keepsuit\LaravelOpenTelemetry\Tests\Support\SearchableProduct;
+use Laravel\Scout\EngineManager;
 use OpenTelemetry\API\Trace\SpanKind;
+use OpenTelemetry\API\Trace\StatusCode;
 use OpenTelemetry\SDK\Metrics\Data\Histogram;
 use OpenTelemetry\SDK\Metrics\Data\HistogramDataPoint;
 use OpenTelemetry\SDK\Metrics\Data\Metric;
 use OpenTelemetry\SDK\Trace\SpanDataInterface;
 use OpenTelemetry\SemConv\Attributes\DbAttributes;
+use OpenTelemetry\SemConv\Attributes\ErrorAttributes;
 use OpenTelemetry\SemConv\Metrics\DbMetrics;
 
 beforeEach(function () {
@@ -149,4 +155,34 @@ test('records scout operation duration metric', function () {
             DbAttributes::DB_NAMESPACE => 'products',
             DbAttributes::DB_OPERATION_NAME => 'search',
         ]);
+});
+
+test('records failed scout operations', function () {
+    registerInstrumentation(ScoutInstrumentation::class);
+
+    Schema::drop('products');
+
+    withRootSpan(fn () => rescue(fn () => SearchableProduct::search('lorem')->get(), report: false));
+
+    $searchSpan = getRecordedSpans()->first(fn (SpanDataInterface $span) => $span->getName() === 'search products');
+
+    expect($searchSpan)
+        ->getStatus()->getCode()->toBe(StatusCode::STATUS_ERROR)
+        ->getAttributes()->toArray()->toMatchArray([
+            'error.type' => QueryException::class,
+        ]);
+
+    /** @var HistogramDataPoint $dataPoint */
+    $dataPoint = getRecordedMetrics()->where('name', DbMetrics::DB_CLIENT_OPERATION_DURATION)->sole()->data->dataPoints[0];
+
+    expect($dataPoint->attributes->get(ErrorAttributes::ERROR_TYPE))->toBe(QueryException::class);
+});
+
+test('scout span name has no trailing space without target', function () {
+    registerInstrumentation(ScoutInstrumentation::class);
+
+    withRootSpan(fn () => app(EngineManager::class)->engine()->update(new Collection));
+
+    expect(getRecordedSpans()->map(fn (SpanDataInterface $span) => $span->getName()))
+        ->toContain('search_update');
 });

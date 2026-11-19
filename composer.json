@@ -17,8 +17,8 @@
     ],
     "require": {
         "php": "^8.2",
-        "illuminate/contracts": "^12.0 || ^13.0",
-        "illuminate/support": "^12.0 || ^13.0",
+        "illuminate/contracts": "^12.45 || ^13.0",
+        "illuminate/support": "^12.45 || ^13.0",
         "open-telemetry/api": "^1.7",
         "open-telemetry/context": "^1.4",
         "open-telemetry/exporter-otlp": "^1.3",
