@@ -29,11 +29,7 @@ class RedisInstrumentation implements Instrumentation
     public function register(array $options): void
     {
         app('events')->listen(CommandExecuted::class, [$this, 'recordCommand']);
-
-        // CommandFailed was added in Laravel 12.45
-        if (class_exists(CommandFailed::class)) {
-            app('events')->listen(CommandFailed::class, [$this, 'recordCommand']);
-        }
+        app('events')->listen(CommandFailed::class, [$this, 'recordCommand']);
 
         $this->callAfterResolving('redis', $this->registerRedisEvents(...));
     }

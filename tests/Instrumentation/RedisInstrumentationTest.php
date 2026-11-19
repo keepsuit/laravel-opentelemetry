@@ -1,6 +1,5 @@
 <?php
 
-use Illuminate\Redis\Events\CommandFailed;
 use Illuminate\Support\Facades\Redis;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\RedisInstrumentation;
@@ -143,7 +142,7 @@ it('records failed redis commands', function (string $client) {
         ->and($span->getEvents()[0]->getName())->toBe('exception');
 
     expect(getRecordedMetrics()->firstWhere('name', DbMetrics::DB_CLIENT_OPERATION_DURATION))->toBeNull();
-})->skip(fn () => ! class_exists(CommandFailed::class), 'CommandFailed is not available in this Laravel version')->with([
+})->with([
     'predis',
     'phpredis',
 ]);
@@ -163,4 +162,4 @@ it('records non-default server port', function () {
             'server.address' => '127.0.0.1',
             'server.port' => 1,
         ]);
-})->skip(fn () => ! class_exists(CommandFailed::class), 'CommandFailed is not available in this Laravel version');
+});
