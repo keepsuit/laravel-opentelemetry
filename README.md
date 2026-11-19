@@ -860,6 +860,10 @@ This package injects a log channel named `otlp` that can be used to send logs to
 ]
 ```
 
+Data added with Laravel's `Context` facade (`Context::add()`) is exported as log record attributes, together with the log context.
+When the same key is present in both, the log context wins.
+Hidden context (`Context::addHidden()`) is not exported.
+
 As an alternative, you can use the `Logger` facade to send logs directly to OpenTelemetry:
 
 ```php
