@@ -260,11 +260,11 @@ return [
 
         /**
          * Flush interval in seconds.
-         * When running in worker mode, metrics are collected and all signals are exported at this interval.
+         * When running in worker mode, all signals are exported at this interval.
          * Note: This setting is ignored if 'flush_after_each_iteration' is true.
          * Note: The interval is checked after each iteration, so the actual interval may be longer
          */
-        'metrics_collect_interval' => (int) env('OTEL_WORKER_MODE_COLLECT_INTERVAL', 60),
+        'flush_interval' => (int) env('OTEL_WORKER_MODE_FLUSH_INTERVAL', env('OTEL_WORKER_MODE_COLLECT_INTERVAL', 60)),
 
         /**
          * Detectors to use for worker mode detection

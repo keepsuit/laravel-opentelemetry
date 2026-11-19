@@ -517,7 +517,8 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
 
             return new WorkerModeManager(
                 flushAfterEachIteration: config()->boolean('opentelemetry.worker_mode.flush_after_each_iteration', false),
-                metricsExportInterval: config()->integer('opentelemetry.worker_mode.metrics_collect_interval', 60),
+                // Configs published before the rename still use metrics_collect_interval.
+                flushInterval: config()->integer('opentelemetry.worker_mode.flush_interval', config()->integer('opentelemetry.worker_mode.metrics_collect_interval', 60)),
                 detectors: $detectors
             );
         });

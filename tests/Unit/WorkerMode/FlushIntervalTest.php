@@ -32,7 +32,7 @@ test('flushes all signals based on interval', function () {
 
     new WorkerModeManager(
         flushAfterEachIteration: false,
-        metricsExportInterval: 60,
+        flushInterval: 60,
         detectors: [$detector]
     );
 
@@ -43,3 +43,14 @@ test('flushes all signals based on interval', function () {
     $detector->trigger();
     TestTime::addSecond();
 });
+
+test('falls back to the legacy metrics_collect_interval config key', function (array $config, int $expected) {
+    config()->set('opentelemetry.worker_mode', $config);
+    app()->forgetInstance(WorkerModeManager::class);
+
+    expect(invade(app(WorkerModeManager::class))->flushInterval)->toBe($expected);
+})->with([
+    'new key' => [['flush_interval' => 30, 'metrics_collect_interval' => 15], 30],
+    'legacy key' => [['metrics_collect_interval' => 15], 15],
+    'none' => [[], 60],
+]);

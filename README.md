@@ -313,11 +313,11 @@ return [
 
         /**
          * Flush interval in seconds.
-         * When running in worker mode, metrics are collected and all signals are exported at this interval.
+         * When running in worker mode, all signals are exported at this interval.
          * Note: This setting is ignored if 'flush_after_each_iteration' is true.
          * Note: The interval is checked after each iteration, so the actual interval may be longer
          */
-        'metrics_collect_interval' => (int) env('OTEL_WORKER_MODE_COLLECT_INTERVAL', 60),
+        'flush_interval' => (int) env('OTEL_WORKER_MODE_FLUSH_INTERVAL', env('OTEL_WORKER_MODE_COLLECT_INTERVAL', 60)),
 
         /**
          * Detectors to use for worker mode detection
@@ -839,7 +839,7 @@ Known limits:
 - after `max_stale` (default 5m) without samples the stream restarts from zero, which backends treat as a counter reset;
 - backends that ingest Delta natively need no conversion.
 
-Long-running processes (queue workers, Horizon, Octane or FrankenPHP worker mode) export once per `worker_mode.metrics_collect_interval`.
+Long-running processes (queue workers, Horizon, Octane or FrankenPHP worker mode) export once per `worker_mode.flush_interval`.
 They work with either temporality when `service.instance.id` is unique per process; with Delta, processes sharing an id (e.g. several workers in the same pod) are summed by the collector too.
 Keep `worker_mode.flush_after_each_iteration` disabled with Delta: exporting after every job or request brings back the out-of-order drops under load.
 
@@ -895,7 +895,9 @@ Worker mode can be configured with these environment variables (or editing the c
 | Variable                                      | Description                                            | Default |
 |-----------------------------------------------|--------------------------------------------------------|---------|
 | `OTEL_WORKER_MODE_FLUSH_AFTER_EACH_ITERATION` | Enable per-iteration flushing                          | `false` |
-| `OTEL_WORKER_MODE_COLLECT_INTERVAL`           | Flush interval in seconds for worker mode              | `60`    |
+| `OTEL_WORKER_MODE_FLUSH_INTERVAL`             | Flush interval in seconds for worker mode              | `60`    |
+
+The previous names, `OTEL_WORKER_MODE_COLLECT_INTERVAL` and the `worker_mode.metrics_collect_interval` config key, are still read when the new ones are not set.
 
 Otherwise, after an iteration, if the interval has elapsed, metrics are collected and pending traces, metrics and logs are exported.
 If `OTEL_WORKER_MODE_FLUSH_AFTER_EACH_ITERATION` is `true`, the per-iteration flush behavior is used and the periodic interval is ignored.
