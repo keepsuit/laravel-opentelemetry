@@ -27,7 +27,7 @@ it('can resolve laravel tracer', function () {
 it('can measure a span', function () {
     $span = Tracer::newSpan('test span')->start();
 
-    expect(Tracer::activeSpan())->not->toBe($span);
+    expect(Tracer::activeSpan() === $span)->toBeFalse();
 
     assert($span instanceof Span);
     expect($span)
@@ -52,7 +52,7 @@ it('can measure sequential spans', function () {
     $span1 = Tracer::newSpan('test span 1')->start();
     assert($span1 instanceof Span);
 
-    expect(Tracer::activeSpan())->not->toBe($span1);
+    expect(Tracer::activeSpan() === $span1)->toBeFalse();
 
     TestTime::addSecond();
 
@@ -61,7 +61,7 @@ it('can measure sequential spans', function () {
     $span2 = Tracer::newSpan('test span 2')->start();
     assert($span2 instanceof Span);
 
-    expect(Tracer::activeSpan())->not->toBe($span2);
+    expect(Tracer::activeSpan() === $span2)->toBeFalse();
 
     TestTime::addSeconds(2);
 
@@ -89,9 +89,8 @@ it('can measure parallel spans', function () {
     $span2 = Tracer::newSpan('test span 2')->start();
     assert($span2 instanceof Span);
 
-    expect(Tracer::activeSpan())
-        ->not->toBe($span1)
-        ->not->toBe($span2);
+    expect(Tracer::activeSpan() === $span1)->toBeFalse()
+        ->and(Tracer::activeSpan() === $span2)->toBeFalse();
 
     TestTime::addSecond();
 

@@ -48,7 +48,7 @@ test('a repeated boot does not keep the previous sdk attached to the context', f
     $previous = Globals::tracerProvider();
 
     $this->refreshApplication();
-    expect(Globals::tracerProvider())->not->toBe($previous);
+    expect(Globals::tracerProvider() === $previous)->toBeFalse();
 
     // Without the current boot's scope, nothing from the previous boot may remain attached.
     Context::storage()->scope()?->detach();
