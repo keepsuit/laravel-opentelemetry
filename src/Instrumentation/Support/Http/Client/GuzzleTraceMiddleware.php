@@ -7,6 +7,7 @@ use GuzzleHttp\Promise\PromiseInterface;
 use Keepsuit\LaravelOpenTelemetry\Facades\Meter;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\HttpClientInstrumentation;
+use Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\Http\HttpMethod;
 use OpenTelemetry\API\Common\Time\Clock;
 use OpenTelemetry\API\Common\Time\ClockInterface;
 use OpenTelemetry\API\Trace\SpanInterface;
@@ -38,9 +39,15 @@ class GuzzleTraceMiddleware
 
                 $route = HttpClientInstrumentation::routeName($request);
 
-                $span = Tracer::newSpan(trim(sprintf('%s %s', $request->getMethod(), $route ?? '')))
+                $method = HttpMethod::normalize($request->getMethod());
+
+                $span = Tracer::newSpan(trim(sprintf('%s %s', HttpMethod::spanName($method), $route ?? '')))
                     ->setSpanKind(SpanKind::KIND_CLIENT)
                     ->start();
+
+                if ($method !== $request->getMethod()) {
+                    $span->setAttribute(HttpAttributes::HTTP_REQUEST_METHOD_ORIGINAL, $request->getMethod());
+                }
 
                 static::recordHeaders($span, $request);
 
@@ -149,7 +156,7 @@ class GuzzleTraceMiddleware
 
         return [
             UrlAttributes::URL_SCHEME => $request->getUri()->getScheme(),
-            HttpAttributes::HTTP_REQUEST_METHOD => $request->getMethod(),
+            HttpAttributes::HTTP_REQUEST_METHOD => HttpMethod::normalize($request->getMethod()),
             HttpAttributes::HTTP_RESPONSE_STATUS_CODE => $response?->getStatusCode(),
             UrlIncubatingAttributes::URL_TEMPLATE => $route,
             ErrorAttributes::ERROR_TYPE => match (true) {

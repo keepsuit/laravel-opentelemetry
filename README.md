@@ -417,6 +417,11 @@ Metrics:
 
 You can disable this instrumentation by setting `OTEL_INSTRUMENTATION_HTTP_CLIENT` to `false` or removing `HttpClientInstrumentation::class` from the config.
 
+### Http Methods
+
+Http server and client instrumentations record methods outside the known list as `_OTHER` (span name `HTTP`), with the original method in `http.request.method_original`.
+The known methods are the RFC 9110 methods, `PATCH` and `QUERY`.
+
 ### Database
 
 Database queries are automatically traced. A span is created for each query executed.

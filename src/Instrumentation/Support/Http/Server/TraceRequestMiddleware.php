@@ -11,6 +11,7 @@ use Keepsuit\LaravelOpenTelemetry\Facades\Meter;
 use Keepsuit\LaravelOpenTelemetry\Facades\OpenTelemetry;
 use Keepsuit\LaravelOpenTelemetry\Facades\Tracer;
 use Keepsuit\LaravelOpenTelemetry\Instrumentation\HttpServerInstrumentation;
+use Keepsuit\LaravelOpenTelemetry\Instrumentation\Support\Http\HttpMethod;
 use OpenTelemetry\API\Common\Time\Clock;
 use OpenTelemetry\API\Common\Time\ClockInterface;
 use OpenTelemetry\API\Trace\SpanInterface;
@@ -29,8 +30,6 @@ use Symfony\Component\HttpFoundation\Response;
 
 class TraceRequestMiddleware
 {
-    private const KNOWN_METHODS = ['CONNECT', 'DELETE', 'GET', 'HEAD', 'OPTIONS', 'PATCH', 'POST', 'PUT', 'TRACE'];
-
     public function handle(Request $request, Closure $next): mixed
     {
         if ($request->is(HttpServerInstrumentation::getExcludedPaths())) {
@@ -81,10 +80,7 @@ class TraceRequestMiddleware
 
         $route = $this->resolveRouteName($request);
 
-        $method = $this->normalizeMethod($request->method());
-        $spanMethod = $method === HttpAttributes::HTTP_REQUEST_METHOD_VALUE_OTHER ? 'HTTP' : $method;
-
-        $builder = Tracer::newSpan(trim(sprintf('%s %s', $spanMethod, $route ?? '')))
+        $builder = Tracer::newSpan(trim(sprintf('%s %s', HttpMethod::spanName(HttpMethod::normalize($request->method())), $route ?? '')))
             ->setSpanKind(SpanKind::KIND_SERVER)
             ->setParent($context);
 
@@ -106,8 +102,9 @@ class TraceRequestMiddleware
     {
         $span->setAttributes($attributes);
 
-        if ($attributes[HttpAttributes::HTTP_REQUEST_METHOD] !== $request->method()) {
-            $span->setAttribute(HttpAttributes::HTTP_REQUEST_METHOD_ORIGINAL, $request->method());
+        // method() applies method overrides (_method, X-HTTP-Method-Override); the original is the request line method.
+        if ($request->getRealMethod() !== $attributes[HttpAttributes::HTTP_REQUEST_METHOD]) {
+            $span->setAttribute(HttpAttributes::HTTP_REQUEST_METHOD_ORIGINAL, $request->getRealMethod());
         }
 
         $redactedQueryString = HttpServerInstrumentation::redactQueryString($request->getQueryString() ?? '');
@@ -169,7 +166,7 @@ class TraceRequestMiddleware
 
         return [
             UrlAttributes::URL_SCHEME => $request->getScheme(),
-            HttpAttributes::HTTP_REQUEST_METHOD => $this->normalizeMethod($request->method()),
+            HttpAttributes::HTTP_REQUEST_METHOD => HttpMethod::normalize($request->method()),
             HttpAttributes::HTTP_RESPONSE_STATUS_CODE => $response->getStatusCode(),
             HttpAttributes::HTTP_ROUTE => $this->resolveRouteName($request),
             ErrorAttributes::ERROR_TYPE => $response->isServerError() ? (string) $response->getStatusCode() : null,
@@ -216,11 +213,6 @@ class TraceRequestMiddleware
         }
 
         return Clock::getDefault()->now();
-    }
-
-    private function normalizeMethod(string $method): string
-    {
-        return in_array($method, self::KNOWN_METHODS, true) ? $method : HttpAttributes::HTTP_REQUEST_METHOD_VALUE_OTHER;
     }
 
     protected function resolveRouteName(Request $request): ?string

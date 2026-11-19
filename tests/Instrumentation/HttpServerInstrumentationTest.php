@@ -680,6 +680,19 @@ it('normalizes unknown http methods', function () {
         ->not->toHaveKey(HttpAttributes::HTTP_REQUEST_METHOD_ORIGINAL);
 });
 
+it('records the request line method as original method when the method is overridden', function () {
+    registerInstrumentation(HttpServerInstrumentation::class);
+
+    $this->post('test-ok', [], ['X-HTTP-Method-Override' => 'PUT'])->assertOk();
+
+    expect(getRecordedSpans()->last())
+        ->getName()->toBe('PUT /test-ok')
+        ->getAttributes()->toMatchArray([
+            HttpAttributes::HTTP_REQUEST_METHOD => 'PUT',
+            HttpAttributes::HTTP_REQUEST_METHOD_ORIGINAL => 'POST',
+        ]);
+});
+
 it('does not set original method for known http methods', function () {
     registerInstrumentation(HttpServerInstrumentation::class);
 
