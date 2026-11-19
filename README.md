@@ -969,6 +969,7 @@ An export makes `1 + OTEL_EXPORTER_OTLP_MAX_RETRIES` attempts.
 | `OTEL_EXPORTER_OTLP_MAX_RETRIES`     | Retries after a failed export                                                                 | `1`     |
 
 `OTEL_EXPORTER_OTLP_CONNECT_TIMEOUT` and `OTEL_EXPORTER_OTLP_MAX_RETRIES` are options of this package, not OpenTelemetry standard variables.
+If you published the config file before `connect_timeout` existed, add `'connect_timeout' => (int) env('OTEL_EXPORTER_OTLP_CONNECT_TIMEOUT', 1000)` to `exporters.otlp`: without it the variable is ignored and the default applies. A published config also keeps its own `max_retries` default (3).
 With gRPC the timeout covers the whole call, connection included.
 
 Retries default to 1, while the OpenTelemetry PHP SDK uses 3.
