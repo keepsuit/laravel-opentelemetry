@@ -124,6 +124,8 @@ return [
          */
         'exporter' => env(Variables::OTEL_LOGS_EXPORTER, 'otlp'),
 
+        'level' => env('LOG_LEVEL', 'debug'),
+
         /**
          * Inject active trace id in log context
          *

@@ -449,7 +449,7 @@ class LaravelOpenTelemetryServiceProvider extends PackageServiceProvider
             $config->set('logging.channels.otlp', [
                 'driver' => 'monolog',
                 'handler' => OpenTelemetryMonologHandler::class,
-                'level' => 'debug',
+                'level' => $config->get('opentelemetry.logs.level', 'debug'),
             ]);
         });
     }

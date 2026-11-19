@@ -855,10 +855,13 @@ This package injects a log channel named `otlp` that can be used to send logs to
     'otlp' => [
         'driver' => 'monolog',
         'handler' => \Keepsuit\LaravelOpenTelemetry\Support\OpenTelemetryMonologHandler::class,
-        'level' => 'debug',
+        'level' => env('LOG_LEVEL', 'debug'),
     ]
 ]
 ```
+
+The injected channel takes its level from `opentelemetry.logs.level`, which defaults to `LOG_LEVEL`.
+If you published the config file before this option existed, add `'level' => env('LOG_LEVEL', 'debug')` to its `logs` section.
 
 Data added with Laravel's `Context` facade (`Context::add()`) is exported as log record attributes, together with the log context.
 When the same key is present in both, the log context wins.

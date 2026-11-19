@@ -113,3 +113,14 @@ it('strips the trace id field from exported log attributes', function () {
     expect(getRecordedLogs()->first())
         ->getAttributes()->toArray()->toBe(['foo' => 'bar']);
 });
+
+it('drops records below LOG_LEVEL on the injected otlp channel', function () {
+    putenv('LOG_LEVEL=warning');
+    $this->refreshApplication();
+
+    Log::info('dropped');
+    Log::warning('kept');
+
+    expect(config('logging.channels.otlp.level'))->toBe('warning');
+    expect(getRecordedLogs()->map->getBody()->all())->toBe(['kept']);
+})->after(fn () => putenv('LOG_LEVEL'));
