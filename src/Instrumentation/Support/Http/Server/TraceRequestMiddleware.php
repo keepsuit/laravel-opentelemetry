@@ -115,7 +115,7 @@ class TraceRequestMiddleware
             ->setAttribute(UrlAttributes::URL_FULL, $fullUrl)
             ->setAttribute(UrlAttributes::URL_PATH, $request->path() === '/' ? $request->path() : '/'.$request->path())
             ->setAttribute(UrlAttributes::URL_QUERY, $redactedQueryString)
-            ->setAttribute(ServerAttributes::SERVER_ADDRESS, $request->getHttpHost())
+            ->setAttribute(ServerAttributes::SERVER_ADDRESS, $request->getHost())
             ->setAttribute(ServerAttributes::SERVER_PORT, $request->getPort())
             ->setAttribute(UserAgentAttributes::USER_AGENT_ORIGINAL, $request->userAgent())
             ->setAttribute(HttpIncubatingAttributes::HTTP_REQUEST_BODY_SIZE, $request->header('Content-Length'))
@@ -218,7 +218,7 @@ class TraceRequestMiddleware
     protected function resolveRouteName(Request $request): ?string
     {
         /** @var string|null $route */
-        $route = rescue(fn () => Route::getRoutes()->match($request)->uri(), rescue: false);
+        $route = rescue(fn () => Route::getRoutes()->match($request)->uri(), report: false);
 
         return $route !== null ? '/'.ltrim($route, '/') : null;
     }

@@ -53,7 +53,7 @@ class GuzzleTraceMiddleware
 
                 $redactedQueryString = HttpClientInstrumentation::redactQueryString($request->getUri()->getQuery());
 
-                $fullUrl = sprintf('%s://%s%s', $request->getUri()->getScheme(), $request->getUri()->getHost(), $request->getUri()->getPath());
+                $fullUrl = sprintf('%s://%s%s', $request->getUri()->getScheme(), $request->getUri()->withUserInfo('')->getAuthority(), $request->getUri()->getPath());
                 $fullUrl = $redactedQueryString === '' ? $fullUrl : sprintf('%s?%s', $fullUrl, $redactedQueryString);
 
                 $span->setAttribute(UrlAttributes::URL_FULL, $fullUrl)
@@ -167,7 +167,7 @@ class GuzzleTraceMiddleware
             NetworkAttributes::NETWORK_PROTOCOL_NAME => 'http',
             NetworkAttributes::NETWORK_PROTOCOL_VERSION => $response?->getProtocolVersion(),
             ServerAttributes::SERVER_ADDRESS => $request->getUri()->getHost(),
-            ServerAttributes::SERVER_PORT => $request->getUri()->getPort(),
+            ServerAttributes::SERVER_PORT => $request->getUri()->getPort() ?? ($request->getUri()->getScheme() === 'https' ? 443 : 80),
         ];
     }
 }

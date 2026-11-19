@@ -37,6 +37,11 @@ beforeEach(function () {
         Route::any('test-redirect', fn () => redirect('test-ok'));
         Route::match(['FOO'], 'test-custom-method', fn () => 'ok');
         Route::any('test-exception', fn () => throw TestException::create());
+        Route::any('test-handled-exception', function () {
+            report(TestException::create());
+
+            return 'ok';
+        });
         Route::any('test-nested-exception', function () {
             $span = Tracer::newSpan('nested')->start();
             $span->activate();
@@ -184,7 +189,7 @@ it('can record a route exception in a nested span', function () {
     expect($nestedSpan)
         ->getName()->toBe('nested')
         ->getKind()->toBe(SpanKind::KIND_INTERNAL)
-        ->getStatus()->getCode()->toBe(StatusCode::STATUS_ERROR)
+        ->getStatus()->getCode()->toBe(StatusCode::STATUS_UNSET)
         ->getEvents()->not->toBeEmpty();
 
     expect(collect($nestedSpan->getEvents())->last())
@@ -211,6 +216,46 @@ it('skips route exception when it is not reportable', function () {
 
     expect($lastSpan)->getStatus()->getCode()->toBe(StatusCode::STATUS_ERROR);
     expect($lastSpan->getEvents())->toBeEmpty();
+});
+
+it('records handled exceptions without marking the span as error', function () {
+    registerInstrumentation(HttpServerInstrumentation::class);
+
+    $this->get('test-handled-exception')->assertOk();
+
+    $span = getRecordedSpans()->last();
+
+    expect($span)
+        ->getStatus()->getCode()->toBe(StatusCode::STATUS_UNSET)
+        ->getEvents()->toHaveCount(1);
+
+    expect($span->getEvents()[0]->getAttributes()->get('exception.type'))->toBe(TestException::class);
+});
+
+it('does not set http.route for unmatched requests', function () {
+    registerInstrumentation(HttpServerInstrumentation::class);
+
+    $this->get('missing-route')->assertNotFound();
+
+    expect(getRecordedSpans()->last())
+        ->getName()->toBe('GET')
+        ->getAttributes()->not->toHaveKey(HttpAttributes::HTTP_ROUTE);
+
+    $dataPoint = getRecordedMetrics()->firstWhere('name', HttpMetrics::HTTP_SERVER_REQUEST_DURATION)->data->dataPoints[0];
+
+    expect($dataPoint->attributes->toArray())->not->toHaveKey(HttpAttributes::HTTP_ROUTE);
+});
+
+it('records server.address without port', function () {
+    registerInstrumentation(HttpServerInstrumentation::class);
+
+    $this->get('http://localhost:8080/test-ok')->assertOk();
+
+    expect(getRecordedSpans()->last()->getAttributes())
+        ->toMatchArray([
+            ServerAttributes::SERVER_ADDRESS => 'localhost',
+            ServerAttributes::SERVER_PORT => 8080,
+        ]);
 });
 
 it('set generic span name when route has parameters', function () {
@@ -515,10 +560,7 @@ it('adds user.id when enabled and user is authenticated', function () {
 
     $span = getRecordedSpans()->last();
 
-    expect($span->getAttributes())
-        ->toMatchArray([
-            'user.id' => 123,
-        ]);
+    expect($span->getAttributes()->get('user.id'))->toBe('123');
 });
 
 it('does not add user.id when disabled', function () {

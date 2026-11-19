@@ -12,6 +12,7 @@ use OpenTelemetry\SDK\Metrics\Data\HistogramDataPoint;
 use OpenTelemetry\SDK\Metrics\Data\Metric;
 use OpenTelemetry\SDK\Trace\ImmutableSpan;
 use OpenTelemetry\SemConv\Attributes\DbAttributes;
+use OpenTelemetry\SemConv\Attributes\ServerAttributes;
 use OpenTelemetry\SemConv\Metrics\DbMetrics;
 
 beforeEach(function () {
@@ -139,4 +140,21 @@ it('maps database drivers to well-known db systems', function (string $driver, s
     ['pgsql', 'postgresql'],
     ['sqlsrv', 'microsoft.sql_server'],
     ['mysql', 'mysql'],
+]);
+
+it('records server address and non-default port', function (array $config, ?string $address, ?int $port) {
+    $event = new QueryExecuted('select 1', [], 1.0, new Connection(fn () => null, 'db', '', $config));
+
+    $attributes = invade(new QueryInstrumentation)->sharedTraceMetricAttributes($event, 'SELECT');
+
+    expect($attributes[ServerAttributes::SERVER_ADDRESS])->toBe($address)
+        ->and($attributes[ServerAttributes::SERVER_PORT])->toBe($port);
+})->with([
+    'mysql default port' => [['driver' => 'mysql', 'host' => 'db.local', 'port' => '3306'], 'db.local', null],
+    'mariadb default port' => [['driver' => 'mariadb', 'host' => 'db.local', 'port' => 3306], 'db.local', null],
+    'pgsql default port' => [['driver' => 'pgsql', 'host' => 'db.local', 'port' => '5432'], 'db.local', null],
+    'sqlsrv default port' => [['driver' => 'sqlsrv', 'host' => 'db.local', 'port' => '1433'], 'db.local', null],
+    'custom port' => [['driver' => 'mysql', 'host' => 'db.local', 'port' => '3307'], 'db.local', 3307],
+    'multiple hosts' => [['driver' => 'mysql', 'host' => ['db1.local', 'db2.local']], 'db1.local,db2.local', null],
+    'sqlite' => [['driver' => 'sqlite'], null, null],
 ]);
